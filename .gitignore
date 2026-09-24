@@ -1,0 +1,17 @@
+# Node
+node_modules/
+npm-debug.log*
+
+# Python
+venv/
+.venv/
+__pycache__/
+*.pyc
+
+# Secrets
+.env
+
+# OS / editor files
+.DS_Store
+Thumbs.db
+.vscode/

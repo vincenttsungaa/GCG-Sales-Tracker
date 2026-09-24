@@ -1,0 +1,205 @@
+{
+  "theme": "dark",
+  "archetype": "THE PERFORMANCE PRO / TACTICAL SCI-FI HUD",
+  "summary": "Tactical, clean Gundam TCG collection & sale lifecycle tracker with high-contrast tactical HUD visual language, high density table & grid views, AUD currency, and instant filters for color, type, rarity, sale lifecycle, buyers, and deal dates.",
+  "colors": {
+    "surfaces": [
+      {
+        "name": "page",
+        "kind": "solid",
+        "bg": "#0B0F17",
+        "on_bg": "#F1F5F9",
+        "on_bg_muted": "#94A3B8"
+      },
+      {
+        "name": "panel",
+        "kind": "solid",
+        "bg": "#111827",
+        "on_bg": "#F8FAFC",
+        "on_bg_muted": "#94A3B8"
+      },
+      {
+        "name": "panel_secondary",
+        "kind": "solid",
+        "bg": "#1E293B",
+        "on_bg": "#FFFFFF",
+        "on_bg_muted": "#CBD5E1"
+      },
+      {
+        "name": "inverse",
+        "kind": "solid",
+        "bg": "#F8FAFC",
+        "on_bg": "#0B0F17",
+        "on_bg_muted": "#475569"
+      },
+      {
+        "name": "hero",
+        "kind": "image",
+        "contrast_against": "#0D1117",
+        "guarantee": "scrim: linear-gradient(180deg, rgba(11,15,23,0.85) 0%, rgba(11,15,23,0.95) 100%)",
+        "on_bg": "#FFFFFF",
+        "on_bg_muted": "#94A3B8",
+        "roles": {
+          "link": "#38BDF8",
+          "error": "#F87171",
+          "success": "#34D399"
+        }
+      },
+      {
+        "name": "badge_red",
+        "kind": "solid",
+        "bg": "#450A0A",
+        "on_bg": "#FECACA",
+        "on_bg_muted": "#F87171"
+      },
+      {
+        "name": "badge_blue",
+        "kind": "solid",
+        "bg": "#082F49",
+        "on_bg": "#BAE6FD",
+        "on_bg_muted": "#38BDF8"
+      },
+      {
+        "name": "badge_green",
+        "kind": "solid",
+        "bg": "#052E16",
+        "on_bg": "#BBF7D0",
+        "on_bg_muted": "#4ADE80"
+      },
+      {
+        "name": "badge_white",
+        "kind": "solid",
+        "bg": "#334155",
+        "on_bg": "#F8FAFC",
+        "on_bg_muted": "#CBD5E1"
+      },
+      {
+        "name": "badge_purple",
+        "kind": "solid",
+        "bg": "#3B0764",
+        "on_bg": "#F5D0FE",
+        "on_bg_muted": "#C084FC"
+      },
+      {
+        "name": "status_for_sale",
+        "kind": "solid",
+        "bg": "#1E3A8A",
+        "on_bg": "#DBEAFE",
+        "on_bg_muted": "#93C5FD"
+      },
+      {
+        "name": "status_pending",
+        "kind": "solid",
+        "bg": "#713F12",
+        "on_bg": "#FEF08A",
+        "on_bg_muted": "#FACC15"
+      },
+      {
+        "name": "status_sold",
+        "kind": "solid",
+        "bg": "#14532D",
+        "on_bg": "#DCFCE7",
+        "on_bg_muted": "#86EFAC"
+      },
+      {
+        "name": "status_archived",
+        "kind": "solid",
+        "bg": "#27272A",
+        "on_bg": "#E4E4E7",
+        "on_bg_muted": "#A1A1AA"
+      }
+    ],
+    "accent": "#0284C7",
+    "on_accent": "#FFFFFF",
+    "tactical_gold": "#EAB308",
+    "tactical_cyan": "#06B6D4"
+  },
+  "typography": {
+    "font_heading": "Outfit Variable",
+    "font_sans": "IBM Plex Sans",
+    "font_mono": "JetBrains Mono Variable",
+    "scale_px": {
+      "display": 56,
+      "h1": 40,
+      "h2": 30,
+      "h3": 22,
+      "body": 16,
+      "caption": 14
+    },
+    "rules": {
+      "headings": "Outfit Variable, tracking-tight font-bold uppercase",
+      "data_numbers": "JetBrains Mono Variable, tabular-nums font-semibold",
+      "body": "IBM Plex Sans, leading-relaxed text-slate-200",
+      "labels": "JetBrains Mono Variable, text-xs uppercase tracking-wider text-slate-400"
+    }
+  },
+  "entry_surfaces": {
+    "/": "tactical HUD top bar + dynamic stats strip, followed by segmented lifecycle tabs (All / For Sale / Pending / Sold / Archived) with dual card-grid & dense table view"
+  },
+  "layouts": {
+    "header": "Fixed HUD bar with brand emblem, quick search bar, quick action buttons ('Add Card', 'Add Item', 'Batch Export/Import'), and active filter chips indicator",
+    "stats_strip": "High-density 4-tile grid: Total Inventory Units, Portfolio Valuation (AUD $), Items on Sale / Pending, Realized Sales & Profit (AUD $)",
+    "filter_drawer_and_bar": "Compact multi-faceted bar: Color Pills (All, Red, White, Blue, Green, Purple), Type Dropdown (Unit, Pilot, Ex Base, Ex Resource, Resource, Command, Base, Unit Token), Rarity Selector (C, C+, C++, UC, UC+, R, R+, LR, LR+, LR++, SP, P, LK), Buyer Search text input, and Deal Date Range picker",
+    "lifecycle_tabs": "Tabs with badge counts: 'All Items', 'For Sale', 'Pending Deal', 'Sold', 'Archive (Restorable)'",
+    "inventory_display": "Toggle between Visual Mecha Card Grid (with high-visibility color trims and holographic rarity stamps) and Pro Data Table (sortable columns, inline status actions, quick edit, price editing in AUD)"
+  },
+  "components": {
+    "quick_add_card_modal": "Shadcn Dialog with form fields: Name, Item Category (Card vs General Item/Accessory/Binder/Booster), Color (5 Gundam colors), Card Type (8 types), Rarity (14 tiers), Quantity, Unit Price in AUD ($), Condition, Notes, Image URL / Preset icon, Sale Status (In Collection, For Sale, Pending, Sold).",
+    "quick_add_item_modal": "Shadcn Dialog specifically tailored for non-card Gundam merchandise (Deck Boxes, Sleeves, Playmats, Model Kits, Booster Boxes) with price AUD, quantity, status, notes.",
+    "deal_closure_modal": "Shadcn Dialog triggered when moving item to 'Pending' or 'Sold': inputs for Buyer Name, Buyer Contact/Handle, Deal Date (calendar picker with default to today), Agreed Sale Price AUD, Payment Method, and auto-archive toggle.",
+    "archive_view": "Table & list of sold/archived items with deal summary (Sold to X on DD/MM/YYYY for $X.XX AUD) with one-click 'Restore to Active Inventory' and 'Permanent Delete' options.",
+    "rarity_badge": "Distinct visual badges with foil gradients: Common (C, C+, C++), Uncommon (UC, UC+), Rare (R, R+), Legend Rare (LR, LR+, LR++), Special / Promo (SP, P, LK - Link Rare).",
+    "color_indicator": "Distinct left-border or glow dot matching Red, White, Blue, Green, Purple Gundam factions."
+  },
+  "image_urls": [
+    {
+      "category": "hero_and_branding",
+      "description": "Epic Gundam statue for background ambient atmosphere",
+      "url": "https://images.unsplash.com/photo-1712831710551-97ac3c3442d3?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1OTV8MHwxfHNlYXJjaHwyfHxyb2JvdCUyMG1lY2hhJTIwYW5pbWUlMjBmaWd1cmV8ZW58MHx8fHwxNzkwMDM1MDExfDA&ixlib=rb-4.1.0&q=85"
+    },
+    {
+      "category": "card_placeholders_mecha",
+      "description": "High detail mecha model figure for sample Unit card art",
+      "url": "https://images.unsplash.com/photo-1571757767119-68b8dbed8c97?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1OTV8MHwxfHNlYXJjaHwxfHxyb2JvdCUyMG1lY2hhJTIwYW5pbWUlMjBmaWd1cmV8ZW58MHx8fHwxNzkwMDM1MDExfDA&ixlib=rb-4.1.0&q=85"
+    },
+    {
+      "category": "card_placeholders_action",
+      "description": "Gundam aerial pose for high rarity card samples",
+      "url": "https://images.unsplash.com/photo-1755853913084-c55e7ef1746b?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1OTV8MHwxfHNlYXJjaHw0fHxyb2JvdCUyMG1lY2hhJTIwYW5pbWUlMjBmaWd1cmV8ZW58MHx8fHwxNzkwMDM1MDExfDA&ixlib=rb-4.1.0&q=85"
+    },
+    {
+      "category": "card_collection_ambient",
+      "description": "Futuristic trading cards display vibe",
+      "url": "https://images.unsplash.com/photo-1623617010270-46e8cc26ae18?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NDh8MHwxfHNlYXJjaHwzfHxmdXR1cmlzdGljJTIwc2NpLWZpJTIwY2FyZHMlMjBjb2xsZWN0aW9ufGVufDB8fHx8MTc5MDAzNTAxMXww&ixlib=rb-4.1.0&q=85"
+    }
+  ],
+  "motion": {
+    "page_transition": "Subtle opacity and slight y-axis slide (0.15s ease-out)",
+    "card_hover": "Transform -translate-y-1 with subtle cyan/amber border glow boost (0.2s cubic-bezier(0.16, 1, 0.3, 1))",
+    "filter_chip_active": "Spring scale transition with active tactical highlight",
+    "modal_entrance": "Scale from 0.96 to 1.0 with backdrop blur"
+  },
+  "accessibility": {
+    "wcag_level": "WCAG AA compliant",
+    "color_blindness": "All color badges pair solid high-contrast text with clear icon/text labels (e.g. 'RED [EFSF]' or 'BLUE [ZEON]') so color is never the sole differentiator",
+    "focus_states": "focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:outline-none",
+    "screen_reader_labels": "All action buttons (edit, delete, quick-sell, restore) have aria-label and descriptive tooltip text",
+    "locale_defaults": "Currency explicitly formatted as AUD $ (e.g. A$24.50), date formats formatted clearly as DD/MM/YYYY (Australian standard)."
+  },
+  "instructions_to_main_agent": [
+    "Template is farm-ts (FastAPI backend + React 19 / Vite frontend). Use the typed fetch client in frontend/src/lib/api.ts and keep FastAPI models in sync with TS interfaces.",
+    "Strict Gundam TCG attributes required: Colors = ['red', 'white', 'blue', 'green', 'purple']; Types = ['unit', 'pilot', 'ex base', 'ex resource', 'resource', 'command', 'base', 'unit token']; Rarities = ['C', 'C+', 'C++', 'UC', 'UC+', 'R', 'R+', 'LR', 'LR+', 'LR++', 'SP', 'P', 'LK'].",
+    "Currency MUST be AUD (Australian Dollar) throughout: formats like A$45.00 or $45.00 AUD.",
+    "Sale lifecycle flow: Items start as 'For Sale' or 'In Collection'. When marked 'Pending', prompt for Buyer Name, Buyer Contact, Deal Date, and Agreed Price AUD. When marked 'Sold', auto-move to the 'Archive' tab (with clear feedback and instant 'Restore' option).",
+    "Filters must be instant and combined: Search by card/item name, Filter by Color, Filter by Type, Filter by Rarity, Filter by Sale Status, Filter by Buyer Name, Filter by Deal Date (from/to or exact date).",
+    "Provide both 'Add Card' (full TCG stats: color, type, rarity, AP/HP, notes, qty, price) and 'Add Item' (general Gundam merchandise/supplies: name, category, price AUD, qty, notes) forms.",
+    "Include pre-seeded sample data featuring famous Gundam cards (e.g. RX-78-2 Gundam [White/Unit/LR], Amuro Ray [White/Pilot/R+], Char Aznable [Red/Pilot/LR++], MSN-04 Sazabi [Red/Unit/SP], Wing Gundam Zero [Blue/Unit/LK], Strike Freedom [Purple/Unit/LR+], etc.) so the dashboard is immediately vibrant and functional.",
+    "Ensure all interactive components and table rows have standard data-testid attributes for testing."
+  ],
+  "UNIVERSAL GUIDELINES FOR MAIN AGENT": [
+    "Follow 'easy to read and navigate' core mandate: crisp typography, distinct visual status pills, generous padding inside table cells and modal cards.",
+    "Use JetBrains Mono for all numeric pricing and card count counters for clean tabular scanability.",
+    "Never use generic centered layouts or unstyled default HTML dropdowns; use shadcn dialogs, popovers, select, badges, and tabs.",
+    "Ensure sonner toasts confirm every action (Card Added, Deal Closed, Item Restored, Price Updated)."
+  ]
+}
