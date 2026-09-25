@@ -16,7 +16,7 @@ API_URL = f"{BACKEND_URL}/api"
 
 
 def api_url(path: str = "") -> str:
-    """Absolute URL for an /api route: api_url("/status") -> http://localhost:8001/api/status."""
+    """Absolute URL for an /api route: api_url("/items") -> http://localhost:8001/api/items."""
     return f"{API_URL}{path}"
 
 
@@ -31,7 +31,7 @@ def client():
 
     Example:
         def test_status(client):
-            assert client.get("/status").status_code == 200
+            assert client.get("/items").status_code == 200
     """
     with httpx.Client(base_url=API_URL, timeout=30.0) as c:
         yield c
