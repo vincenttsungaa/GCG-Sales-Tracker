@@ -33,23 +33,19 @@ function StatTile({
 
 export default function StatsStrip({ items }: { items: CollectionItem[] }) {
   const active = items.filter((i) => i.status !== "sold");
-  const totalUnits = active.reduce((sum, i) => sum + i.quantity, 0);
   const collectionValue = active.reduce((sum, i) => sum + i.price * i.quantity, 0);
-  const forSaleCount = items.filter((i) => i.status === "for_sale").length;
-  const pendingCount = items.filter((i) => i.status === "pending").length;
   const sold = items.filter((i) => i.status === "sold");
+  const cardCount = active
+    .filter((i) => i.kind === "card")
+    .reduce((sum, i) => sum + i.quantity, 0);
+  const itemCount = active
+    .filter((i) => i.kind === "item")
+    .reduce((sum, i) => sum + i.quantity, 0);
   const realized = sold.reduce((sum, i) => sum + saleTotal(i), 0);
   const profit = sold.reduce((sum, i) => sum + (saleProfit(i) ?? 0), 0);
 
   return (
-    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-      <StatTile
-        testId="stat-active-items"
-        label="Active Inventory"
-        value={String(active.length)}
-        sub={`${totalUnits} total unit${totalUnits === 1 ? "" : "s"} owned`}
-        accent="text-sky-300"
-      />
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
       <StatTile
         testId="stat-collection-value"
         label="Collection Value"
@@ -58,18 +54,18 @@ export default function StatsStrip({ items }: { items: CollectionItem[] }) {
         accent="text-slate-100"
       />
       <StatTile
-        testId="stat-open-deals"
-        label="Open Deals"
-        value={`${forSaleCount + pendingCount}`}
-        sub={`${forSaleCount} for sale · ${pendingCount} pending`}
-        accent="text-amber-300"
-      />
-      <StatTile
         testId="stat-realized-sales"
         label="Realized Sales"
         value={formatAud(realized)}
         sub={`${formatAud(Math.abs(profit))} ${profit >= 0 ? "profit" : "loss"} after costs · ${sold.length} sold`}
         accent="text-emerald-300"
+      />
+      <StatTile
+        testId="stat-kind-counts"
+        label="Cards & Items"
+        value={`${cardCount + itemCount}`}
+        sub={`${cardCount} card${cardCount === 1 ? "" : "s"} · ${itemCount} item${itemCount === 1 ? "" : "s"}`}
+        accent="text-sky-300"
       />
     </div>
   );
