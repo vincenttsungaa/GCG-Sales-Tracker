@@ -48,7 +48,7 @@ const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 export default function ItemFormDialog({ state, onClose, onSubmit, pending }: ItemFormDialogProps) {
   const editing = state.type === "edit";
-  const [kind, setKind] = useState<ItemKind>(editing ? state.item.kind : state.kind);
+  const [kind] = useState<ItemKind>(editing ? state.item.kind : state.kind);
   const [name, setName] = useState(editing ? state.item.name : "");
   const [color, setColor] = useState<GundamColor | "none">(editing ? (state.item.color ?? "none") : "white");
   const [cardType, setCardType] = useState<CardType | "none">(editing ? (state.item.card_type ?? "none") : "unit");
