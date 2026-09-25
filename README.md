@@ -27,8 +27,7 @@ npm --version
 ## 1. Clone the repository
 
 ```bash
-git clone https://github.com/YOUR-USERNAME/GCG-Sales-Tracker.git
-cd GCG-Sales-Tracker
+git clone https://github.com/vincenttsungaa/GCG-Sales-Tracker.git
 ```
 
 ## 2. Set up the backend (one time only)
@@ -99,7 +98,7 @@ cd GCG-Sales-Tracker/frontend
 npm run dev
 ```
 
-The frontend terminal shows a local address, usually `http://localhost:5173`. Open it in your browser to use the app.
+The frontend terminal shows a local address, usually `http://localhost:3000`. Open it in your browser to use the app.
 
 To stop either one, press `Ctrl + C` in its terminal.
 
@@ -117,7 +116,10 @@ cd ../frontend && npm install
 
 ## Running the tests
 
-With the virtual environment active, from the `backend` folder:
+With the virtual environment active, from the `backend` folder.
+The backend must already be running in another terminal. The tests
+use the database in your `.env`, and each test removes its own
+test items afterwards.
 
 ```bash
 pytest
