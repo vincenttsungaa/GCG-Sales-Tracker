@@ -81,7 +81,7 @@ export default function DealDialog({ state, today, onClose, onConfirm, pending }
           </DialogTitle>
           <DialogDescription>
             {selling
-              ? "Record the buyer and deal date — the item moves to the Archive automatically."
+              ? "Record the buyer and deal date — the item moves to the Sold tab automatically."
               : "Log the interested buyer. You can close the deal later."}
           </DialogDescription>
         </DialogHeader>

@@ -1,11 +1,12 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast, Toaster } from "sonner";
 import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from "@/lib/api";
 import FilterBar from "@/components/FilterBar";
-import { EMPTY_FILTERS, filtersActive, type InventoryFilters } from "@/components/FilterBar";
+import { EMPTY_FILTERS, filtersActive, type InventoryFilters } from "@/lib/filters";
 import ItemCard from "@/components/ItemCard";
 import ItemTable from "@/components/ItemTable";
+import Pagination from "@/components/Pagination";
 import StatsStrip from "@/components/StatsStrip";
 import ItemFormDialog, { type FormState } from "@/components/ItemFormDialog";
 import DealDialog, { type DealState } from "@/components/DealDialog";
@@ -27,14 +28,23 @@ const TABS: { id: TabId; label: string; testId: string }[] = [
   { id: "all", label: "All Items", testId: "tab-all" },
   { id: "for_sale", label: "For Sale", testId: "tab-for-sale" },
   { id: "pending", label: "Pending", testId: "tab-pending" },
-  { id: "archive", label: "Archive", testId: "tab-archive" },
+  { id: "archive", label: "Sold", testId: "tab-archive" },
 ];
+
+const PAGE_SIZE = 10;
 
 export default function Dashboard() {
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<TabId>("all");
   const [view, setView] = useState<"grid" | "table">("table");
   const [filters, setFilters] = useState<InventoryFilters>(EMPTY_FILTERS);
+
+  // Buyer filter only applies on the Pending and Sold tabs — clear it elsewhere.
+  const showBuyer = tab === "pending" || tab === "archive";
+  useEffect(() => {
+    if (!showBuyer) setFilters((f) => (f.buyer ? { ...f, buyer: "" } : f));
+  }, [showBuyer]);
+  const [page, setPage] = useState(1);
   const [formState, setFormState] = useState<FormState | null>(null);
   const [dealState, setDealState] = useState<DealState | null>(null);
 
@@ -128,6 +138,14 @@ export default function Dashboard() {
       return true;
     });
   }, [items, tab, filters]);
+
+  // Pagination — 10 per page. Back to page 1 whenever the tab or filters change.
+  useEffect(() => {
+    setPage(1);
+  }, [tab, filters]);
+  const pageCount = Math.max(1, Math.ceil(visible.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount); // e.g. after deleting the last item on the last page
+  const pageItems = visible.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   const unmark = (item: CollectionItem) =>
     statusMut.mutate(
@@ -223,7 +241,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <FilterBar filters={filters} onChange={setFilters} />
+        <FilterBar filters={filters} onChange={setFilters} showBuyer={showBuyer} />
 
         {/* Data-dependent region — the shell above always renders, even without the backend. */}
         {itemsQuery.isError ? (
@@ -281,13 +299,26 @@ export default function Dashboard() {
               </>
             )}
           </div>
-        ) : view === "table" ? (
-          <ItemTable items={visible} {...actionProps} />
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {visible.map((item) => (
-              <ItemCard key={item.id} item={item} {...actionProps} />
-            ))}
+          <div className="space-y-4">
+            {view === "table" ? (
+              <ItemTable items={pageItems} {...actionProps} />
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {pageItems.map((item) => (
+                  <ItemCard key={item.id} item={item} {...actionProps} />
+                ))}
+              </div>
+            )}
+            {visible.length > PAGE_SIZE && (
+              <Pagination
+                page={currentPage}
+                pageCount={pageCount}
+                pageSize={PAGE_SIZE}
+                total={visible.length}
+                onPageChange={setPage}
+              />
+            )}
           </div>
         )}
       </main>
@@ -317,8 +348,8 @@ export default function Dashboard() {
               {
                 onSuccess: () => {
                   if (partial)
-                    toast.success(`${qtySold} of ${source.quantity} ${source.name} sold — moved to Archive`);
-                  else if (target === "sold") toast.success(`${source.name} sold — moved to Archive`);
+                    toast.success(`${qtySold} of ${source.quantity} ${source.name} sold — moved to Sold`);
+                  else if (target === "sold") toast.success(`${source.name} sold — moved to Sold`);
                   else toast.success(`${source.name} marked as pending`);
                 },
               },

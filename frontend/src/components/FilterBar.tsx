@@ -16,48 +16,17 @@ import {
   RARITIES,
   labelize,
   type CardType,
-  type GundamColor,
   type Rarity,
 } from "@/lib/types";
-
-export interface InventoryFilters {
-  search: string;
-  color: GundamColor | "all";
-  cardType: CardType | "all";
-  rarity: Rarity | "all";
-  buyer: string;
-  dateFrom: string;
-  dateTo: string;
-}
-
-export const EMPTY_FILTERS: InventoryFilters = {
-  search: "",
-  color: "all",
-  cardType: "all",
-  rarity: "all",
-  buyer: "",
-  dateFrom: "",
-  dateTo: "",
-};
-
-export function filtersActive(f: InventoryFilters): boolean {
-  return (
-    f.search !== "" ||
-    f.color !== "all" ||
-    f.cardType !== "all" ||
-    f.rarity !== "all" ||
-    f.buyer !== "" ||
-    f.dateFrom !== "" ||
-    f.dateTo !== ""
-  );
-}
+import { EMPTY_FILTERS, filtersActive, type InventoryFilters } from "@/lib/filters";
 
 interface FilterBarProps {
   filters: InventoryFilters;
   onChange: (next: InventoryFilters) => void;
+  showBuyer?: boolean;
 }
 
-export default function FilterBar({ filters, onChange }: FilterBarProps) {
+export default function FilterBar({ filters, onChange, showBuyer = false }: FilterBarProps) {
   const set = (patch: Partial<InventoryFilters>) => onChange({ ...filters, ...patch });
 
   return (
@@ -120,7 +89,8 @@ export default function FilterBar({ filters, onChange }: FilterBarProps) {
             </SelectContent>
           </Select>
         </div>
-        {/* Buyer */}
+        {/* Buyer — only shown on the Pending and Sold tabs */}
+        {showBuyer && (
         <div className="flex min-w-40 flex-col gap-1.5">
           <Label htmlFor="filter-buyer" className="font-mono text-xs uppercase tracking-wider text-slate-400">
             Buyer
@@ -134,6 +104,7 @@ export default function FilterBar({ filters, onChange }: FilterBarProps) {
             className="bg-slate-950/60"
           />
         </div>
+        )}
         {/* Deal date range */}
         <div className="flex flex-col gap-1.5">
           <Label className="font-mono text-xs uppercase tracking-wider text-slate-400">
