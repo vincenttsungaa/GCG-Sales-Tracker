@@ -37,8 +37,8 @@ async def update_item(item_id: str, input: ItemUpdate):
     # The edit form does not touch the sale record — preserve it.
     payload = input.model_dump()
     # Older clients don't send the catalog link — keep it rather than wiping it.
-    for key in ("card_id", "card_no", "set_code", "set_name", "product_id"):
-        if payload.get(key) is None:
+    for key in ("card_id", "card_no", "set_code", "set_name", "product_id", "edition", "part", "resource_cards", "alt_art_cards", "card_quantities"):
+        if payload.get(key) in (None, [], {}):
             payload[key] = doc.get(key)
     payload.update(
         id=item_id,

@@ -51,6 +51,12 @@ class CollectionItem(BaseModel):
     set_code: str | None = None  # e.g. "GD01", "ST11"
     set_name: str | None = None  # e.g. "Newtype Rising", "Promotion card"
     product_id: str | None = None  # product-database id for items, e.g. "pb01", "sleeve01"
+    edition: str | None = None  # e.g. "Regular Version" / "Special Edition" (ST01–ST04)
+    part: str | None = None  # the piece of a set being sold, e.g. "Playmat" (PB01, PB02)
+    resource_cards: list[str] = Field(default_factory=list)  # e.g. ["RP-025", "RP-027"] when part = Resources
+    alt_art_cards: list[str] = Field(default_factory=list)  # e.g. ["ST02-010_p4"] when part = Alt-Art Cards
+    # copies per picked card, e.g. {"GD02-110_p3": 2, "ST05-010_p4": 1}; quantity is their total
+    card_quantities: dict[str, int] = Field(default_factory=dict)
     # General-item-only attribute (null for cards)
     category: ItemCategory | None = None
     price: float = Field(default=0.0, ge=0)  # AUD, per-unit asking price
@@ -80,6 +86,11 @@ class ItemCreate(BaseModel):
     set_code: str | None = None
     set_name: str | None = None
     product_id: str | None = None
+    edition: str | None = None
+    part: str | None = None
+    resource_cards: list[str] = Field(default_factory=list)
+    alt_art_cards: list[str] = Field(default_factory=list)
+    card_quantities: dict[str, int] = Field(default_factory=dict)
     price: float = Field(default=0.0, ge=0)
     purchase_price: float | None = Field(default=None, ge=0)
     image_url: str | None = None
@@ -100,11 +111,31 @@ class StatusUpdate(BaseModel):
     quantity_sold: int | None = Field(default=None, ge=1)  # partial sale: units in this deal
 
 
+def _resource_listing_image(doc: dict) -> str | None:
+    """Image for a multi-card "Resources" listing: a picture of just its selected cards.
+
+    Listings saved by earlier versions pointed at the first card or the whole resource set;
+    only those generated images are replaced — a photo URL the user typed in is kept.
+    """
+    cards = doc.get("resource_cards") or []
+    product_id = doc.get("product_id")
+    image = doc.get("image_url") or ""
+    generated = image.startswith("/api/card-images/RP-") or (
+        image.startswith("/api/product-images/") and "-resources.svg" in image
+    )
+    if doc.get("part") != "Resources" or len(cards) < 2 or not product_id or not generated:
+        return None
+    return f"/api/product-images/{product_id}-resources.svg?cards={','.join(cards)}"
+
+
 def normalise_doc(doc: dict) -> dict:
     """Strip Mongo's _id and tz-normalise datetimes motor hands back naive."""
     doc.pop("_id", None)
     if doc.get("category") in LEGACY_CATEGORY:
         doc["category"] = LEGACY_CATEGORY[doc["category"]]
+    fixed_image = _resource_listing_image(doc)
+    if fixed_image:
+        doc["image_url"] = fixed_image
     for key in ("created_at", "sold_at"):
         value = doc.get(key)
         if isinstance(value, datetime) and value.tzinfo is None:

@@ -17,7 +17,7 @@ import { apiGet } from "@/lib/api";
 import { CatalogSyncPanel, useCatalogSync } from "@/components/CatalogSync";
 import { COLOR_DOT_CLASS } from "@/lib/format";
 import { labelize, type CatalogCard, type ItemPayload } from "@/lib/types";
-import { ArrowLeft, Loader2, Search } from "lucide-react";
+import { ArrowLeft, Loader2, Minus, Plus, Search } from "lucide-react";
 
 interface AddCardDialogProps {
   onClose: () => void;
@@ -136,13 +136,14 @@ function CardDetailsForm({
 }) {
   const [price, setPrice] = useState("");
   const [purchase, setPurchase] = useState("");
-  const [quantity, setQuantity] = useState("1");
+  // Copies to sell — set with the − / + on the card image (no Qty box).
+  const [quantity, setQuantity] = useState(1);
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const submit = () => {
     const priceNum = Number(price);
-    const qtyNum = Number(quantity);
+    const qtyNum = quantity;
     let purchaseNum: number | null = null;
     if (price.trim() === "" || Number.isNaN(priceNum) || priceNum < 0) {
       setError("Enter an asking price of zero or more.");
@@ -180,6 +181,7 @@ function CardDetailsForm({
   };
 
   const facts: [string, string | null][] = [
+    ["Qty", `${card.card_no} (${quantity}x)`],
     ["Set", card.set_name ? `${card.set_code} · ${card.set_name}` : card.set_code],
     ["Type", card.card_type ? labelize(card.card_type) : null],
     ["Lv / Cost", card.level || card.cost ? `${card.level ?? "-"} / ${card.cost ?? "-"}` : null],
@@ -190,11 +192,44 @@ function CardDetailsForm({
   return (
     <div className="space-y-4" data-testid="card-details-form">
       <div className="flex gap-4">
-        <img
-          src={card.image_url}
-          alt={card.name}
-          className="aspect-[63/88] w-28 shrink-0 rounded-md border border-slate-800 object-cover sm:w-36"
-        />
+        <div className="relative w-28 shrink-0 self-start sm:w-36">
+          <img
+            src={card.image_url}
+            alt={card.name}
+            className="aspect-[63/88] w-full rounded-md border border-slate-800 object-cover"
+          />
+          {/* − / + always visible on the picked card: how many copies you're selling */}
+          <div
+            className="absolute inset-0 flex items-center justify-center"
+            data-testid="add-card-copies"
+          >
+            <div className="flex items-center gap-1 rounded-full bg-slate-950/90 p-1 shadow-lg ring-1 ring-slate-600">
+              <button
+                type="button"
+                aria-label={`One fewer copy of ${card.card_no}`}
+                data-testid="add-card-copies-minus"
+                disabled={quantity <= 1}
+                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                className="flex size-7 items-center justify-center rounded-full bg-slate-800 text-slate-100 hover:bg-slate-700 disabled:opacity-40"
+              >
+                <Minus className="size-3.5" aria-hidden />
+              </button>
+              <span className="min-w-6 text-center font-mono text-sm font-semibold text-white" aria-live="polite">
+                {quantity}
+              </span>
+              <button
+                type="button"
+                aria-label={`One more copy of ${card.card_no}`}
+                data-testid="add-card-copies-plus"
+                disabled={quantity >= 99}
+                onClick={() => setQuantity((q) => Math.min(99, q + 1))}
+                className="flex size-7 items-center justify-center rounded-full bg-sky-600 text-white hover:bg-sky-500 disabled:opacity-40"
+              >
+                <Plus className="size-3.5" aria-hidden />
+              </button>
+            </div>
+          </div>
+        </div>
         <div className="min-w-0 space-y-2">
           <div className="flex items-center gap-2">
             <RarityChip rarity={card.rarity} />
@@ -255,21 +290,6 @@ function CardDetailsForm({
             placeholder="What you paid"
             value={purchase}
             onChange={(e) => setPurchase(e.target.value)}
-          />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="add-card-qty" className={LABEL}>
-            Qty
-          </Label>
-          <Input
-            id="add-card-qty"
-            data-testid="add-card-quantity"
-            type="number"
-            inputMode="numeric"
-            min="1"
-            step="1"
-            value={quantity}
-            onChange={(e) => setQuantity(e.target.value)}
           />
         </div>
         <div className="col-span-2 flex flex-col gap-1.5">

@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/table";
 import { ColorBadge, KindBadge, RarityBadge, StatusBadge } from "@/components/badges";
 import { COLOR_TRIM_CLASS, formatAud, formatDate } from "@/lib/format";
-import { saleProfit, saleTotal, type CollectionItem } from "@/lib/types";
+import { cardCopies, saleProfit, saleTotal, type CollectionItem } from "@/lib/types";
 import { useMediaQuery } from "@/lib/useMediaQuery";
 import { CalendarDays, DollarSign, Pencil, Tag, Trash2, Undo2, User } from "lucide-react";
 import type { ItemActionProps } from "@/components/ItemCard";
@@ -176,10 +176,16 @@ function DesktopTable({ items, actions }: { items: CollectionItem[]; actions: Ac
                       <p data-testid={`item-name-${item.id}`} className="font-medium text-slate-100">
                         {item.name}
                       </p>
-                      {(item.card_no || item.condition) && (
+                      {(item.card_no || item.part || item.edition || item.condition) && (
                         <p className="font-mono text-xs text-slate-500" title={item.set_name ?? undefined}>
-                          {[item.card_no, item.condition].filter(Boolean).join(" · ")}
+                          {[item.card_no, item.part, item.edition, item.condition].filter(Boolean).join(" · ")}
                         </p>
+                      )}
+                      {item.alt_art_cards.length > 0 && (
+                        <p className="max-w-64 font-mono text-xs text-slate-400">{cardCopies(item.alt_art_cards, item.card_quantities)}</p>
+                      )}
+                      {item.resource_cards.length > 0 && (
+                        <p className="max-w-64 font-mono text-xs text-slate-400">{cardCopies(item.resource_cards, item.card_quantities)}</p>
                       )}
                       {item.notes && (
                         <p className="max-w-64 truncate text-xs text-slate-500" title={item.notes}>
@@ -352,9 +358,9 @@ function MobileRow({ item, actions }: { item: CollectionItem; actions: Actions }
             </p>
             <StatusBadge status={item.status} />
           </div>
-          {(item.card_no || type || item.condition) && (
+          {(item.card_no || type || item.part || item.edition || item.condition) && (
             <p className="mt-0.5 font-mono text-xs text-slate-500">
-              {[item.card_no, type, item.condition].filter(Boolean).join(" · ")}
+              {[item.card_no, type, item.part, item.edition, item.condition].filter(Boolean).join(" · ")}
             </p>
           )}
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
@@ -415,6 +421,14 @@ function MobileRow({ item, actions }: { item: CollectionItem; actions: Actions }
             </span>
           )}
         </p>
+      )}
+
+      {item.alt_art_cards.length > 0 && (
+        <p className="font-mono text-xs text-slate-400">{cardCopies(item.alt_art_cards, item.card_quantities)}</p>
+      )}
+
+      {item.resource_cards.length > 0 && (
+        <p className="font-mono text-xs text-slate-400">{cardCopies(item.resource_cards, item.card_quantities)}</p>
       )}
 
       {item.notes && <p className="line-clamp-3 text-sm leading-relaxed text-slate-400">{item.notes}</p>}

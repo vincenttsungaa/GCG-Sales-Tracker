@@ -49,6 +49,7 @@ const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 export default function ItemFormDialog({ state, onClose, onSubmit, pending }: ItemFormDialogProps) {
   const editing = state.type === "edit";
   // Cards / items picked from the card or product database keep their name / color / type / rarity from the catalog.
+  const copiesLocked = state.type === "edit" && Object.keys(state.item.card_quantities ?? {}).length > 0;
   const fromCatalog = state.type === "edit" && (!!state.item.card_id || !!state.item.product_id);
   const [kind] = useState<ItemKind>(editing ? state.item.kind : state.kind);
   const [name, setName] = useState(editing ? state.item.name : "");
@@ -108,6 +109,11 @@ export default function ItemFormDialog({ state, onClose, onSubmit, pending }: It
         set_code: editing ? state.item.set_code : null,
         set_name: editing ? state.item.set_name : null,
         product_id: editing ? state.item.product_id : null,
+        edition: editing ? state.item.edition : null,
+        part: editing ? state.item.part : null,
+        resource_cards: editing ? state.item.resource_cards : [],
+        alt_art_cards: editing ? state.item.alt_art_cards : [],
+        card_quantities: editing ? state.item.card_quantities : {},
         price: priceNum,
         purchase_price: purchaseNum,
         image_url: imageUrl.trim() || null,
@@ -142,7 +148,7 @@ export default function ItemFormDialog({ state, onClose, onSubmit, pending }: It
               <div className="min-w-0 text-sm">
                 <p className="font-medium text-slate-100">{state.item.name}</p>
                 <p className="font-mono text-xs text-slate-400">
-                  {[state.item.card_no, state.item.rarity, state.item.color, state.item.card_type, state.item.category, state.item.set_code]
+                  {[state.item.card_no, state.item.rarity, state.item.color, state.item.card_type, state.item.category, state.item.set_code, state.item.part, state.item.edition]
                     .filter(Boolean)
                     .join(" · ")}
                 </p>
@@ -271,6 +277,9 @@ export default function ItemFormDialog({ state, onClose, onSubmit, pending }: It
                 step="1"
                 value={quantity}
                 onChange={(e) => setQuantity(e.target.value)}
+                // Card listings with copies per card: the total comes from those copies.
+                disabled={copiesLocked}
+                title={copiesLocked ? "Total of the copies per card" : undefined}
               />
             </div>
             {/* Condition isn't asked when adding — only shown to edit an existing entry's value. */}

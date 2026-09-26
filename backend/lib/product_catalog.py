@@ -11,6 +11,8 @@ Used by the Add Item search. Refresh with `python scrape_cards.py --products` or
 
 from __future__ import annotations
 
+import base64
+import math
 import html
 import json
 import logging
@@ -23,6 +25,7 @@ from urllib.parse import quote, urljoin
 
 import requests
 
+from lib import card_catalog
 from lib.card_catalog import DATA_DIR, HEADERS, SITE
 
 logger = logging.getLogger(__name__)
@@ -42,6 +45,117 @@ TAG_TO_CATEGORY = {
     "OTHER": "other",
 }
 
+# Premium Bandai accessory sets are often split and sold part by part. The site doesn't list
+# the parts, so they're configured here: the Add Item form asks which part is being listed,
+# and for "Resources" which resource cards (multi-select) — card numbers from the card database.
+PB_PARTS = ["Storage Box", "Sleeves", "Playmat", "Deck Box", "Resources", "Alt-Art Cards", "Divider"]
+RESOURCES_PART = "Resources"
+PRODUCT_OPTIONS: dict[str, dict[str, Any]] = {
+    "pb01": {
+        "parts": PB_PARTS,
+        "resource_cards": [f"RP-{n:03d}" for n in range(24, 34)],  # RP-024 … RP-033
+        # "Alt-Art Cards" choices — PB01's own printings: Heero Yuy, A Show of Resolve
+        "alt_art_cards": ["ST02-010_p4", "GD01-100_p4"],
+    },
+    "pb02": {
+        "parts": PB_PARTS,
+        "resource_cards": [f"RP-{n:03d}" for n in range(34, 44)],  # RP-034 … RP-043
+        # "Alt-Art Cards" choices — PB02's own printings: Awakened Power, Mikazuki Augus
+        "alt_art_cards": ["GD02-110_p3", "ST05-010_p4"],
+    },
+}
+
+
+def product_options(product_id: str) -> dict[str, Any]:
+    """Part choices, resource card numbers and alt-art print ids for a product (empty for most)."""
+    opts = PRODUCT_OPTIONS.get(product_id, {})
+    return {
+        "parts": list(opts.get("parts", [])),
+        "resource_cards": list(opts.get("resource_cards", [])),
+        "alt_art_cards": list(opts.get("alt_art_cards", [])),
+    }
+
+
+# ---- resource-selection image ---------------------------------------------------------
+# A "Resources" listing of several cards (PB01 / PB02) uses one picture of exactly the
+# selected cards: an SVG mosaic built from the card images in data/card_images and cached
+# in data/product_images (one file per selection).
+
+_RESOURCE_SET_VERSION = "v2"  # bump to rebuild cached mosaics after a layout change
+
+
+def resource_set_path(product_id: str, codes: list[str]) -> Path:
+    key = "_".join(c.replace("-", "").replace("_", "") for c in codes)
+    return IMAGE_DIR / f"{product_id}-resources-{_RESOURCE_SET_VERSION}-{key}.svg"
+
+
+def resource_set_svg(product_id: str, card_images: dict[str, bytes | None]) -> str:
+    """Mosaic of the given resource cards (card_no → webp bytes, None = missing) in card ratio."""
+    codes = list(card_images)
+    n = len(codes)
+    cols = max(1, math.ceil(math.sqrt(n)))  # 2 → 2×1, 3–4 → 2×2, 5–9 → 3×3, 10 → 4×3
+    rows = -(-n // cols)
+    cw, ch, gap, pad = 126, 176, 8, 12  # 63:88 card ratio
+    width = pad * 2 + cols * cw + (cols - 1) * gap
+    height = pad * 2 + rows * ch + (rows - 1) * gap
+    parts = [
+        f'<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" '
+        f'viewBox="0 0 {width} {height}" width="{width}" height="{height}">',
+        f"<title>{html.escape(product_id.upper())} resource set</title>",
+        f'<rect width="{width}" height="{height}" rx="10" fill="#0B0F17"/>',
+    ]
+    for i, code in enumerate(codes):
+        row, col = divmod(i, cols)
+        in_row = min(cols, n - row * cols)  # centre a short last row
+        offset = (cols - in_row) * (cw + gap) / 2
+        x = pad + offset + col * (cw + gap)
+        y = pad + row * (ch + gap)
+        data = card_images[code]
+        if data:
+            href = "data:image/webp;base64," + base64.b64encode(data).decode("ascii")
+            parts.append(
+                f'<image x="{x:g}" y="{y}" width="{cw}" height="{ch}" preserveAspectRatio="xMidYMid slice" '
+                f'href="{href}" xlink:href="{href}"><title>{html.escape(code)}</title></image>'
+            )
+        else:
+            parts.append(
+                f'<rect x="{x:g}" y="{y}" width="{cw}" height="{ch}" rx="6" fill="#1E293B"/>'
+                f'<text x="{x + cw / 2:g}" y="{y + ch / 2:g}" fill="#94A3B8" font-family="monospace" '
+                f'font-size="16" text-anchor="middle">{html.escape(code)}</text>'
+            )
+    parts.append("</svg>")
+    return "".join(parts)
+
+
+def ensure_resource_set_image(product_id: str, selected: list[str] | None = None) -> Path | None:
+    """Build (or reuse) the mosaic of the selected resource cards (all of them when none given).
+
+    Only the product's own resource cards are accepted; None if nothing valid is selected.
+    """
+    opts = product_options(product_id)
+    # a picture of picked cards may use the set's resource cards or its alt-art cards
+    allowed = opts["resource_cards"] if selected is None else opts["resource_cards"] + opts["alt_art_cards"]
+    codes = [c for c in allowed if selected is None or c in selected]  # keep the set's order
+    if not codes:
+        return None
+    dest = resource_set_path(product_id, codes)
+    if dest.exists() and dest.stat().st_size > 0:
+        return dest
+    images: dict[str, bytes | None] = {}
+    for code in codes:
+        ok = card_catalog.download_image(code)  # local copy, or fetched from the site once
+        images[code] = card_catalog.image_path(code).read_bytes() if ok else None
+    svg = resource_set_svg(product_id, images)
+    if all(images.values()):  # only cache a complete mosaic
+        IMAGE_DIR.mkdir(parents=True, exist_ok=True)
+        dest.write_text(svg, encoding="utf-8")
+        return dest
+    tmp = IMAGE_DIR / f"{product_id}-resources-partial.svg"  # not cached — retried next time
+    IMAGE_DIR.mkdir(parents=True, exist_ok=True)
+    tmp.write_text(svg, encoding="utf-8")
+    return tmp
+
+
 PRODUCT_ID_RE = re.compile(r"^[a-z0-9][a-z0-9\-_]{0,40}$")
 
 _BLOCK_SPLIT = re.compile(r'<div class="productsDetail"')
@@ -51,6 +165,19 @@ _IMG_RE = re.compile(r'<div class="cardThumb">\s*<img src="([^"]+)"')
 _TITLE_RE = re.compile(r'<div class="cardTit">(.*?)</div>', re.S)
 _INFO_RE = re.compile(r'<dt class="cardInfoTit">(.*?)</dt>\s*<dd class="cardInfoTxt">(.*?)</dd>', re.S)
 _CODE_RE = re.compile(r"\[\s*([A-Z]{2,5}-?\d{2}[A-Z]?)\s*\]")
+# "REGULAR VERSION: $11.99 SPECIAL EDITION: $34.99" → two editions (ST01–ST04 today).
+_EDITION_RE = re.compile(r"([A-Za-z][A-Za-z ]*?(?:VERSION|EDITION))\s*:\s*([$＄]\s*[\d.,]+)", re.I)
+
+
+def parse_editions(msrp: str | None) -> list[dict[str, str]]:
+    """Editions a product is sold in, read from its MSRP text. Empty when there's only one."""
+    if not msrp:
+        return []
+    found = [
+        {"name": name.strip().title(), "msrp": price.replace("＄", "$").replace(" ", "")}
+        for name, price in _EDITION_RE.findall(msrp)
+    ]
+    return found if len(found) > 1 else []
 
 
 def _clean(fragment: str | None) -> str | None:
@@ -88,6 +215,7 @@ def parse_list_page(page: str) -> list[dict[str, Any]]:
                 "category": TAG_TO_CATEGORY.get(tag, "other"),
                 "release_date": info.get("Release Date"),
                 "msrp": info.get("MSRP"),
+                "editions": parse_editions(info.get("MSRP")),
                 "url": url,
                 "image_src": urljoin(SITE, img.group(1)) if img else None,
                 "image": f"{slug}.webp",

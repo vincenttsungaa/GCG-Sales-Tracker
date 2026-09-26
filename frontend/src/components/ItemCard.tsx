@@ -2,7 +2,7 @@ import { useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { StatusBadge, rarityClass } from "@/components/badges";
 import { COLOR_DOT_CLASS, formatAud, formatDate } from "@/lib/format";
-import { labelize, saleProfit, saleTotal, type CollectionItem } from "@/lib/types";
+import { cardCopies, cardNumbers, labelize, saleProfit, saleTotal, type CollectionItem } from "@/lib/types";
 import { CalendarDays, DollarSign, Layers, Package, Pencil, Tag, Trash2, Undo2, User } from "lucide-react";
 
 export interface ItemActionProps {
@@ -63,6 +63,11 @@ export default function ItemCard({ item, ...actions }: ItemCardProps) {
   const isSold = item.status === "sold";
   const profit = isSold ? saleProfit(item) : null;
   const typeText = item.kind === "card" ? item.card_type : item.category;
+  // Resources / Alt-Art Cards listings with copies per card (PB01, PB02)
+  const pickedCards = [...item.resource_cards, ...item.alt_art_cards];
+  const hasCopies = pickedCards.length > 0 && Object.keys(item.card_quantities ?? {}).length > 0;
+  const qtyCode = item.card_no ?? item.set_code;
+  const qtyLabel = qtyCode ? `${qtyCode} (${item.quantity}x)` : `${item.quantity}x`;
 
   return (
     <article
@@ -117,9 +122,37 @@ export default function ItemCard({ item, ...actions }: ItemCardProps) {
               {item.set_code}
             </span>
           )}
+          {item.part && (
+            <span className="rounded border border-sky-500/40 px-1 text-sky-300" data-testid={`item-part-${item.id}`}>
+              {item.part}
+            </span>
+          )}
+          {item.edition && (
+            <span className="rounded border border-amber-500/40 px-1 text-amber-300" data-testid={`item-edition-${item.id}`}>
+              {item.edition}
+            </span>
+          )}
           {item.condition && <span className="text-slate-500">{item.condition}</span>}
         </div>
       </div>
+
+      {/* Qty for the grid view (no Qty row in the price box): "GD01-001 (3x)", or each picked
+          card with its copies for PB listings, e.g. "GD02-110 (2x), ST05-010 (1x)". */}
+      <p className="font-mono text-[0.65rem] leading-relaxed text-slate-300" data-testid={`item-copies-${item.id}`}>
+        {hasCopies ? cardCopies(pickedCards, item.card_quantities) : qtyLabel}
+      </p>
+
+      {!hasCopies && item.alt_art_cards.length > 0 && (
+        <p className="font-mono text-[0.65rem] leading-relaxed text-slate-400" data-testid={`item-alt-arts-${item.id}`}>
+          {cardNumbers(item.alt_art_cards)}
+        </p>
+      )}
+
+      {!hasCopies && item.resource_cards.length > 0 && (
+        <p className="font-mono text-[0.65rem] leading-relaxed text-slate-400" data-testid={`item-resources-${item.id}`}>
+          {item.resource_cards.join(", ")}
+        </p>
+      )}
 
       {/* Money + qty */}
       <div className="space-y-1 rounded-md border border-slate-800/60 bg-slate-950/40 px-2 py-1.5">
@@ -149,9 +182,6 @@ export default function ItemCard({ item, ...actions }: ItemCardProps) {
             </span>
           </Detail>
         )}
-        <Detail label="Qty">
-          <span className="font-mono tabular-nums text-slate-200">{item.quantity}</span>
-        </Detail>
       </div>
 
       {item.buyer_name && (

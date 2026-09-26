@@ -59,6 +59,11 @@ export interface CollectionItem {
   set_code: string | null;
   set_name: string | null;
   product_id: string | null;
+  edition: string | null; // e.g. "Regular Version" / "Special Edition"
+  part: string | null; // piece of a set being sold, e.g. "Playmat" (PB01, PB02)
+  resource_cards: string[]; // e.g. ["RP-025", "RP-027"] when part = "Resources"
+  alt_art_cards: string[]; // e.g. ["ST02-010_p4"] when part = "Alt-Art Cards" (PB01)
+  card_quantities: Record<string, number>; // copies per picked card, e.g. { "GD02-110_p3": 2 }; quantity = total
   price: number;
   purchase_price: number | null;
   image_url: string | null;
@@ -86,6 +91,11 @@ export interface ItemPayload {
   set_code?: string | null;
   set_name?: string | null;
   product_id?: string | null;
+  edition?: string | null;
+  part?: string | null;
+  resource_cards?: string[];
+  alt_art_cards?: string[];
+  card_quantities?: Record<string, number>;
   price: number;
   purchase_price: number | null;
   image_url: string | null;
@@ -122,6 +132,16 @@ export interface CatalogProduct {
   category: ItemCategory;
   release_date: string | null;
   msrp: string | null; // as shown on the site (USD), e.g. "$89.99"
+  // Set when the product is sold in more than one edition (ST01–ST04: Regular Version / Special Edition)
+  editions: { name: string; msrp: string | null }[];
+  // Premium Bandai sets (PB01, PB02) are sold part by part — the part picker's options
+  parts: string[];
+  // Resource cards to choose from (multi-select) when the "Resources" part is picked
+  resource_cards: { card_no: string; name: string | null; image_url: string }[];
+  // Picture of resource cards; add ?cards=RP-025,RP-027 for just those (image for multi-card Resources listings)
+  resource_set_image_url: string | null;
+  // PB01 alt-art printings to choose from (multi-select) when the "Alt-Art Cards" part is picked
+  alt_art_cards: { id: string; card_no: string; name: string | null; image_url: string }[];
   url: string | null;
   image_url: string;
 }
@@ -160,4 +180,20 @@ export function saleTotal(item: CollectionItem): number {
 export function saleProfit(item: CollectionItem): number | null {
   if (item.purchase_price == null) return null;
   return saleTotal(item) - item.purchase_price * item.quantity;
+}
+
+// "ST02-010_p4" → "ST02-010" — alt-art print ids shown as the number printed on the card.
+export function cardNumbers(ids: string[]): string {
+  return ids.map((id) => id.replace(/_p\d+$/, "")).join(", ");
+}
+
+// Picked cards with their copies: "GD02-110 (2x), ST05-010 (1x)" (no count when none recorded).
+export function cardCopies(ids: string[], counts?: Record<string, number> | null): string {
+  return ids
+    .map((id) => {
+      const n = counts?.[id];
+      const no = id.replace(/_p\d+$/, "");
+      return n ? `${no} (${n}x)` : no;
+    })
+    .join(", ");
 }
