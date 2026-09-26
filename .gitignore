@@ -15,3 +15,7 @@ __pycache__/
 .DS_Store
 Thumbs.db
 .vscode/
+
+# Card / product images downloaded from gundam-gcg.com (re-created by `python scrape_cards.py`)
+backend/data/card_images/
+backend/data/product_images/

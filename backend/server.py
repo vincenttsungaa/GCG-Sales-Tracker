@@ -15,6 +15,8 @@ load_dotenv(ROOT_DIR / '.env')
 from lib.db import client, ensure_indexes
 from lib.dates import today_iso
 from routers.items import router as items_router
+from routers.cards import router as cards_router
+from routers.products import router as products_router
 
 
 # Startup runs before the yield, shutdown after it. Add your own setup/teardown here.
@@ -46,6 +48,8 @@ async def get_today():
 
 # Fold resource routers into /api, then mount everything on the app
 api_router.include_router(items_router)
+api_router.include_router(cards_router)
+api_router.include_router(products_router)
 app.include_router(api_router)
 
 app.add_middleware(
@@ -65,4 +69,4 @@ logger = logging.getLogger(__name__)
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("server:app", host="127.0.0.1", port=8001, reload=True, reload_excludes=["venv"])
+    uvicorn.run("server:app", host="127.0.0.1", port=8001, reload=True, reload_excludes=["venv"])
