@@ -16,7 +16,10 @@ const emergentOverlayDisabled = process.env.DISABLE_EMERGENT_OVERLAY === "true";
 async function loadEmergentOverlay() {
   if (emergentOverlayDisabled) return null;
   try {
-    const mod = await import("@emergentbase/overlay/vite");
+    // The specifier is held in a variable so TypeScript doesn't try to resolve a package
+    // that only exists on the Emergent platform (`npm run typecheck` failed with TS2307).
+    const overlayModule: string = "@emergentbase/overlay/vite";
+    const mod = await import(/* @vite-ignore */ overlayModule);
     return mod.emergentOverlay();
   } catch (e) {
     console.warn("[emergent-overlay] plugin failed to load; using Vite's overlay instead:", e instanceof Error ? e.message : e);
