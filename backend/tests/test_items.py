@@ -76,11 +76,11 @@ class TestCrud:
         res = client.post(
             "/items",
             json=_payload(tag, kind="item", name=f"{tag}Playmat", color=None,
-                          card_type=None, rarity=None, category="playmat"),
+                          card_type=None, rarity=None, category="accessories"),
         )
         assert res.status_code == 201, res.text
         assert res.json()["kind"] == "item"
-        assert res.json()["category"] == "playmat"
+        assert res.json()["category"] == "accessories"
 
     def test_listed(self, client, card):
         ids = [i["id"] for i in client.get("/items").json()]
