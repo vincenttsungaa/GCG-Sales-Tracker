@@ -60,6 +60,14 @@ cp .env.example .env        # Command Prompt: copy .env.example .env
 
 Open `.env` and fill in your own values. Don't commit it, because it holds private settings.
 
+Download the card and product databases (every card from GD01 to the Promotion cards, and every product except booster packs, with images) from the official site:
+
+```bash
+python scrape_cards.py
+```
+
+This saves `data/cards.json` + `data/card_images/` (about 2,000 cards, ~110 MB) and `data/products.json` + `data/product_images/`. It takes a few minutes. Run it again whenever new sets or products come out — images you already have are skipped. Use `--cards-only` or `--products-only` to refresh just one. You can also do this from the app: **Add Card** or **Add Item → Update database**.
+
 (Optional) Add sample data:
 
 ```bash
