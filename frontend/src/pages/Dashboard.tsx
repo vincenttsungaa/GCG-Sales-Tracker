@@ -10,6 +10,8 @@ import Pagination from "@/components/Pagination";
 import StatsStrip from "@/components/StatsStrip";
 import ItemFormDialog, { type FormState } from "@/components/ItemFormDialog";
 import DealDialog, { type DealState } from "@/components/DealDialog";
+import AddCardDialog from "@/components/AddCardDialog";
+import AddItemDialog from "@/components/AddItemDialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -36,7 +38,7 @@ const PAGE_SIZE = 10;
 export default function Dashboard() {
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<TabId>("all");
-  const [view, setView] = useState<"grid" | "table">("table");
+  const [view, setView] = useState<"grid" | "table">("grid");
   const [filters, setFilters] = useState<InventoryFilters>(EMPTY_FILTERS);
 
   // Buyer filter only applies on the Pending and Sold tabs — clear it elsewhere.
@@ -46,6 +48,8 @@ export default function Dashboard() {
   }, [showBuyer]);
   const [page, setPage] = useState(1);
   const [formState, setFormState] = useState<FormState | null>(null);
+  const [addCardOpen, setAddCardOpen] = useState(false);
+  const [addItemOpen, setAddItemOpen] = useState(false);
   const [dealState, setDealState] = useState<DealState | null>(null);
 
   const itemsQuery = useQuery({
@@ -66,6 +70,8 @@ export default function Dashboard() {
     onSuccess: (item) => {
       invalidate();
       setFormState(null);
+      setAddCardOpen(false);
+      setAddItemOpen(false);
       if (tab === "archive") setTab("all");
       toast.success(`${item.name} added to your ${item.kind === "card" ? "cards" : "items"}`);
     },
@@ -172,37 +178,46 @@ export default function Dashboard() {
     <div data-testid="dashboard" className="min-h-svh bg-[#0B0F17] text-slate-200">
       {/* HUD top bar */}
       <header className="sticky top-0 z-40 border-b border-slate-800/80 bg-[#0B0F17]/90 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-3 sm:px-6">
-          <div className="flex size-9 items-center justify-center rounded-md border border-sky-500/40 bg-sky-950/60 text-sky-300">
+        <div className="mx-auto flex max-w-7xl items-center gap-2 px-4 py-3 sm:gap-3 sm:px-6">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-md border border-sky-500/40 bg-sky-950/60 text-sky-300">
             <Rocket className="size-5" aria-hidden />
           </div>
-          <div className="mr-auto">
-            <h1 className="font-heading text-lg font-bold uppercase tracking-tight text-slate-100">
+          <div className="mr-auto min-w-0">
+            <h1 className="truncate font-heading text-base font-bold uppercase tracking-tight text-slate-100 sm:text-lg">
               Gundam Collection
             </h1>
-            <p className="font-mono text-xs uppercase tracking-wider text-slate-500">
+            <p className="hidden font-mono text-xs uppercase tracking-wider text-slate-500 sm:block">
               Personal inventory &amp; sales tracker
             </p>
           </div>
           <Button
             variant="outline"
+            aria-label="Add Item"
             data-testid="add-item-button"
-            onClick={() => setFormState({ type: "add", kind: "item" })}
+            onClick={() => setAddItemOpen(true)}
           >
-            <Package className="size-4" /> Add Item
+            <Package className="size-4" /> <span className="hidden sm:inline">Add Item</span>
+            <span className="sm:hidden">Item</span>
           </Button>
-          <Button data-testid="add-card-button" onClick={() => setFormState({ type: "add", kind: "card" })}>
-            <Plus className="size-4" /> Add Card
+          <Button
+            aria-label="Add Card"
+            data-testid="add-card-button"
+            onClick={() => setAddCardOpen(true)}
+          >
+            <Plus className="size-4" /> <span className="hidden sm:inline">Add Card</span>
+            <span className="sm:hidden">Card</span>
           </Button>
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl space-y-5 px-4 py-6 sm:px-6">
+      <main className="mx-auto max-w-7xl space-y-4 px-4 py-4 sm:space-y-5 sm:px-6 sm:py-6">
         <StatsStrip items={items} />
 
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center justify-between gap-3">
+          {/* Tabs scroll sideways on narrow screens instead of overflowing the page. */}
+          <div className="-ml-4 min-w-0 flex-1 overflow-x-auto pl-4 [scrollbar-width:none] sm:ml-0 sm:pl-0">
           <Tabs value={tab} onValueChange={(value: string) => setTab(value as TabId)}>
-            <TabsList>
+            <TabsList className="w-max">
               {TABS.map(({ id, label, testId }) => (
                 <TabsTrigger key={id} value={id} data-testid={testId} className="gap-2">
                   {id === "archive" && <Archive className="size-3.5" aria-hidden />}
@@ -217,12 +232,13 @@ export default function Dashboard() {
               ))}
             </TabsList>
           </Tabs>
-          <div className="flex items-center gap-1 rounded-md border border-slate-800/80 p-1">
+          </div>
+          <div className="flex shrink-0 items-center gap-1 rounded-md border border-slate-800/80 p-1">
             <Button
               size="icon-xs"
               variant={view === "table" ? "secondary" : "ghost"}
-              aria-label="Table view"
-              title="Table view"
+              aria-label="List view"
+              title="List view"
               data-testid="view-table"
               onClick={() => setView("table")}
             >
@@ -257,9 +273,9 @@ export default function Dashboard() {
             </Button>
           </div>
         ) : itemsQuery.isLoading ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" data-testid="loading-skeleton">
-            {[0, 1, 2].map((n) => (
-              <div key={n} className="h-48 animate-pulse rounded-lg border border-slate-800/80 bg-slate-900/60" />
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5" data-testid="loading-skeleton">
+            {[0, 1, 2, 3, 4].map((n) => (
+              <div key={n} className="aspect-[63/110] animate-pulse rounded-xl border border-slate-800/80 bg-slate-900/60" />
             ))}
           </div>
         ) : visible.length === 0 ? (
@@ -277,11 +293,11 @@ export default function Dashboard() {
                   <Button
                     variant="outline"
                     data-testid="empty-add-item"
-                    onClick={() => setFormState({ type: "add", kind: "item" })}
+                    onClick={() => setAddItemOpen(true)}
                   >
                     <Package className="size-4" /> Add Item
                   </Button>
-                  <Button data-testid="empty-add-card" onClick={() => setFormState({ type: "add", kind: "card" })}>
+                  <Button data-testid="empty-add-card" onClick={() => setAddCardOpen(true)}>
                     <Plus className="size-4" /> Add Card
                   </Button>
                 </div>
@@ -304,7 +320,7 @@ export default function Dashboard() {
             {view === "table" ? (
               <ItemTable items={pageItems} {...actionProps} />
             ) : (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div data-testid="item-grid" className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                 {pageItems.map((item) => (
                   <ItemCard key={item.id} item={item} {...actionProps} />
                 ))}
@@ -331,6 +347,30 @@ export default function Dashboard() {
             id ? updateMut.mutate({ id, payload }) : createMut.mutate(payload)
           }
           pending={createMut.isPending || updateMut.isPending}
+        />
+      )}
+
+      {addCardOpen && (
+        <AddCardDialog
+          onClose={() => setAddCardOpen(false)}
+          onSubmit={(payload) => createMut.mutate(payload)}
+          onManual={() => {
+            setAddCardOpen(false);
+            setFormState({ type: "add", kind: "card" });
+          }}
+          pending={createMut.isPending}
+        />
+      )}
+
+      {addItemOpen && (
+        <AddItemDialog
+          onClose={() => setAddItemOpen(false)}
+          onSubmit={(payload) => createMut.mutate(payload)}
+          onManual={() => {
+            setAddItemOpen(false);
+            setFormState({ type: "add", kind: "item" });
+          }}
+          pending={createMut.isPending}
         />
       )}
 

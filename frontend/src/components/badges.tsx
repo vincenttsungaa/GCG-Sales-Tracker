@@ -33,12 +33,13 @@ export function ColorBadge({ color }: { color: GundamColor | null }) {
   );
 }
 
-function rarityClass(rarity: Rarity): string {
+// oxlint-disable-next-line react/only-export-components -- shared colour map for rarity chips
+export function rarityClass(rarity: Rarity): string {
   if (rarity.startsWith("LR")) return "border-amber-500/50 bg-amber-950/70 text-amber-200";
   if (rarity === "SP") return "border-fuchsia-500/50 bg-fuchsia-950/70 text-fuchsia-200";
-  if (rarity === "P") return "border-orange-500/50 bg-orange-950/70 text-orange-200";
-  if (rarity === "LK") return "border-cyan-500/50 bg-cyan-950/70 text-cyan-200";
-  if (rarity.startsWith("UC")) return "border-sky-500/50 bg-sky-950/70 text-sky-200";
+  if (rarity.startsWith("P")) return "border-orange-500/50 bg-orange-950/70 text-orange-200";
+  if (rarity.startsWith("LK")) return "border-cyan-500/50 bg-cyan-950/70 text-cyan-200";
+  if (rarity.startsWith("U")) return "border-sky-500/50 bg-sky-950/70 text-sky-200";
   if (rarity.startsWith("R")) return "border-blue-500/50 bg-blue-950/70 text-blue-200";
   return "border-slate-500/50 bg-slate-800/70 text-slate-200";
 }

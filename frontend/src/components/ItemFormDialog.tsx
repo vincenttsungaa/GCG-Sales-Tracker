@@ -48,6 +48,8 @@ const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 export default function ItemFormDialog({ state, onClose, onSubmit, pending }: ItemFormDialogProps) {
   const editing = state.type === "edit";
+  // Cards / items picked from the card or product database keep their name / color / type / rarity from the catalog.
+  const fromCatalog = state.type === "edit" && (!!state.item.card_id || !!state.item.product_id);
   const [kind] = useState<ItemKind>(editing ? state.item.kind : state.kind);
   const [name, setName] = useState(editing ? state.item.name : "");
   const [color, setColor] = useState<GundamColor | "none">(editing ? (state.item.color ?? "none") : "white");
@@ -100,6 +102,12 @@ export default function ItemFormDialog({ state, onClose, onSubmit, pending }: It
         card_type: kind === "card" && cardType !== "none" ? cardType : null,
         rarity: kind === "card" && rarity !== "none" ? rarity : null,
         category: kind === "item" ? category : null,
+        // Keep the card-database link when editing a card picked from the catalog.
+        card_id: editing ? state.item.card_id : null,
+        card_no: editing ? state.item.card_no : null,
+        set_code: editing ? state.item.set_code : null,
+        set_name: editing ? state.item.set_name : null,
+        product_id: editing ? state.item.product_id : null,
         price: priceNum,
         purchase_price: purchaseNum,
         image_url: imageUrl.trim() || null,
@@ -126,6 +134,21 @@ export default function ItemFormDialog({ state, onClose, onSubmit, pending }: It
         </DialogHeader>
 
         <div data-testid="item-form" className="grid gap-4">
+          {fromCatalog && editing ? (
+            <div className="flex items-center gap-3 rounded-md border border-slate-800 bg-slate-950/40 p-2" data-testid="item-form-catalog-card">
+              {state.item.image_url && (
+                <img src={state.item.image_url} alt="" className={`w-14 rounded ${state.item.kind === "card" ? "aspect-[63/88] object-cover" : "aspect-square bg-slate-950 object-contain"}`} />
+              )}
+              <div className="min-w-0 text-sm">
+                <p className="font-medium text-slate-100">{state.item.name}</p>
+                <p className="font-mono text-xs text-slate-400">
+                  {[state.item.card_no, state.item.rarity, state.item.color, state.item.card_type, state.item.category, state.item.set_code]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </p>
+              </div>
+            </div>
+          ) : (
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2 flex flex-col gap-1.5">
               <Label htmlFor="item-form-name">Name</Label>
@@ -204,7 +227,7 @@ export default function ItemFormDialog({ state, onClose, onSubmit, pending }: It
               </div>
             )}
           </div>
-
+          )}
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="item-form-price" className="font-mono text-xs uppercase tracking-wider text-slate-400">
@@ -250,18 +273,21 @@ export default function ItemFormDialog({ state, onClose, onSubmit, pending }: It
                 onChange={(e) => setQuantity(e.target.value)}
               />
             </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="item-form-condition" className="font-mono text-xs uppercase tracking-wider text-slate-400">
-                Condition
-              </Label>
-              <Input
-                id="item-form-condition"
-                data-testid="item-form-condition"
-                placeholder="e.g. Mint"
-                value={condition}
-                onChange={(e) => setCondition(e.target.value)}
-              />
-            </div>
+            {/* Condition isn't asked when adding — only shown to edit an existing entry's value. */}
+            {editing && (
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="item-form-condition" className="font-mono text-xs uppercase tracking-wider text-slate-400">
+                  Condition
+                </Label>
+                <Input
+                  id="item-form-condition"
+                  data-testid="item-form-condition"
+                  placeholder="e.g. Mint"
+                  value={condition}
+                  onChange={(e) => setCondition(e.target.value)}
+                />
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col gap-1.5">

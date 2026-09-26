@@ -32,11 +32,11 @@ export default function FilterBar({ filters, onChange, showBuyer = false }: Filt
   return (
     <div
       data-testid="filter-bar"
-      className="space-y-3 rounded-lg border border-slate-800/80 bg-slate-900/50 p-4"
+      className="space-y-3 rounded-lg border border-slate-800/80 bg-slate-900/50 p-3 sm:p-4"
     >
       <div className="flex flex-wrap items-center gap-3">
         {/* Name search */}
-        <div className="flex min-w-52 flex-1 flex-col gap-1.5">
+        <div className="flex w-full min-w-52 flex-1 flex-col gap-1.5 sm:w-auto">
           <Label htmlFor="filter-search" className="font-mono text-xs uppercase tracking-wider text-slate-400">
             Search name
           </Label>
@@ -50,7 +50,7 @@ export default function FilterBar({ filters, onChange, showBuyer = false }: Filt
           />
         </div>
         {/* Type */}
-        <div className="flex min-w-36 flex-col gap-1.5">
+        <div className="flex min-w-36 flex-1 flex-col gap-1.5 sm:flex-none">
           <Label className="font-mono text-xs uppercase tracking-wider text-slate-400">Type</Label>
           <Select
             value={filters.cardType}
@@ -70,7 +70,7 @@ export default function FilterBar({ filters, onChange, showBuyer = false }: Filt
           </Select>
         </div>
         {/* Rarity */}
-        <div className="flex min-w-28 flex-col gap-1.5">
+        <div className="flex min-w-28 flex-1 flex-col gap-1.5 sm:flex-none">
           <Label className="font-mono text-xs uppercase tracking-wider text-slate-400">Rarity</Label>
           <Select
             value={filters.rarity}
@@ -106,7 +106,7 @@ export default function FilterBar({ filters, onChange, showBuyer = false }: Filt
         </div>
         )}
         {/* Deal date range */}
-        <div className="flex flex-col gap-1.5">
+        <div className="flex w-full flex-col gap-1.5 sm:w-auto">
           <Label className="font-mono text-xs uppercase tracking-wider text-slate-400">
             Deal date
           </Label>
@@ -117,7 +117,7 @@ export default function FilterBar({ filters, onChange, showBuyer = false }: Filt
               aria-label="Deal date from"
               value={filters.dateFrom}
               onChange={(e) => set({ dateFrom: e.target.value })}
-              className="bg-slate-950/60 [color-scheme:dark]"
+              className="min-w-0 flex-1 bg-slate-950/60 [color-scheme:dark]"
             />
             <span className="text-slate-500">→</span>
             <Input
@@ -126,7 +126,7 @@ export default function FilterBar({ filters, onChange, showBuyer = false }: Filt
               aria-label="Deal date to"
               value={filters.dateTo}
               onChange={(e) => set({ dateTo: e.target.value })}
-              className="bg-slate-950/60 [color-scheme:dark]"
+              className="min-w-0 flex-1 bg-slate-950/60 [color-scheme:dark]"
             />
           </div>
         </div>
