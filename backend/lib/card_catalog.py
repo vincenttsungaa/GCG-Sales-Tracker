@@ -231,13 +231,48 @@ def _norm(s: str) -> str:
     return re.sub(r"[^a-z0-9]+", "", s.lower())
 
 
-def search_cards(q: str = "", set_code: str | None = None, limit: int = 30) -> list[dict[str, Any]]:
-    """Name / card-number search. Every word must match; name-prefix hits rank first."""
+_RELEASE_CODE_RE = re.compile(r"\[([^\]]+)\]\s*$")
+
+
+def release_key(package_label: str) -> str:
+    """A release (the official card list's "package") by its code: "Newtype Rising [GD01]" → "GD01";
+    releases without a code keep their name ("Edition Beta", "Promotion card")."""
+    m = _RELEASE_CODE_RE.search(package_label)
+    return m.group(1).strip() if m else package_label.strip()
+
+
+def list_releases() -> list[dict[str, Any]]:
+    """Releases in the official site's order, with how many printings each has."""
+    catalog = load_catalog()
+    counts: dict[str, int] = {}
+    for card in catalog["cards"]:
+        for label in card.get("packages") or []:
+            key = release_key(label)
+            counts[key] = counts.get(key, 0) + 1
+    out = []
+    for package in catalog.get("packages") or []:
+        key = release_key(package["name"])
+        if counts.get(key):
+            name = _RELEASE_CODE_RE.sub("", package["name"]).strip()
+            out.append({"key": key, "name": name, "count": counts[key]})
+    return out
+
+
+def search_cards(
+    q: str = "", set_code: str | None = None, limit: int = 30, release: str | None = None
+) -> list[dict[str, Any]]:
+    """Name / card-number search. Every word must match; name-prefix hits rank first.
+
+    release: only printings released in that package, e.g. "GD01", "EB01" or "Edition Beta"
+    (a reprint belongs to every release it came in, like on the official card list).
+    """
     cards = load_catalog()["cards"]
     words = [_norm(w) for w in q.split() if _norm(w)]
     scored: list[tuple[int, int, dict[str, Any]]] = []
     for idx, card in enumerate(cards):
         if set_code and card.get("set_code") != set_code:
+            continue
+        if release and release not in {release_key(p) for p in card.get("packages") or []}:
             continue
         name = _norm(card["name"])
         ids = _norm(card["id"]) + " " + _norm(card["card_no"])

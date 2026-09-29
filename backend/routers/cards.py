@@ -37,10 +37,18 @@ def _out(card: dict) -> CatalogCard:
 def search_cards(
     q: str = Query("", max_length=100),
     set_code: str | None = Query(None, max_length=10),
-    limit: int = Query(30, ge=1, le=200),
+    release: str | None = Query(None, max_length=60),
+    limit: int = Query(30, ge=1, le=400),
 ):
-    """Search the scraped catalog by card name or number (e.g. "zock", "ST11-003")."""
-    return [_out(c) for c in cc.search_cards(q, set_code, limit)]
+    """Search the scraped catalog by card name or number (e.g. "zock", "ST11-003"), optionally
+    only within one release (e.g. release=GD01, EB01, "Edition Beta", "Promotion card")."""
+    return [_out(c) for c in cc.search_cards(q, set_code, limit, release)]
+
+
+@router.get("/cards/releases")
+def list_releases():
+    """Releases for the Add Card filter, in site order: [{"key": "GD01", "name": "Newtype Rising", "count": 179}, …]."""
+    return cc.list_releases()
 
 
 @router.get("/cards/sets")

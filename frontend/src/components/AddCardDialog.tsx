@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { rarityClass } from "@/components/badges";
 import { apiGet } from "@/lib/api";
@@ -41,9 +42,19 @@ function RarityChip({ rarity }: { rarity: CatalogCard["rarity"] }) {
 
 /* ---------------- step 1: search ---------------- */
 
+// A release on the official card list, e.g. { key: "GD01", name: "Newtype Rising", count: 179 }.
+interface Release {
+  key: string;
+  name: string;
+  count: number;
+}
+
+const ALL_RELEASES = "all";
+
 function CardSearch({ onPick }: { onPick: (card: CatalogCard) => void }) {
   const [query, setQuery] = useState("");
   const [debounced, setDebounced] = useState("");
+  const [release, setRelease] = useState(ALL_RELEASES);
   useEffect(() => {
     const t = setTimeout(() => setDebounced(query.trim()), 200);
     return () => clearTimeout(t);
@@ -52,12 +63,31 @@ function CardSearch({ onPick }: { onPick: (card: CatalogCard) => void }) {
   const sync = useCatalogSync("cards");
   const hasCatalog = (sync.data?.catalog_count ?? 0) > 0;
 
+  const releases = useQuery({
+    queryKey: ["cards", "releases"],
+    queryFn: () => apiGet<Release[]>("/cards/releases"),
+    enabled: hasCatalog,
+    staleTime: 5 * 60_000,
+  });
+
+  // A picked release shows all of its cards (up to 400); otherwise the first 48 matches.
+  const releaseParam = release === ALL_RELEASES ? "" : `&release=${encodeURIComponent(release)}`;
   const results = useQuery({
-    queryKey: ["cards", "search", debounced],
-    queryFn: () => apiGet<CatalogCard[]>(`/cards?limit=48&q=${encodeURIComponent(debounced)}`),
+    queryKey: ["cards", "search", debounced, release],
+    queryFn: () =>
+      apiGet<CatalogCard[]>(
+        `/cards?limit=${release === ALL_RELEASES ? 48 : 400}&q=${encodeURIComponent(debounced)}${releaseParam}`,
+      ),
     enabled: hasCatalog,
     placeholderData: keepPreviousData,
   });
+
+  // "GD01 · Newtype Rising"; releases without a code show just their name ("Edition Beta").
+  const releaseLabel = (r: Release) => (r.key === r.name ? r.name : `${r.key} · ${r.name}`);
+  const releaseItems = [
+    { value: ALL_RELEASES, label: "All releases" },
+    ...(releases.data ?? []).map((r) => ({ value: r.key, label: releaseLabel(r) })),
+  ];
 
   if (sync.isLoading) {
     return <div className="h-40 animate-pulse rounded-lg bg-slate-900/60" />;
@@ -68,22 +98,44 @@ function CardSearch({ onPick }: { onPick: (card: CatalogCard) => void }) {
 
   return (
     <div className="space-y-3">
-      <div className="relative">
-        <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-500" aria-hidden />
-        <Input
-          autoFocus
-          data-testid="card-search"
-          placeholder="Search card name or number — e.g. Zock, ST11-003"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          className="h-10 bg-slate-950/60 pl-9"
-        />
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-500" aria-hidden />
+          <Input
+            autoFocus
+            data-testid="card-search"
+            placeholder="Search card name or number — e.g. Zock, ST11-003"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="h-10 bg-slate-950/60 pl-9"
+          />
+        </div>
+        {/* Release filter, like the official card list: GD01, ST01, EB01, Edition Beta, Promotion card … */}
+        <Select value={release} onValueChange={(value) => setRelease(value || ALL_RELEASES)} items={releaseItems}>
+          <SelectTrigger
+            data-testid="card-release-filter"
+            aria-label="Filter by release"
+            className="h-10 w-full bg-slate-950/60 sm:w-60"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {releaseItems.map((r) => (
+              <SelectItem key={r.value} value={r.value} data-testid={`card-release-${r.value}`}>
+                {r.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {results.isError ? (
         <p className="text-sm text-red-400">Could not search the card database.</p>
       ) : cards.length === 0 && !results.isFetching ? (
-        <p className="py-8 text-center text-sm text-slate-500">No cards match “{debounced}”.</p>
+        <p className="py-8 text-center text-sm text-slate-500">
+          No cards match{debounced ? ` “${debounced}”` : ""}
+          {release === ALL_RELEASES ? "" : ` in ${releaseItems.find((r) => r.value === release)?.label ?? release}`}.
+        </p>
       ) : (
         <ul
           data-testid="card-search-results"
