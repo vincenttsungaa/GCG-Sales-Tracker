@@ -1,5 +1,6 @@
 """Pydantic models for the unified collection inventory (cards + general items)."""
 
+import re
 from datetime import datetime, timezone
 from typing import Literal
 from uuid import uuid4
@@ -37,6 +38,26 @@ def utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
+class BundleEntry(BaseModel):
+    """One product in a bundle listing (e.g. ST09 + ST01 sold together), with its own price."""
+
+    name: str
+    product_id: str | None = None
+    category: ItemCategory | None = None
+    code: str | None = None  # e.g. "ST09"
+    image_url: str | None = None
+    detail: str | None = None  # what was picked, e.g. "Storage Box · RP-034 (1x)"
+    quantity: int = Field(default=1, ge=1)
+    price: float | None = Field(default=None, ge=0)  # AUD, per unit; None = priced with the bundle as a whole
+    purchase_price: float | None = Field(default=None, ge=0)  # AUD, per unit
+    # the cards / designs picked in this product, with their copies and optional per-copy prices
+    card_quantities: dict[str, int] = Field(default_factory=dict)
+    card_prices: dict[str, float] = Field(default_factory=dict)
+    # physical parts of a set in this product (e.g. ["Storage Box", "Playmat"]) and their optional prices
+    parts: list[str] = Field(default_factory=list)
+    part_prices: dict[str, float] = Field(default_factory=dict)
+
+
 class CollectionItem(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid4()))
     kind: Kind = "card"
@@ -55,8 +76,17 @@ class CollectionItem(BaseModel):
     part: str | None = None  # the piece of a set being sold, e.g. "Playmat" (PB01, PB02)
     resource_cards: list[str] = Field(default_factory=list)  # e.g. ["RP-025", "RP-027"] when part = Resources
     alt_art_cards: list[str] = Field(default_factory=list)  # e.g. ["ST02-010_p4"] when part = Alt-Art Cards
-    # copies per picked card, e.g. {"GD02-110_p3": 2, "ST05-010_p4": 1}; quantity is their total
+    # sleeve designs picked (Official Card Sleeves 01), by name, e.g. ["Gundam/EFSF"]
+    sleeve_designs: list[str] = Field(default_factory=list)
+    # copies per picked card or sleeve design, e.g. {"GD02-110_p3": 2, "ST05-010_p4": 1}; quantity is their total
     card_quantities: dict[str, int] = Field(default_factory=dict)
+    # optional price per copy of a picked card / design (same keys as card_quantities); when set,
+    # the listing is one lot and price is its total
+    card_prices: dict[str, float] = Field(default_factory=dict)
+    # optional price of each physical part in a part bundle (e.g. {"Storage Box": 25.0})
+    part_prices: dict[str, float] = Field(default_factory=dict)
+    # several products listed together (e.g. ST09 + ST01), each with an optional price
+    bundle_items: list[BundleEntry] = Field(default_factory=list)
     # General-item-only attribute (null for cards)
     category: ItemCategory | None = None
     price: float = Field(default=0.0, ge=0)  # AUD, per-unit asking price
@@ -90,7 +120,11 @@ class ItemCreate(BaseModel):
     part: str | None = None
     resource_cards: list[str] = Field(default_factory=list)
     alt_art_cards: list[str] = Field(default_factory=list)
+    sleeve_designs: list[str] = Field(default_factory=list)
     card_quantities: dict[str, int] = Field(default_factory=dict)
+    card_prices: dict[str, float] = Field(default_factory=dict)
+    part_prices: dict[str, float] = Field(default_factory=dict)
+    bundle_items: list[BundleEntry] = Field(default_factory=list)
     price: float = Field(default=0.0, ge=0)
     purchase_price: float | None = Field(default=None, ge=0)
     image_url: str | None = None
@@ -128,12 +162,60 @@ def _resource_listing_image(doc: dict) -> str | None:
     return f"/api/product-images/{product_id}-resources.svg?cards={','.join(cards)}"
 
 
+_TRAILING_CODE_RE = re.compile(r"^(?P<name>.*?)\s*\[(?P<code>[^\[\]]+)\]\s*$")
+
+
+def code_first(name: str) -> str:
+    """Product names lead with their code: "Heavy Dominion [ST14]" → "[ST14] Heavy Dominion".
+
+    Names without a trailing [code], or that already start with one, are returned unchanged.
+    """
+    if not name or name.lstrip().startswith("["):
+        return name
+    m = _TRAILING_CODE_RE.match(name)
+    if not m or not m.group("name"):
+        return name
+    return f"[{m.group('code').strip()}] {m.group('name').strip()}"
+
+
+# PB01 / PB02 / PB03 parts that have their own photo (see PART_PHOTOS in lib/product_catalog.py).
+_PART_PHOTO_PRODUCTS = {"pb01", "pb02", "pb03", "pc01a", "pc02a", "limitedbox-beta"}
+# Bumped when the part photos change, so browsers that cached an older picture fetch the new one.
+PART_PHOTO_VERSION = "10"
+_PART_PHOTO_URL_RE = re.compile(r"^/api/product-images/([a-z0-9-]+)-part-[a-z0-9-]+\.svg(\?v=\w+)?$")
+_PART_PHOTO_PARTS = {
+    "Storage Box", "Sleeves", "Playmat", "Deck Box", "Divider",
+    "Sleeves (Blue)", "Sleeves (Green)", "Card Case", "Damage Counter Dice",  # PB03
+    "Booster Pack",  # Edition Beta
+    "ASSEMBLE: Gundam Barbatos 4th Form", "ASSEMBLE: Graze Custom", "ASSEMBLE: CGS Mobile Worker",  # PC01A
+    "ASSEMBLE: GQuuuuuuX (Omega Psycommu)", "ASSEMBLE: Red Gundam", "ASSEMBLE: GFreD",  # PC02A
+}
+
+
+def _part_photo_image(doc: dict) -> str | None:
+    """A PB01/PB02 part listing gets the part's current photo (if it shows the whole set's box
+    art, or an older version of the part photo). A photo the user chose is kept."""
+    product_id, part = doc.get("product_id"), doc.get("part")
+    if product_id not in _PART_PHOTO_PRODUCTS or part not in _PART_PHOTO_PARTS:
+        return None
+    image = doc.get("image_url") or ""
+    if image != f"/api/product-images/{product_id}.webp" and not _PART_PHOTO_URL_RE.match(image):
+        return None
+    slug = re.sub(r"[^a-z0-9]+", "-", part.lower()).strip("-")
+    current = f"/api/product-images/{product_id}-part-{slug}.svg?v={PART_PHOTO_VERSION}"
+    return None if image == current else current
+
+
 def normalise_doc(doc: dict) -> dict:
     """Strip Mongo's _id and tz-normalise datetimes motor hands back naive."""
     doc.pop("_id", None)
     if doc.get("category") in LEGACY_CATEGORY:
         doc["category"] = LEGACY_CATEGORY[doc["category"]]
-    fixed_image = _resource_listing_image(doc)
+    # Items from the product database (starter decks, accessories, Premium Bandai, other)
+    # show their code first — also for listings saved before this was the naming style.
+    if doc.get("kind") == "item" and doc.get("product_id") and doc.get("name"):
+        doc["name"] = code_first(doc["name"])
+    fixed_image = _resource_listing_image(doc) or _part_photo_image(doc)
     if fixed_image:
         doc["image_url"] = fixed_image
     for key in ("created_at", "sold_at"):

@@ -63,7 +63,11 @@ export interface CollectionItem {
   part: string | null; // piece of a set being sold, e.g. "Playmat" (PB01, PB02)
   resource_cards: string[]; // e.g. ["RP-025", "RP-027"] when part = "Resources"
   alt_art_cards: string[]; // e.g. ["ST02-010_p4"] when part = "Alt-Art Cards" (PB01)
-  card_quantities: Record<string, number>; // copies per picked card, e.g. { "GD02-110_p3": 2 }; quantity = total
+  sleeve_designs: string[]; // e.g. ["Gundam/EFSF"] (Official Card Sleeves 01)
+  card_quantities: Record<string, number>; // copies per picked card / sleeve design, e.g. { "GD02-110_p3": 2 }; quantity = total
+  card_prices: Record<string, number>; // optional price per copy of a picked card / design; set → one lot, price = its total
+  part_prices: Record<string, number>; // optional price of each physical part in a part bundle, e.g. { "Storage Box": 25 }
+  bundle_items: BundleEntry[]; // several products listed together (e.g. ST09 + ST01), each optionally priced
   price: number;
   purchase_price: number | null;
   image_url: string | null;
@@ -76,6 +80,100 @@ export interface CollectionItem {
   sale_price: number | null;
   created_at: string;
   sold_at: string | null;
+}
+
+// One product in a bundle listing, with its own price (mirror of models/item.py BundleEntry).
+export interface BundleEntry {
+  name: string;
+  product_id: string | null;
+  category: ItemCategory | null;
+  code: string | null; // e.g. "ST09"
+  image_url: string | null;
+  detail: string | null; // what was picked, e.g. "Storage Box · RP-034 (1x)"
+  quantity: number;
+  price: number | null; // AUD, per unit; null = priced with the bundle as a whole
+  purchase_price: number | null; // AUD, per unit
+  card_quantities: Record<string, number>; // cards / designs picked in this product, with copies
+  card_prices: Record<string, number>; // their optional prices per copy
+  parts: string[]; // physical parts of a set in this product, e.g. ["Storage Box", "Playmat"]
+  part_prices: Record<string, number>; // their optional prices
+}
+
+// A bundle entry's line total (price × quantity), or null when it has no price of its own.
+export function bundleLineTotal(entry: BundleEntry): number | null {
+  return entry.price == null ? null : entry.price * entry.quantity;
+}
+
+/* ---------------- price breakdowns ---------------- */
+
+// Something with an optional price: a picked card (qty = copies), a part, or a product in a bundle.
+export interface PricedPart {
+  label: string;
+  qty: number;
+  each: number | null; // price per unit, or null when not priced on its own
+}
+
+// One line of a breakdown. The lines always add up to the listing's price:
+//  priced   — label, qty × each = amount
+//  rest     — everything without its own price, sharing what's left of the price
+//  unpriced — the same, while no overall price is set yet (amount null)
+//  adjust   — the price is below / above the priced items (a discount / extra)
+export interface PriceLine {
+  label: string;
+  qty: number;
+  each: number | null;
+  amount: number | null;
+  kind: "priced" | "rest" | "unpriced" | "adjust";
+}
+
+const cents = (n: number) => Math.round(n * 100) / 100;
+
+export function pricedTotal(parts: PricedPart[]): number {
+  return cents(parts.reduce((sum, p) => sum + (p.each == null ? 0 : p.each * p.qty), 0));
+}
+
+export function priceBreakdown(parts: PricedPart[], total: number | null): PriceLine[] {
+  const priced = parts.filter((p) => p.each != null);
+  const unpriced = parts.filter((p) => p.each == null);
+  const sum = pricedTotal(parts);
+  const lines: PriceLine[] = priced.map((p) => ({ ...p, amount: cents((p.each ?? 0) * p.qty), kind: "priced" }));
+  if (unpriced.length > 0) {
+    lines.push({
+      label: unpriced.map((p) => (p.qty > 1 ? `${p.label} ×${p.qty}` : p.label)).join(", "),
+      qty: 1,
+      each: null,
+      amount: total == null ? null : cents(Math.max(total - sum, 0)),
+      kind: total == null ? "unpriced" : "rest",
+    });
+  }
+  if (total != null && priced.length > 0) {
+    const diff = cents(total - sum);
+    // below the priced items → a discount; above them with nothing unpriced to take it → extra
+    if (diff < 0 || (diff > 0 && unpriced.length === 0)) {
+      lines.push({ label: diff < 0 ? "Discount" : "Extra", qty: 1, each: null, amount: diff, kind: "adjust" });
+    }
+  }
+  return lines;
+}
+
+// Physical parts (storage box, playmat …) as priced parts; a part without a price shares the rest.
+export function physicalParts(parts: string[], prices: Record<string, number> | undefined): PricedPart[] {
+  return parts.map((p) => ({ label: p, qty: 1, each: prices?.[p] ?? null }));
+}
+
+// The physical parts of a part bundle, from its label ("Storage Box + Playmat + Resources").
+export const CARD_PARTS = new Set(["Resources", "Alt-Art Cards"]);
+export function bundlePartNames(part: string | null): string[] {
+  return part && part.includes(" + ") ? part.split(" + ").filter((p) => !CARD_PARTS.has(p)) : [];
+}
+
+// A listing's picked cards / designs as priced parts (from card_quantities + card_prices).
+export function cardParts(quantities: Record<string, number>, prices: Record<string, number> | undefined): PricedPart[] {
+  return Object.entries(quantities ?? {}).map(([label, qty]) => ({
+    label: label.replace(/_p\d+$/, ""),
+    qty,
+    each: prices?.[label] ?? null,
+  }));
 }
 
 // Mirror of ItemCreate / ItemUpdate
@@ -95,7 +193,11 @@ export interface ItemPayload {
   part?: string | null;
   resource_cards?: string[];
   alt_art_cards?: string[];
+  sleeve_designs?: string[];
   card_quantities?: Record<string, number>;
+  card_prices?: Record<string, number>;
+  part_prices?: Record<string, number>;
+  bundle_items?: BundleEntry[];
   price: number;
   purchase_price: number | null;
   image_url: string | null;
@@ -140,8 +242,18 @@ export interface CatalogProduct {
   resource_cards: { card_no: string; name: string | null; image_url: string }[];
   // Picture of resource cards; add ?cards=RP-025,RP-027 for just those (image for multi-card Resources listings)
   resource_set_image_url: string | null;
+  // Picture of a bundle of parts: add ?parts=storage-box,playmat&cards=RP-024,ST02-010_p4
+  bundle_image_url: string | null;
+  // Photos of the physical parts (PB01, PB02): { "Storage Box": url, "Sleeves": url, … }
+  part_images: Record<string, string>;
   // PB01 alt-art printings to choose from (multi-select) when the "Alt-Art Cards" part is picked
   alt_art_cards: { id: string; card_no: string; name: string | null; image_url: string }[];
+  // Sleeve designs or set contents to choose from (multi-select), e.g. Official Card Sleeves 01's
+  // four designs, or EVX07's storage box + resource cards. fit "contain" = not card-shaped (boxes).
+  sleeve_designs: { id: string; name: string; image_url: string; fit: "cover" | "contain" }[];
+  sleeve_label: string | null; // picker heading: "Sleeve designs" or "Set contents"
+  // Picture of sleeve designs; add ?designs=logo,efsf for just those (image for multi-design listings)
+  sleeve_set_image_url: string | null;
   url: string | null;
   image_url: string;
 }
@@ -188,11 +300,13 @@ export function cardNumbers(ids: string[]): string {
 }
 
 // Picked cards with their copies: "GD02-110 (2x), ST05-010 (1x)" (no count when none recorded).
+// Print ids show as the printed number, unless two picks share it (PB03's RP-068 and RP-068_p1).
 export function cardCopies(ids: string[], counts?: Record<string, number> | null): string {
+  const base = (id: string) => id.replace(/_p\d+$/, "");
   return ids
     .map((id) => {
       const n = counts?.[id];
-      const no = id.replace(/_p\d+$/, "");
+      const no = ids.filter((other) => base(other) === base(id)).length > 1 ? id : base(id);
       return n ? `${no} (${n}x)` : no;
     })
     .join(", ");

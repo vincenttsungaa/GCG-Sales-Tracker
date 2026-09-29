@@ -3,6 +3,7 @@
 from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, Field
 from models.item import (
     CollectionItem,
     ItemCreate,
@@ -37,7 +38,7 @@ async def update_item(item_id: str, input: ItemUpdate):
     # The edit form does not touch the sale record — preserve it.
     payload = input.model_dump()
     # Older clients don't send the catalog link — keep it rather than wiping it.
-    for key in ("card_id", "card_no", "set_code", "set_name", "product_id", "edition", "part", "resource_cards", "alt_art_cards", "card_quantities"):
+    for key in ("card_id", "card_no", "set_code", "set_name", "product_id", "edition", "part", "resource_cards", "alt_art_cards", "sleeve_designs", "card_quantities", "card_prices", "part_prices", "bundle_items"):
         if payload.get(key) in (None, [], {}):
             payload[key] = doc.get(key)
     payload.update(
@@ -133,3 +134,14 @@ async def delete_item(item_id: str):
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="item not found")
     return None
+
+
+class BulkDelete(BaseModel):
+    ids: list[str] = Field(min_length=1, max_length=1000)
+
+
+@router.post("/items/bulk-delete")
+async def bulk_delete_items(body: BulkDelete):
+    """Delete several listings at once (the dashboard's Select mode); returns how many went."""
+    result = await db.items.delete_many({"id": {"$in": list(dict.fromkeys(body.ids))}})
+    return {"deleted": result.deleted_count}
