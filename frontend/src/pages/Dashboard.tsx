@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Archive,
+  CheckSquare,
   Layers,
   Package,
   Plus,
@@ -23,6 +24,8 @@ import {
   Rocket,
   Table2,
   LayoutGrid,
+  Trash2,
+  X,
 } from "lucide-react";
 import type { CollectionItem, ItemPayload, StatusPayload, TabId } from "@/lib/types";
 
@@ -51,6 +54,9 @@ export default function Dashboard() {
   const [addCardOpen, setAddCardOpen] = useState(false);
   const [addItemOpen, setAddItemOpen] = useState(false);
   const [dealState, setDealState] = useState<DealState | null>(null);
+  // Select mode: tick several listings and delete them together.
+  const [selecting, setSelecting] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const itemsQuery = useQuery({
     queryKey: ["items"],
@@ -108,6 +114,17 @@ export default function Dashboard() {
     onError: () => toast.error("Could not delete the item — please try again"),
   });
 
+  const bulkDeleteMut = useMutation({
+    mutationFn: (ids: string[]) => apiPost<{ deleted: number }>("/items/bulk-delete", { ids }),
+    onSuccess: ({ deleted }) => {
+      invalidate();
+      setSelectedIds(new Set());
+      setSelecting(false);
+      toast.success(`${deleted} ${deleted === 1 ? "listing" : "listings"} deleted`);
+    },
+    onError: () => toast.error("Could not delete the selected listings — please try again"),
+  });
+
   const items = itemsQuery.data ?? [];
 
   const tabCounts = useMemo(() => {
@@ -153,6 +170,38 @@ export default function Dashboard() {
   const currentPage = Math.min(page, pageCount); // e.g. after deleting the last item on the last page
   const pageItems = visible.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
+  // Keep the selection to listings still shown (after a tab / filter change or a delete).
+  useEffect(() => {
+    setSelectedIds((cur) => {
+      const shown = new Set(visible.map((i) => i.id));
+      const kept = [...cur].filter((id) => shown.has(id));
+      return kept.length === cur.size ? cur : new Set(kept);
+    });
+  }, [visible]);
+  const toggleSelect = (item: CollectionItem) =>
+    setSelectedIds((cur) => {
+      const next = new Set(cur);
+      if (next.has(item.id)) next.delete(item.id);
+      else next.add(item.id);
+      return next;
+    });
+  const selectAll = (list: CollectionItem[]) =>
+    setSelectedIds((cur) => new Set([...cur, ...list.map((i) => i.id)]));
+  const stopSelecting = () => {
+    setSelecting(false);
+    setSelectedIds(new Set());
+  };
+  const deleteSelected = () => {
+    const chosen = visible.filter((i) => selectedIds.has(i.id));
+    if (chosen.length === 0) return;
+    const names = chosen.slice(0, 8).map((i) => `• ${i.name}`).join("\n");
+    const more = chosen.length > 8 ? `\n…and ${chosen.length - 8} more` : "";
+    const what = `${chosen.length} ${chosen.length === 1 ? "listing" : "listings"}`;
+    if (window.confirm(`Delete ${what} permanently? This cannot be undone.\n\n${names}${more}`)) {
+      bulkDeleteMut.mutate(chosen.map((i) => i.id));
+    }
+  };
+
   const unmark = (item: CollectionItem) =>
     statusMut.mutate(
       { id: item.id, payload: { status: "for_sale" } },
@@ -172,6 +221,9 @@ export default function Dashboard() {
     onRestore: unmark,
     onDelete: deleteItem,
     onUnmark: unmark,
+    selecting,
+    isSelected: (item: CollectionItem) => selectedIds.has(item.id),
+    onToggleSelect: toggleSelect,
   };
 
   return (
@@ -233,6 +285,16 @@ export default function Dashboard() {
             </TabsList>
           </Tabs>
           </div>
+          <Button
+            size="sm"
+            variant={selecting ? "secondary" : "outline"}
+            className="shrink-0"
+            data-testid="select-mode"
+            aria-pressed={selecting}
+            onClick={() => (selecting ? stopSelecting() : setSelecting(true))}
+          >
+            <CheckSquare className="size-4" /> {selecting ? "Done" : "Select"}
+          </Button>
           <div className="flex shrink-0 items-center gap-1 rounded-md border border-slate-800/80 p-1">
             <Button
               size="icon-xs"
@@ -258,6 +320,45 @@ export default function Dashboard() {
         </div>
 
         <FilterBar filters={filters} onChange={setFilters} showBuyer={showBuyer} />
+
+        {/* Select mode: tick listings, then delete them together */}
+        {selecting && (
+          <div
+            data-testid="selection-bar"
+            className="sticky top-16 z-30 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-sky-500/40 bg-[#0f1a2a]/95 px-3 py-2 backdrop-blur"
+          >
+            <span className="font-mono text-sm text-slate-200" data-testid="selection-count">
+              {selectedIds.size} selected
+            </span>
+            <Button variant="link" size="xs" className="h-auto px-0" onClick={() => selectAll(pageItems)}>
+              Select all on page
+            </Button>
+            {visible.length > pageItems.length && (
+              <Button variant="link" size="xs" className="h-auto px-0" onClick={() => selectAll(visible)}>
+                Select all ({visible.length})
+              </Button>
+            )}
+            {selectedIds.size > 0 && (
+              <Button variant="link" size="xs" className="h-auto px-0" onClick={() => setSelectedIds(new Set())}>
+                Clear
+              </Button>
+            )}
+            <span className="ml-auto flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="destructive"
+                data-testid="delete-selected"
+                disabled={selectedIds.size === 0 || bulkDeleteMut.isPending}
+                onClick={deleteSelected}
+              >
+                <Trash2 className="size-4" /> Delete{selectedIds.size > 0 ? ` (${selectedIds.size})` : ""}
+              </Button>
+              <Button size="sm" variant="ghost" onClick={stopSelecting} aria-label="Cancel selecting">
+                <X className="size-4" /> Cancel
+              </Button>
+            </span>
+          </div>
+        )}
 
         {/* Data-dependent region — the shell above always renders, even without the backend. */}
         {itemsQuery.isError ? (

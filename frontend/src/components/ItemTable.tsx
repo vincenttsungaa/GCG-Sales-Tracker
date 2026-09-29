@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from "react";
+import { HoverZoom } from "@/components/InfoTip";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -10,10 +11,10 @@ import {
 } from "@/components/ui/table";
 import { ColorBadge, KindBadge, RarityBadge, StatusBadge } from "@/components/badges";
 import { COLOR_TRIM_CLASS, formatAud, formatDate } from "@/lib/format";
-import { cardCopies, saleProfit, saleTotal, type CollectionItem } from "@/lib/types";
+import { bundleLineTotal, cardCopies, saleProfit, saleTotal, type CollectionItem } from "@/lib/types";
 import { useMediaQuery } from "@/lib/useMediaQuery";
 import { CalendarDays, DollarSign, Pencil, Tag, Trash2, Undo2, User } from "lucide-react";
-import type { ItemActionProps } from "@/components/ItemCard";
+import { SelectBox, selectOnClick, type ItemActionProps } from "@/components/ItemCard";
 
 interface ItemTableProps extends ItemActionProps {
   items: CollectionItem[];
@@ -48,15 +49,18 @@ function Thumb({ item, size }: { item: CollectionItem; size: "sm" | "md" }) {
   const [failed, setFailed] = useState(false);
   if (!item.image_url || failed) return null;
   const dim = size === "sm" ? "size-10" : "size-14";
+  // hovering the thumbnail shows the photo enlarged beside it
   return (
-    <img
-      data-testid={`item-photo-${item.id}`}
-      src={item.image_url}
-      alt={item.name}
-      loading="lazy"
-      className={`${dim} shrink-0 rounded-md border border-slate-800/80 object-cover`}
-      onError={() => setFailed(true)}
-    />
+    <HoverZoom src={item.image_url} alt={item.name}>
+      <img
+        data-testid={`item-photo-${item.id}`}
+        src={item.image_url}
+        alt={item.name}
+        loading="lazy"
+        className={`${dim} shrink-0 rounded-md border border-slate-800/80 object-cover`}
+        onError={() => setFailed(true)}
+      />
+    </HoverZoom>
   );
 }
 
@@ -152,6 +156,7 @@ function DesktopTable({ items, actions }: { items: CollectionItem[]; actions: Ac
       <Table>
         <TableHeader>
           <TableRow className="border-slate-800 hover:bg-transparent">
+            {actions.selecting && <TableHead className={`${TH} w-8`} aria-label="Select" />}
             <TableHead className={TH}>Item</TableHead>
             <TableHead className={TH}>Kind</TableHead>
             <TableHead className={TH}>Color</TableHead>
@@ -168,12 +173,26 @@ function DesktopTable({ items, actions }: { items: CollectionItem[]; actions: Ac
           {items.map((item) => {
             const isSold = item.status === "sold";
             return (
-              <TableRow key={item.id} data-testid={`item-row-${item.id}`} className="border-slate-800/80">
-                <TableCell>
+              <TableRow
+                key={item.id}
+                data-testid={`item-row-${item.id}`}
+                onClick={selectOnClick(item, actions)}
+                className={`border-slate-800/80 ${actions.selecting ? "cursor-pointer select-none" : ""} ${
+                  actions.selecting && actions.isSelected?.(item) ? "bg-sky-950/40" : ""
+                }`}
+              >
+                {actions.selecting && (
+                  <TableCell className="w-8">
+                    <SelectBox item={item} actions={actions} />
+                  </TableCell>
+                )}
+                {/* The Item column wraps (long product names, card lists) so the table fits
+                    the page instead of scrolling sideways; the other columns stay on one line. */}
+                <TableCell className="min-w-56 whitespace-normal">
                   <div className="flex items-center gap-3">
                     <Thumb item={item} size="sm" />
                     <div className="min-w-0">
-                      <p data-testid={`item-name-${item.id}`} className="font-medium text-slate-100">
+                      <p data-testid={`item-name-${item.id}`} className="font-medium break-words text-slate-100">
                         {item.name}
                       </p>
                       {(item.card_no || item.part || item.edition || item.condition) && (
@@ -182,13 +201,21 @@ function DesktopTable({ items, actions }: { items: CollectionItem[]; actions: Ac
                         </p>
                       )}
                       {item.alt_art_cards.length > 0 && (
-                        <p className="max-w-64 font-mono text-xs text-slate-400">{cardCopies(item.alt_art_cards, item.card_quantities)}</p>
+                        <p className="font-mono text-xs break-words text-slate-400">{cardCopies(item.alt_art_cards, item.card_quantities)}</p>
                       )}
                       {item.resource_cards.length > 0 && (
-                        <p className="max-w-64 font-mono text-xs text-slate-400">{cardCopies(item.resource_cards, item.card_quantities)}</p>
+                        <p className="font-mono text-xs break-words text-slate-400">{cardCopies(item.resource_cards, item.card_quantities)}</p>
+                      )}
+                      {(item.bundle_items ?? []).length > 1 && (
+                        <p className="font-mono text-xs break-words text-slate-400" data-testid={`item-bundle-${item.id}`}>
+                          {item.bundle_items.map((e) => { const line = bundleLineTotal(e); return `${e.code ?? e.name}${e.quantity > 1 ? ` ×${e.quantity}` : ""} ${line == null ? "—" : formatAud(line)}`; }).join(" + ")}
+                        </p>
+                      )}
+                      {(item.sleeve_designs ?? []).length > 0 && (
+                        <p className="font-mono text-xs break-words text-slate-400">{cardCopies(item.sleeve_designs, item.card_quantities)}</p>
                       )}
                       {item.notes && (
-                        <p className="max-w-64 truncate text-xs text-slate-500" title={item.notes}>
+                        <p className="line-clamp-2 text-xs break-words text-slate-500" title={item.notes}>
                           {item.notes}
                         </p>
                       )}
@@ -346,10 +373,18 @@ function MobileRow({ item, actions }: { item: CollectionItem; actions: Actions }
   return (
     <li
       data-testid={`item-row-${item.id}`}
-      className={`space-y-3 rounded-lg border border-l-4 ${trim} border-y-slate-800/80 border-r-slate-800/80 bg-slate-900/60 p-3`}
+      onClick={selectOnClick(item, actions)}
+      className={`space-y-3 rounded-lg border border-l-4 ${trim} border-y-slate-800/80 border-r-slate-800/80 p-3 ${
+        actions.selecting ? "cursor-pointer select-none" : ""
+      } ${actions.selecting && actions.isSelected?.(item) ? "bg-sky-950/40 ring-1 ring-sky-500/60" : "bg-slate-900/60"}`}
     >
       {/* Identity */}
       <div className="flex items-start gap-3">
+        {actions.selecting && (
+          <div className="pt-1">
+            <SelectBox item={item} actions={actions} />
+          </div>
+        )}
         <Thumb item={item} size="md" />
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
@@ -429,6 +464,15 @@ function MobileRow({ item, actions }: { item: CollectionItem; actions: Actions }
 
       {item.resource_cards.length > 0 && (
         <p className="font-mono text-xs text-slate-400">{cardCopies(item.resource_cards, item.card_quantities)}</p>
+      )}
+
+      {(item.bundle_items ?? []).length > 1 && (
+        <p className="font-mono text-xs break-words text-slate-400" data-testid={`item-bundle-${item.id}`}>
+          {item.bundle_items.map((e) => { const line = bundleLineTotal(e); return `${e.code ?? e.name}${e.quantity > 1 ? ` ×${e.quantity}` : ""} ${line == null ? "—" : formatAud(line)}`; }).join(" + ")}
+        </p>
+      )}
+      {(item.sleeve_designs ?? []).length > 0 && (
+        <p className="font-mono text-xs text-slate-400">{cardCopies(item.sleeve_designs, item.card_quantities)}</p>
       )}
 
       {item.notes && <p className="line-clamp-3 text-sm leading-relaxed text-slate-400">{item.notes}</p>}
