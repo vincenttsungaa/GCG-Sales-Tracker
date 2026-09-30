@@ -78,7 +78,7 @@
     --chart-3: #34D399;
     --chart-4: #C084FC;
     --chart-5: #F87171;
-    --radius: 0.625rem;
+    --radius: 0; /* square corners everywhere (was 0.625rem) */
     --sidebar: #111827;
     --sidebar-foreground: #F8FAFC;
     --sidebar-primary: #0284C7;
@@ -134,3 +134,216 @@
     @apply font-sans;
     }
 }
+
+/* Square corners: every rounded-* utility is flat, except rounded-full (colour dots, round badges). */
+[class*="rounded"]:not(.rounded-full) {
+  border-radius: 0;
+}
+
+/* ------------------------------------------------------------------------------------------
+   Theme: "Real Type" — gunmetal grey, slate blue and amber, like a real-type colour scheme.
+   Panels have cut corners like armour plates; faint panel lines run across the background.
+   ------------------------------------------------------------------------------------------ */
+:root,
+.dark {
+    --rt-bg: #2a2d31;
+    --rt-panel: #3a3e44;
+    --rt-panel-2: #33373c;
+    --rt-line: #555b63;
+    --rt-silver: #c9ccd1;
+    --rt-slate: #5c6a8a;
+    --rt-amber: #e8a93a;
+    --rt-red: #c8453b;
+    --rt-text: #dcdfe3;
+    --rt-label: #a4aab2;
+
+    --background: var(--rt-bg);
+    --foreground: #f0f1f3;
+    --card: var(--rt-panel);
+    --card-foreground: #f0f1f3;
+    --popover: var(--rt-panel-2);
+    --popover-foreground: #f0f1f3;
+    --primary: var(--rt-silver);
+    --primary-foreground: #2a2d31;
+    --secondary: #474c53;
+    --secondary-foreground: #f0f1f3;
+    --muted: #474c53;
+    --muted-foreground: var(--rt-label);
+    --accent: #474c53;
+    --accent-foreground: #f0f1f3;
+    --destructive: var(--rt-red);
+    --border: rgba(201, 204, 209, 0.18);
+    --input: rgba(201, 204, 209, 0.24);
+    --ring: var(--rt-amber);
+}
+
+/* page + faint armour panel lines */
+[data-testid="dashboard"] {
+  background-color: var(--rt-bg) !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='160'%3E%3Cg fill='none' stroke='%23c9ccd1' stroke-opacity='.12' stroke-width='1'%3E%3Cpath d='M0 40H90L110 60H240M60 0V40M170 60V160M0 120H120L140 100H170M200 60L240 20'/%3E%3Ccircle cx='96' cy='50' r='2'/%3E%3Ccircle cx='176' cy='70' r='2'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 240px 160px;
+  color: var(--rt-text);
+}
+
+/* header: grey bar with a silver / slate / red stripe underneath */
+[data-testid="dashboard"] > header {
+  background: var(--rt-panel-2) !important;
+  border-bottom: 1px solid var(--rt-line) !important;
+}
+[data-testid="dashboard"] > header::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -5px;
+  height: 4px;
+  background: linear-gradient(90deg, var(--rt-silver) 0 60%, var(--rt-slate) 60% 85%, var(--rt-red) 85%);
+}
+[data-testid="dashboard"] > header h1 {
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: #f0f1f3 !important;
+}
+[data-testid="dashboard"] > header p { color: var(--rt-label) !important; }
+[data-testid="dashboard"] > header .size-9 {
+  background: var(--rt-slate) !important;
+  border: 2px solid var(--rt-amber) !important;
+  color: #fff !important;
+  clip-path: polygon(0 0, 70% 0, 100% 30%, 100% 100%, 30% 100%, 0 70%);
+}
+[data-testid="add-card-button"] {
+  background: var(--rt-silver) !important;
+  color: #2a2d31 !important;
+  border-color: var(--rt-silver) !important;
+  box-shadow: inset 0 -3px 0 var(--rt-amber);
+}
+[data-testid="add-item-button"] {
+  border-color: #f0f1f3 !important;
+  color: #f0f1f3 !important;
+}
+[data-testid="dashboard"] [data-slot="button"] {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* panels: stat boxes, filters and tiles, with cut corners like armour plates */
+[data-testid="dashboard"] [data-slot="card"],
+[data-testid="filter-bar"],
+[data-testid="dashboard"] article {
+  background: var(--rt-panel) !important;
+  border: 1px solid var(--rt-line) !important;
+  clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 16px 100%, 0 calc(100% - 16px));
+}
+[data-testid="dashboard"] article {
+  position: relative;
+  box-shadow: inset 0 3px 0 var(--rt-slate);
+}
+[data-testid="dashboard"] article:hover { box-shadow: inset 0 3px 0 var(--rt-amber); }
+[data-testid="dashboard"] article[aria-selected="true"] { box-shadow: inset 0 3px 0 var(--rt-amber), inset 0 0 0 2px var(--rt-amber); }
+/* small lot marking on each tile, like a model-kit decal */
+[data-testid="dashboard"] article::after {
+  content: "LOT-079";
+  position: absolute;
+  right: 26px;
+  top: 12px;
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.18em;
+  color: var(--rt-amber);
+  pointer-events: none;
+}
+
+/* stat boxes: coloured side bars */
+[data-testid="sidebar"] [data-slot="card"] { box-shadow: inset 4px 0 0 var(--rt-silver); }
+[data-testid="sidebar"] [data-slot="card"]:nth-child(2) { box-shadow: inset 4px 0 0 var(--rt-amber); }
+[data-testid="sidebar"] [data-slot="card"]:nth-child(3) { box-shadow: inset 4px 0 0 var(--rt-red); }
+[data-testid="stat-realized-sales"] { color: var(--rt-amber) !important; }
+[data-testid="stat-kind-counts"] { color: #f0f1f3 !important; }
+
+/* amber dashes above the sidebar (wide screens, where the sidebar is its own column) */
+@media (min-width: 1024px) {
+  [data-testid="sidebar"]::before {
+    content: "";
+    display: block;
+    flex-shrink: 0;
+    height: 6px;
+    background: repeating-linear-gradient(90deg, var(--rt-amber) 0 20px, transparent 20px 26px);
+    opacity: 0.9;
+  }
+}
+
+/* labels, inputs, tabs */
+[data-testid="dashboard"] .font-mono.uppercase,
+[data-testid="dashboard"] label { color: var(--rt-label) !important; }
+[data-testid="dashboard"] [data-slot="input"],
+[data-testid="dashboard"] [data-slot="select-trigger"] {
+  background: var(--rt-panel-2) !important;
+  border-color: var(--rt-line) !important;
+}
+[data-testid="dashboard"] [data-slot="tabs-list"] {
+  background: var(--rt-panel-2) !important;
+  border: 1px solid var(--rt-line);
+}
+[data-testid="dashboard"] [data-slot="tabs-trigger"][data-active],
+[data-testid="dashboard"] [data-slot="tabs-trigger"][aria-selected="true"] {
+  background: var(--rt-silver) !important;
+  color: #2a2d31 !important;
+}
+
+/* prices and highlights in amber */
+[data-testid="dashboard"] .text-sky-300,
+[data-testid="dashboard"] .text-sky-400 { color: var(--rt-amber) !important; }
+[data-testid="dashboard"] .text-red-400 { color: var(--rt-red) !important; }
+/* no decal in Select mode, where the tick box sits in that corner */
+[data-testid="dashboard"] article.select-none::after { display: none; }
+/* dark navy wells (photo frames, price boxes) → grey */
+[data-testid="dashboard"] [class*="bg-slate-950"] { background-color: var(--rt-panel-2) !important; }
+[data-testid="dashboard"] [class*="border-slate-800"] { border-color: var(--rt-line) !important; }
+/* the same inside dialogs (Add Item, Add Card, edit) */
+[role="dialog"] [class*="bg-slate-950"],
+[role="dialog"] [class*="bg-[#"] { background-color: var(--rt-panel-2) !important; }
+[role="dialog"] [class*="border-slate-800"] { border-color: var(--rt-line) !important; }
+[role="dialog"] .text-sky-300,
+[role="dialog"] .text-sky-400 { color: var(--rt-amber) !important; }
+
+/* Tailwind palette remap for the whole app (dialogs included): the cool navy "slate" greys
+   become the theme's neutral gunmetal greys, and the "sky" blues become steel blue, so every
+   panel, input, selection and highlight follows the theme. */
+:root {
+  --color-slate-50: #f6f7f8;
+  --color-slate-100: #eceef0;
+  --color-slate-200: #dcdfe3;
+  --color-slate-300: #c4c8cd;
+  --color-slate-400: #a4aab2;
+  --color-slate-500: #8b9199;
+  --color-slate-600: #6f757d;
+  --color-slate-700: #5a6068;
+  --color-slate-800: #474c53;
+  --color-slate-900: #2e3136;
+  --color-slate-950: #26292d;
+
+  --color-sky-50: #f1f3f9;
+  --color-sky-100: #e3e7f3;
+  --color-sky-200: #c9d0e8;
+  --color-sky-300: #a6b1d4;
+  --color-sky-400: #8391bd;
+  --color-sky-500: #6474a3;
+  --color-sky-600: #52618e;
+  --color-sky-700: #43517a;
+  --color-sky-800: #34405f;
+  --color-sky-900: #28304a;
+  --color-sky-950: #1f2533;
+}
+
+/* picked options (parts, cards, designs, editions, view / colour toggles) stand out in amber */
+[role="dialog"] [role="checkbox"][aria-checked="true"],
+[role="dialog"] [aria-pressed="true"],
+[role="dialog"] [role="radio"][aria-checked="true"] {
+  border-color: var(--rt-amber) !important;
+  background-color: rgba(232, 169, 58, 0.12) !important;
+  box-shadow: inset 3px 0 0 var(--rt-amber);
+}
+/* dialog headings and the main action */
+[role="dialog"] [data-slot="dialog-title"] { color: #f0f1f3; letter-spacing: 0.1em; }
+[role="dialog"] { border: 1px solid var(--rt-line); box-shadow: inset 0 3px 0 var(--rt-slate), 0 24px 60px -20px rgba(0, 0, 0, 0.7); }
+[role="dialog"] [data-testid$="-submit"] { box-shadow: inset 0 -3px 0 var(--rt-amber); }
