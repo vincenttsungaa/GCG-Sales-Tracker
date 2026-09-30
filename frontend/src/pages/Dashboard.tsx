@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast, Toaster } from "sonner";
 import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from "@/lib/api";
@@ -71,13 +71,16 @@ export default function Dashboard() {
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["items"] });
 
+  const keepAddItemOpen = useRef(false);
   const createMut = useMutation({
     mutationFn: (payload: ItemPayload) => apiPost<CollectionItem>("/items", payload),
     onSuccess: (item) => {
       invalidate();
       setFormState(null);
       setAddCardOpen(false);
-      setAddItemOpen(false);
+      // an item listed on its own while a bundle is being built keeps Add Item open
+      if (keepAddItemOpen.current) keepAddItemOpen.current = false;
+      else setAddItemOpen(false);
       if (tab === "archive") setTab("all");
       toast.success(`${item.name} added to your ${item.kind === "card" ? "cards" : "items"}`);
     },
@@ -466,7 +469,15 @@ export default function Dashboard() {
       {addItemOpen && (
         <AddItemDialog
           onClose={() => setAddItemOpen(false)}
-          onSubmit={(payload) => createMut.mutate(payload)}
+          onSubmit={(payload, options) => {
+            keepAddItemOpen.current = !!options?.keepOpen;
+            createMut.mutate(payload, {
+              onSuccess: () => options?.onDone?.(),
+              onError: () => {
+                keepAddItemOpen.current = false;
+              },
+            });
+          }}
           onManual={() => {
             setAddItemOpen(false);
             setFormState({ type: "add", kind: "item" });

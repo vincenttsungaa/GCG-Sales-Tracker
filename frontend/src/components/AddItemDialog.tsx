@@ -44,13 +44,22 @@ const TIP_CARDS =
   "Pick the cards and set copies with − / +. A price per copy is optional: price every card and you can leave the asking price blank (it becomes their total); price only some and the rest share what's left; no card prices = the usual price per copy.";
 const TIP_ASKING =
   "Priced parts / cards add up to the total shown above — leave this blank to use it, or enter your own price: anything left goes to the unpriced items, and a lower price shows as a discount. Optional when adding to a bundle.";
+const TIP_ADD_TO_BUNDLE =
+  "Puts this item, as set up above, in the bundle, then takes you back to search for the next item. Only items added this way are in the bundle: clicking Add item lists this item on its own instead. When everything is in, list the bundle from the Bundle box at the top.";
 const TIP_BUNDLE =
   "Several products listed as one. Leave the bundle price blank to use the total of their prices, or set your own (e.g. a discount). It's needed when an item has no price of its own.";
 import { ArrowLeft, Check, Layers, Loader2, Minus, Plus, Search, X } from "lucide-react";
 
+// keepOpen: list the item but leave Add Item open (a bundle is still being built); onDone runs
+// once it has been added.
+export interface SubmitOptions {
+  keepOpen?: boolean;
+  onDone?: () => void;
+}
+
 interface AddItemDialogProps {
   onClose: () => void;
-  onSubmit: (payload: ItemPayload) => void;
+  onSubmit: (payload: ItemPayload, options?: SubmitOptions) => void;
   onManual: () => void; // fall back to the free-form item form
   pending: boolean;
 }
@@ -252,12 +261,16 @@ function ProductDetailsForm({
   onBack,
   onSubmit,
   onAddToBundle,
+  onListSolo,
+  bundleCount,
   pending,
 }: {
   product: CatalogProduct;
   onBack: () => void;
   onSubmit: (payload: ItemPayload) => void;
   onAddToBundle: (entry: BundleEntry) => void; // put this product in the bundle being built
+  onListSolo: (payload: ItemPayload) => void; // list it on its own, keeping the bundle
+  bundleCount: number; // items already in the bundle being built
   pending: boolean;
 }) {
   const [price, setPrice] = useState("");
@@ -485,9 +498,18 @@ function ProductDetailsForm({
     };
   };
 
+  // With a bundle being built, "Add item" first asks whether this item belongs in the bundle
+  // (otherwise it would be listed on its own and the bundle, not yet listed, lost).
+  const [askBundle, setAskBundle] = useState(false);
   const submit = () => {
     const payload = buildPayload();
-    if (payload) onSubmit(payload);
+    if (!payload) return;
+    if (bundleCount > 0) setAskBundle(true);
+    else onSubmit(payload);
+  };
+  const listSolo = () => {
+    const payload = buildPayload();
+    if (payload) onListSolo(payload);
   };
 
   // Bundle entry: the product with its price, and what was picked (part / cards / designs / edition).
@@ -970,16 +992,54 @@ function ProductDetailsForm({
         </p>
       )}
 
+      {askBundle && (
+        <div
+          role="alertdialog"
+          aria-labelledby="add-item-ask-bundle"
+          className="space-y-2 rounded-lg border border-amber-500/40 bg-amber-950/30 p-3"
+          data-testid="add-item-ask-bundle"
+        >
+          <p id="add-item-ask-bundle" className="text-sm text-slate-200">
+            You have a bundle in progress ({bundleCount} {bundleCount === 1 ? "item" : "items"}). Should{" "}
+            <span className="font-semibold">{product.code ?? product.name}</span> go in the bundle?
+          </p>
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <Button variant="ghost" size="sm" onClick={() => setAskBundle(false)} data-testid="add-item-ask-cancel">
+              Cancel
+            </Button>
+            <Button variant="outline" size="sm" onClick={listSolo} disabled={pending} data-testid="add-item-list-solo">
+              {pending && <Loader2 className="size-4 animate-spin" />} List it on its own (keep the bundle)
+            </Button>
+            <Button size="sm" onClick={addToBundle} disabled={pending} data-testid="add-item-ask-add-to-bundle">
+              <Layers className="size-4" /> Add to bundle
+            </Button>
+          </div>
+        </div>
+      )}
+
       <DialogFooter className="gap-2 sm:justify-between">
         <Button variant="ghost" onClick={onBack} data-testid="add-item-back">
           <ArrowLeft className="size-4" /> Choose another item
         </Button>
-        <div className="flex flex-col-reverse gap-2 sm:flex-row">
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center">
           {/* Sell several products together, each with its own price (e.g. ST09 + ST01). */}
-          <Button variant="outline" onClick={addToBundle} disabled={pending} data-testid="add-item-add-to-bundle">
-            <Layers className="size-4" /> Add to bundle
-          </Button>
-          <Button onClick={submit} disabled={pending} data-testid="add-item-submit">
+          <span className="flex items-center justify-center gap-1.5">
+            <Button
+              variant={bundleCount > 0 ? "default" : "outline"}
+              onClick={addToBundle}
+              disabled={pending}
+              data-testid="add-item-add-to-bundle"
+            >
+              <Layers className="size-4" /> {bundleCount > 0 ? `Add to bundle (${bundleCount + 1})` : "Add to bundle"}
+            </Button>
+            <InfoTip label="How Add to bundle works">{TIP_ADD_TO_BUNDLE}</InfoTip>
+          </span>
+          <Button
+            variant={bundleCount > 0 ? "outline" : "default"}
+            onClick={submit}
+            disabled={pending}
+            data-testid="add-item-submit"
+          >
             {pending && <Loader2 className="size-4 animate-spin" />} Add item
           </Button>
         </div>
@@ -1041,11 +1101,13 @@ function BundleBar({
   entries,
   onRemove,
   onList,
+  itemOpen,
   pending,
 }: {
   entries: BundleEntry[];
   onRemove: (index: number) => void;
   onList: (total: number) => void;
+  itemOpen: string | null; // the item being set up below (not in the bundle until added)
   pending: boolean;
 }) {
   // Optional price for the whole bundle; blank = the total of the item prices (when all have one).
@@ -1148,6 +1210,11 @@ function BundleBar({
           </Button>
         </div>
       </div>
+      {itemOpen && (
+        <p className="text-xs text-amber-300/90" data-testid="add-item-bundle-hint">
+          {itemOpen} isn’t in the bundle yet — click Add to bundle below to include it.
+        </p>
+      )}
     </div>
   );
 }
@@ -1182,6 +1249,7 @@ export default function AddItemDialog({ onClose, onSubmit, onManual, pending }: 
             entries={bundle}
             onRemove={(i) => setBundle((cur) => cur.filter((_, j) => j !== i))}
             onList={(total) => onSubmit(bundlePayload(bundle, total))}
+            itemOpen={product ? (product.code ?? product.name) : null}
             pending={pending}
           />
         )}
@@ -1196,6 +1264,10 @@ export default function AddItemDialog({ onClose, onSubmit, onManual, pending }: 
               setBundle((cur) => [...cur, entry]);
               setProduct(null); // back to search for the next product
             }}
+            // listed on its own while a bundle is being built: keep Add Item (and the bundle)
+            // open and go back to search
+            onListSolo={(payload) => onSubmit(payload, { keepOpen: true, onDone: () => setProduct(null) })}
+            bundleCount={bundle.length}
             pending={pending}
           />
         ) : (
