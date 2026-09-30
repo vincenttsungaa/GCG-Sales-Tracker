@@ -17,11 +17,11 @@ function StatTile({
 }) {
   return (
     <Card size="sm" className="border-slate-800/80 bg-slate-900/60">
-      <CardContent className="space-y-1 px-4 py-3">
+      <CardContent className="space-y-1 px-4 py-3 lg:space-y-0 lg:py-2">
         <p className="font-mono text-xs uppercase tracking-wider text-slate-400">{label}</p>
         <p
           data-testid={testId}
-          className={`font-mono text-2xl font-semibold tabular-nums ${accent}`}
+          className={`font-mono text-2xl font-semibold tabular-nums lg:text-lg ${accent}`}
         >
           {value}
         </p>
@@ -45,7 +45,7 @@ export default function StatsStrip({ items }: { items: CollectionItem[] }) {
   const profit = sold.reduce((sum, i) => sum + (saleProfit(i) ?? 0), 0);
 
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:grid-cols-1 lg:gap-2">
       <StatTile
         testId="stat-collection-value"
         label="Collection Value"

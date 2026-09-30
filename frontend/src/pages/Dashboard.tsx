@@ -14,14 +14,16 @@ import AddCardDialog from "@/components/AddCardDialog";
 import AddItemDialog from "@/components/AddItemDialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Archive,
+  ArrowDownUp,
   CheckSquare,
   Layers,
   Package,
   Plus,
   RefreshCw,
-  Rocket,
+  Sparkle,
   Table2,
   LayoutGrid,
   Trash2,
@@ -38,11 +40,43 @@ const TABS: { id: TabId; label: string; testId: string }[] = [
 
 const PAGE_SIZE = 10;
 
+// Sort: newest / oldest first, or one category of item first (then newest).
+type SortId = "newest" | "oldest" | "starter deck" | "accessories" | "premium bandai" | "other";
+const SORT_OPTIONS: { value: SortId; label: string }[] = [
+  { value: "newest", label: "Newest" },
+  { value: "oldest", label: "Oldest" },
+  { value: "starter deck", label: "Starter decks first" },
+  { value: "accessories", label: "Accessories first" },
+  { value: "premium bandai", label: "Premium Bandai first" },
+  { value: "other", label: "Others first" },
+];
+const SORT_KEY = "cardstakk:sort";
+function savedSort(): SortId {
+  try {
+    const v = localStorage.getItem(SORT_KEY);
+    return SORT_OPTIONS.some((o) => o.value === v) ? (v as SortId) : "newest";
+  } catch {
+    return "newest";
+  }
+}
+// "Others": items in the Other category, and cards.
+const inSortGroup = (item: CollectionItem, sort: SortId) =>
+  sort === "other" ? item.kind === "card" || item.category === "other" || !item.category : item.category === sort;
+
 export default function Dashboard() {
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<TabId>("all");
   const [view, setView] = useState<"grid" | "table">("grid");
   const [filters, setFilters] = useState<InventoryFilters>(EMPTY_FILTERS);
+  const [sort, setSortState] = useState<SortId>(savedSort);
+  const setSort = (s: SortId) => {
+    setSortState(s);
+    try {
+      localStorage.setItem(SORT_KEY, s);
+    } catch {
+      /* storage unavailable: the choice just isn't remembered */
+    }
+  };
 
   // Buyer filter only applies on the Pending and Sold tabs — clear it elsewhere.
   const showBuyer = tab === "pending" || tab === "archive";
@@ -153,7 +187,7 @@ export default function Dashboard() {
     );
     const q = filters.search.trim().toLowerCase();
     const buyer = filters.buyer.trim().toLowerCase();
-    return base.filter((item) => {
+    const filtered = base.filter((item) => {
       if (q && !item.name.toLowerCase().includes(q)) return false;
       if (filters.color !== "all" && item.color !== filters.color) return false;
       if (filters.cardType !== "all" && item.card_type !== filters.cardType) return false;
@@ -163,12 +197,21 @@ export default function Dashboard() {
       if (filters.dateTo && (!item.deal_date || item.deal_date > filters.dateTo)) return false;
       return true;
     });
-  }, [items, tab, filters]);
+    const time = (item: CollectionItem) => Date.parse(item.created_at) || 0;
+    return filtered.sort((a, b) => {
+      if (sort !== "newest" && sort !== "oldest") {
+        const ga = inSortGroup(a, sort) ? 0 : 1;
+        const gb = inSortGroup(b, sort) ? 0 : 1;
+        if (ga !== gb) return ga - gb;
+      }
+      return sort === "oldest" ? time(a) - time(b) : time(b) - time(a);
+    });
+  }, [items, tab, filters, sort]);
 
   // Pagination — 10 per page. Back to page 1 whenever the tab or filters change.
   useEffect(() => {
     setPage(1);
-  }, [tab, filters]);
+  }, [tab, filters, sort]);
   const pageCount = Math.max(1, Math.ceil(visible.length / PAGE_SIZE));
   const currentPage = Math.min(page, pageCount); // e.g. after deleting the last item on the last page
   const pageItems = visible.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
@@ -233,16 +276,16 @@ export default function Dashboard() {
     <div data-testid="dashboard" className="min-h-svh bg-[#0B0F17] text-slate-200">
       {/* HUD top bar */}
       <header className="sticky top-0 z-40 border-b border-slate-800/80 bg-[#0B0F17]/90 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center gap-2 px-4 py-3 sm:gap-3 sm:px-6">
+        <div className="mx-auto flex max-w-[1600px] items-center gap-2 px-4 py-3 sm:gap-3 sm:px-6">
           <div className="flex size-9 shrink-0 items-center justify-center rounded-md border border-sky-500/40 bg-sky-950/60 text-sky-300">
-            <Rocket className="size-5" aria-hidden />
+            <Sparkle className="size-5 fill-current" aria-hidden />
           </div>
           <div className="mr-auto min-w-0">
-            <h1 className="truncate font-heading text-base font-bold uppercase tracking-tight text-slate-100 sm:text-lg">
-              Gundam Collection
+            <h1 className="truncate font-heading text-base font-bold tracking-tight text-slate-100 sm:text-lg">
+              CardStakk
             </h1>
             <p className="hidden font-mono text-xs uppercase tracking-wider text-slate-500 sm:block">
-              Personal inventory &amp; sales tracker
+              Gundam Card Game sales tracker
             </p>
           </div>
           <Button
@@ -265,10 +308,26 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl space-y-4 px-4 py-4 sm:space-y-5 sm:px-6 sm:py-6">
-        <StatsStrip items={items} />
+      {/* Wide screens: stats and filters in a sidebar on the left, the listings on the right.
+          Narrower screens: one column (stats, tabs, filters, listings) — the sidebar and the
+          right column use display:contents there, and `order` keeps that sequence. */}
+      <main className="mx-auto flex max-w-[1600px] flex-col gap-4 px-4 py-4 sm:gap-5 sm:px-6 sm:py-6 lg:flex-row lg:items-start lg:gap-6">
+        {/* Sidebar stays put while the listings scroll: it sticks at exactly where it starts
+            (header 69px + the page's 24px top padding), so it doesn't shift on scroll. */}
+        <aside
+          data-testid="sidebar"
+          className="contents lg:sticky lg:top-[93px] lg:flex lg:max-h-[calc(100svh-109px)] lg:w-72 lg:shrink-0 lg:flex-col lg:gap-3 lg:overflow-y-auto lg:[scrollbar-width:thin]"
+        >
+          <div className="order-1 lg:order-none">
+            <StatsStrip items={items} />
+          </div>
+          <div className="order-3 lg:order-none">
+            <FilterBar filters={filters} onChange={setFilters} showBuyer={showBuyer} />
+          </div>
+        </aside>
 
-        <div className="flex items-center justify-between gap-3">
+        <div className="contents lg:flex lg:min-w-0 lg:flex-1 lg:flex-col lg:gap-5">
+        <div className="order-2 flex items-center justify-between gap-3 lg:order-none">
           {/* Tabs scroll sideways on narrow screens instead of overflowing the page. */}
           <div className="-ml-4 min-w-0 flex-1 overflow-x-auto pl-4 [scrollbar-width:none] sm:ml-0 sm:pl-0">
           <Tabs value={tab} onValueChange={(value: string) => setTab(value as TabId)}>
@@ -288,6 +347,24 @@ export default function Dashboard() {
             </TabsList>
           </Tabs>
           </div>
+          <Select value={sort} onValueChange={(value) => value && setSort(value as SortId)} items={SORT_OPTIONS}>
+            <SelectTrigger
+              size="sm"
+              data-testid="sort-select"
+              aria-label="Sort listings"
+              className="h-8 w-auto shrink-0 gap-1.5 bg-slate-950/60"
+            >
+              <ArrowDownUp className="size-3.5 text-slate-400" aria-hidden />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {SORT_OPTIONS.map((o) => (
+                <SelectItem key={o.value} value={o.value} data-testid={`sort-${o.value.replace(/\s+/g, "-")}`}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Button
             size="sm"
             variant={selecting ? "secondary" : "outline"}
@@ -322,8 +399,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <FilterBar filters={filters} onChange={setFilters} showBuyer={showBuyer} />
-
+        <div className="order-4 min-w-0 space-y-4 sm:space-y-5 lg:order-none">
         {/* Select mode: tick listings, then delete them together */}
         {selecting && (
           <div
@@ -377,7 +453,7 @@ export default function Dashboard() {
             </Button>
           </div>
         ) : itemsQuery.isLoading ? (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5" data-testid="loading-skeleton">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5" data-testid="loading-skeleton">
             {[0, 1, 2, 3, 4].map((n) => (
               <div key={n} className="aspect-[63/110] animate-pulse rounded-xl border border-slate-800/80 bg-slate-900/60" />
             ))}
@@ -424,7 +500,7 @@ export default function Dashboard() {
             {view === "table" ? (
               <ItemTable items={pageItems} {...actionProps} />
             ) : (
-              <div data-testid="item-grid" className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              <div data-testid="item-grid" className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
                 {pageItems.map((item) => (
                   <ItemCard key={item.id} item={item} {...actionProps} />
                 ))}
@@ -441,6 +517,8 @@ export default function Dashboard() {
             )}
           </div>
         )}
+        </div>
+        </div>
       </main>
 
       {formState && (
