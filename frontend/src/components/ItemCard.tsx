@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
-import { StatusBadge, rarityClass } from "@/components/badges";
+import { StatusBadge, categoryClass, rarityClass } from "@/components/badges";
 import { COLOR_DOT_CLASS, formatAud, formatDate } from "@/lib/format";
 import {
   bundleLineTotal,
@@ -198,7 +198,14 @@ export default function ItemCard({ item, ...actions }: ItemCardProps) {
             {item.rarity}
           </span>
         ) : (
-          <span className="inline-flex size-6 items-center justify-center rounded-md border border-slate-700 text-slate-500">
+          // items: the box icon coloured by category, like the rarity chips on cards
+          <span
+            data-testid={`category-chip-${item.category ?? "none"}`}
+            title={item.kind === "card" ? "Card" : labelize(item.category ?? "item")}
+            className={`inline-flex size-6 items-center justify-center rounded-md border ${
+              item.kind === "card" ? "border-slate-700 text-slate-500" : categoryClass(item)
+            }`}
+          >
             {item.kind === "card" ? <Layers className="size-3.5" aria-hidden /> : <Package className="size-3.5" aria-hidden />}
           </span>
         )}

@@ -44,6 +44,23 @@ export function rarityClass(rarity: Rarity): string {
   return "border-slate-500/50 bg-slate-800/70 text-slate-200";
 }
 
+// Item chips (the box icon on item tiles): one colour per category, like the rarity chips on cards.
+// Bundles of several products get their own colour.
+// oxlint-disable-next-line react/only-export-components -- shared colour map for category chips
+export function categoryClass(item: { category: string | null; bundle_items?: unknown[] | null }): string {
+  if ((item.bundle_items?.length ?? 0) > 1) return "border-teal-400/60 bg-teal-950/70 text-teal-200";
+  switch (item.category) {
+    case "starter deck":
+      return "border-emerald-400/60 bg-emerald-950/70 text-emerald-200";
+    case "accessories":
+      return "border-violet-400/60 bg-violet-950/70 text-violet-200";
+    case "premium bandai":
+      return "border-rose-400/60 bg-rose-950/70 text-rose-200";
+    default:
+      return "border-slate-500/50 bg-slate-800/70 text-slate-200";
+  }
+}
+
 export function RarityBadge({ rarity }: { rarity: Rarity | null }) {
   if (!rarity) return <span className="text-sm text-slate-500">—</span>;
   return (
