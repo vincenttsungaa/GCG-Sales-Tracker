@@ -18,11 +18,12 @@ import {
 } from "@/lib/types";
 import { PriceLines } from "@/components/PriceLines";
 import { OverflowTip } from "@/components/InfoTip";
-import { CalendarDays, ChevronDown, DollarSign, Layers, Package, Pencil, Tag, Trash2, Undo2, User } from "lucide-react";
+import { CalendarDays, ChevronDown, DollarSign, Layers, Package, Lock, Pencil, Tag, Trash2, Undo2, User } from "lucide-react";
 
 export interface ItemActionProps {
   onEdit: (item: CollectionItem) => void;
   onMarkPending: (item: CollectionItem) => void;
+  onHold: (item: CollectionItem) => void; // move to storage (kept, not for sale for now)
   onSell: (item: CollectionItem) => void;
   onRestore: (item: CollectionItem) => void;
   onDelete: (item: CollectionItem) => void;
@@ -451,7 +452,20 @@ export default function ItemCard({ item, ...actions }: ItemCardProps) {
             <Tag className="size-4" />
           </Button>
         )}
-        {item.status === "pending" && (
+        {item.status === "for_sale" && (
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label={`Move ${item.name} to storage`}
+            title="Move to storage"
+            data-testid={`item-hold-${item.id}`}
+            onClick={() => actions.onHold(item)}
+            className="text-violet-300 hover:text-violet-200"
+          >
+            <Lock className="size-4" />
+          </Button>
+        )}
+        {(item.status === "pending" || item.status === "on_hold") && (
           <Button
             variant="ghost"
             size="icon-sm"
@@ -463,7 +477,8 @@ export default function ItemCard({ item, ...actions }: ItemCardProps) {
             <Undo2 className="size-4" />
           </Button>
         )}
-        {!isSold && (
+        {/* in storage: only Back to For Sale, Edit and Delete */}
+        {!isSold && item.status !== "on_hold" && (
           <Button
             variant="ghost"
             size="icon-sm"

@@ -13,7 +13,7 @@ import { ColorBadge, KindBadge, RarityBadge, StatusBadge } from "@/components/ba
 import { COLOR_TRIM_CLASS, formatAud, formatDate } from "@/lib/format";
 import { bundleLineTotal, cardCopies, saleProfit, saleTotal, type CollectionItem } from "@/lib/types";
 import { useMediaQuery } from "@/lib/useMediaQuery";
-import { CalendarDays, DollarSign, Pencil, Tag, Trash2, Undo2, User } from "lucide-react";
+import { CalendarDays, DollarSign, Lock, Pencil, Tag, Trash2, Undo2, User } from "lucide-react";
 import { SelectBox, selectOnClick, type ItemActionProps } from "@/components/ItemCard";
 
 interface ItemTableProps extends ItemActionProps {
@@ -74,7 +74,8 @@ function IconActions({ item, actions }: { item: CollectionItem; actions: Actions
   const isSold = item.status === "sold";
   return (
     <div className="flex items-center justify-end gap-1">
-      {!isSold && (
+      {/* in storage: only Back to For Sale, Edit and Delete */}
+      {!isSold && item.status !== "on_hold" && (
         <>
           {item.status === "for_sale" && (
             <Button
@@ -101,7 +102,20 @@ function IconActions({ item, actions }: { item: CollectionItem; actions: Actions
           </Button>
         </>
       )}
-      {item.status === "pending" && (
+      {item.status === "for_sale" && (
+        <Button
+          variant="ghost"
+          size="icon-xs"
+          aria-label={`Move ${item.name} to storage`}
+          title="Move to storage"
+          data-testid={`item-hold-${item.id}`}
+          onClick={() => actions.onHold(item)}
+          className="text-violet-300 hover:text-violet-200"
+        >
+          <Lock className="size-4" />
+        </Button>
+      )}
+      {(item.status === "pending" || item.status === "on_hold") && (
         <Button
           variant="ghost"
           size="icon-xs"
@@ -304,7 +318,19 @@ function TouchActions({ item, actions }: { item: CollectionItem; actions: Action
             <Tag className="size-4" /> Pending
           </Button>
         )}
-        {item.status === "pending" && (
+        {item.status === "for_sale" && (
+          <Button
+            size="sm"
+            variant="outline"
+            className={btn}
+            aria-label={`Move ${item.name} to storage`}
+            data-testid={`item-hold-${item.id}`}
+            onClick={() => actions.onHold(item)}
+          >
+            <Lock className="size-4" /> Storage
+          </Button>
+        )}
+        {(item.status === "pending" || item.status === "on_hold") && (
           <Button
             size="sm"
             variant="outline"
@@ -316,7 +342,7 @@ function TouchActions({ item, actions }: { item: CollectionItem; actions: Action
             <Undo2 className="size-4" /> For Sale
           </Button>
         )}
-        {!isSold && (
+        {!isSold && item.status !== "on_hold" && (
           <Button
             size="sm"
             className={btn}

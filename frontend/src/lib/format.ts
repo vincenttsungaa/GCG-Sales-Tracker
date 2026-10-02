@@ -40,5 +40,6 @@ export const COLOR_TRIM_CLASS: Record<GundamColor, string> = {
 export const STATUS_BADGE_CLASS: Record<ItemStatus, string> = {
   for_sale: "bg-blue-900/70 text-blue-100 border-blue-500/40",
   pending: "bg-amber-900/70 text-amber-100 border-amber-500/40",
+  on_hold: "bg-violet-900/70 text-violet-100 border-violet-500/40",
   sold: "bg-green-900/70 text-green-100 border-green-500/40",
 };

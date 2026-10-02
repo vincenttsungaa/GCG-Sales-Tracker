@@ -7,6 +7,7 @@ export function StatusBadge({ status }: { status: ItemStatus }) {
   const labels: Record<ItemStatus, string> = {
     for_sale: "For Sale",
     pending: "Pending",
+    on_hold: "Storage",
     sold: "Sold",
   };
   return (

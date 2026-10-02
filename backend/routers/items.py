@@ -1,9 +1,13 @@
 """Collection inventory CRUD + sale-lifecycle transitions."""
 
+import asyncio
+import smtplib
 from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field
+from fastapi.responses import Response
+from pydantic import BaseModel, EmailStr, Field
+from lib.export import XLSX_MIME, EmailNotConfigured, build_workbook, export_filename, send_workbook
 from models.item import (
     CollectionItem,
     ItemCreate,
@@ -115,6 +119,13 @@ async def update_status(item_id: str, input: StatusUpdate):
                 "sale_price": None,
                 "sold_at": None,
             }
+    elif input.status == "on_hold":
+        # Held back from sale (e.g. reserved, or keeping it for now) — no deal; an optional
+        # name of who it's held for is kept as the buyer.
+        update["buyer_name"] = input.buyer_name
+        update["deal_date"] = None
+        update["sale_price"] = None
+        update["sold_at"] = None
     else:  # for_sale — (re)listing or restoring clears the deal record
         update["buyer_name"] = None
         update["deal_date"] = None
@@ -145,3 +156,51 @@ async def bulk_delete_items(body: BulkDelete):
     """Delete several listings at once (the dashboard's Select mode); returns how many went."""
     result = await db.items.delete_many({"id": {"$in": list(dict.fromkeys(body.ids))}})
     return {"deleted": result.deleted_count}
+
+
+# ---- export: an editable Excel workbook of the listings ---------------------------------
+
+
+class ExportRequest(BaseModel):
+    # the listings to export, in this order (the dashboard sends what's shown); empty = all
+    ids: list[str] = Field(default_factory=list, max_length=5000)
+
+
+class EmailExportRequest(ExportRequest):
+    to: EmailStr
+    note: str | None = Field(default=None, max_length=2000)
+
+
+async def _export_items(ids: list[str]) -> list[dict]:
+    if not ids:
+        return await db.items.find().sort("created_at", -1).to_list(5000)
+    docs = await db.items.find({"id": {"$in": ids}}).to_list(5000)
+    order = {item_id: i for i, item_id in enumerate(ids)}
+    return sorted((normalise_doc(d) for d in docs), key=lambda d: order.get(d["id"], len(order)))
+
+
+@router.post("/items/export")
+async def export_items(body: ExportRequest):
+    """The listings as an .xlsx download."""
+    items = await _export_items(body.ids)
+    data = build_workbook([normalise_doc(dict(d)) for d in items])
+    name = export_filename()
+    return Response(
+        content=data,
+        media_type=XLSX_MIME,
+        headers={"Content-Disposition": f'attachment; filename="{name}"'},
+    )
+
+
+@router.post("/items/export/email")
+async def email_export(body: EmailExportRequest):
+    """Email the .xlsx to an address typed in by the user (SMTP settings in backend/.env)."""
+    items = await _export_items(body.ids)
+    data = build_workbook([normalise_doc(dict(d)) for d in items])
+    try:
+        await asyncio.to_thread(send_workbook, body.to, data, export_filename(), len(items), body.note)
+    except EmailNotConfigured as e:
+        raise HTTPException(status_code=503, detail=str(e)) from e
+    except (smtplib.SMTPException, OSError) as e:
+        raise HTTPException(status_code=502, detail=f"Could not send the email: {e}") from e
+    return {"sent": True, "to": body.to, "count": len(items)}

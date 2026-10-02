@@ -8,7 +8,7 @@ from uuid import uuid4
 from pydantic import BaseModel, Field
 
 Kind = Literal["card", "item"]
-Status = Literal["for_sale", "pending", "sold"]
+Status = Literal["for_sale", "pending", "on_hold", "sold"]
 
 GundamColor = Literal["red", "white", "blue", "green", "purple"]
 CardType = Literal[

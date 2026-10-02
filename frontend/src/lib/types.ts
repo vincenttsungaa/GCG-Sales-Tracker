@@ -2,7 +2,7 @@
 // nothing infers across the HTTP boundary, keep both sides in sync in one edit.
 
 export type ItemKind = "card" | "item";
-export type ItemStatus = "for_sale" | "pending" | "sold";
+export type ItemStatus = "for_sale" | "pending" | "on_hold" | "sold";
 
 export const GUNDAM_COLORS = ["red", "white", "blue", "green", "purple"] as const;
 export type GundamColor = (typeof GUNDAM_COLORS)[number];
@@ -278,7 +278,7 @@ export interface StatusPayload {
   quantity_sold?: number | null;
 }
 
-export type TabId = "all" | "for_sale" | "pending" | "archive";
+export type TabId = "all" | "for_sale" | "pending" | "on_hold" | "archive";
 
 export function labelize(value: string): string {
   return value.replace(/\b\w/g, (c) => c.toUpperCase());
