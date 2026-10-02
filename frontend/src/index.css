@@ -205,12 +205,6 @@
   color: #f0f1f3 !important;
 }
 [data-testid="dashboard"] > header p { color: var(--rt-label) !important; }
-[data-testid="dashboard"] > header .size-9 {
-  background: var(--rt-slate) !important;
-  border: 2px solid var(--rt-amber) !important;
-  color: #fff !important;
-  clip-path: polygon(0 0, 70% 0, 100% 30%, 100% 100%, 30% 100%, 0 70%);
-}
 [data-testid="add-card-button"] {
   background: var(--rt-silver) !important;
   color: #2a2d31 !important;
@@ -347,3 +341,9 @@
 [role="dialog"] [data-slot="dialog-title"] { color: #f0f1f3; letter-spacing: 0.1em; }
 [role="dialog"] { border: 1px solid var(--rt-line); box-shadow: inset 0 3px 0 var(--rt-slate), 0 24px 60px -20px rgba(0, 0, 0, 0.7); }
 [role="dialog"] [data-testid$="-submit"] { box-shadow: inset 0 -3px 0 var(--rt-amber); }
+
+/* Keep the page from shifting sideways when switching tabs: always reserve room for the
+   scroll bar, even when a short list (e.g. one Pending item) doesn't need one. */
+html {
+  scrollbar-gutter: stable;
+}
