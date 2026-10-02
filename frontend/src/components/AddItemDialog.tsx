@@ -48,7 +48,7 @@ const TIP_ADD_TO_BUNDLE =
   "Puts this item, as set up above, in the bundle, then takes you back to search for the next item. Only items added this way are in the bundle: clicking Add item lists this item on its own instead. When everything is in, list the bundle from the Bundle box at the top.";
 const TIP_BUNDLE =
   "Several products listed as one. Leave the bundle price blank to use the total of their prices, or set your own (e.g. a discount). It's needed when an item has no price of its own.";
-import { ArrowLeft, Check, Layers, Loader2, Minus, Plus, Search, X } from "lucide-react";
+import { ArrowLeft, Check, Layers, Loader2, Minus, Package, Plus, Search, X } from "lucide-react";
 
 // keepOpen: list the item but leave Add Item open (a bundle is still being built); onDone runs
 // once it has been added.
@@ -60,7 +60,7 @@ export interface SubmitOptions {
 interface AddItemDialogProps {
   onClose: () => void;
   onSubmit: (payload: ItemPayload, options?: SubmitOptions) => void;
-  onManual: () => void; // fall back to the free-form item form
+  onManual?: () => void; // no longer used: custom items are entered inside Add Item
   pending: boolean;
 }
 
@@ -1048,7 +1048,419 @@ function ProductDetailsForm({
   );
 }
 
-/* ---------------- dialog ---------------- */
+/* ---------------- custom item (not in the product database) ---------------- */
+
+// A photo chosen from the computer, shrunk to at most 800px and stored with the listing.
+function readPhoto(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Could not read the photo."));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error("That file isn't a photo the browser can open."));
+      img.onload = () => {
+        const scale = Math.min(1, 800 / Math.max(img.width, img.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return reject(new Error("Could not read the photo."));
+        ctx.fillStyle = "#ffffff"; // transparent PNGs get a white backdrop
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", 0.85));
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+const CATEGORY_LABELS: Record<ItemCategory, string> = {
+  "starter deck": "Starter Deck",
+  accessories: "Accessories",
+  "premium bandai": "Premium Bandai",
+  other: "Other",
+};
+
+// An item that isn't in the product database: its own name, category, code, photo and details.
+// Lists on its own or goes into the bundle being built, like a picked product.
+function CustomItemForm({
+  onBack,
+  onSubmit,
+  onAddToBundle,
+  onListSolo,
+  bundleCount,
+  pending,
+}: {
+  onBack: () => void;
+  onSubmit: (payload: ItemPayload) => void;
+  onAddToBundle: (entry: BundleEntry) => void;
+  onListSolo: (payload: ItemPayload) => void;
+  bundleCount: number;
+  pending: boolean;
+}) {
+  const [name, setName] = useState("");
+  const [category, setCategory] = useState<ItemCategory>("other");
+  const [code, setCode] = useState("");
+  const [edition, setEdition] = useState("");
+  const [part, setPart] = useState("");
+  const [condition, setCondition] = useState("");
+  const [image, setImage] = useState("");
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const [price, setPrice] = useState("");
+  const [purchase, setPurchase] = useState("");
+  const [quantity, setQuantity] = useState("1");
+  const [notes, setNotes] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [askBundle, setAskBundle] = useState(false);
+
+  const pickPhoto = async (file: File | undefined) => {
+    if (!file) return;
+    setPhotoBusy(true);
+    setError(null);
+    try {
+      setImage(await readPhoto(file));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not read the photo.");
+    } finally {
+      setPhotoBusy(false);
+    }
+  };
+
+  // allowNoPrice: a bundle entry may be priced with the bundle as a whole.
+  const buildPayload = (allowNoPrice = false): ItemPayload | null => {
+    if (!name.trim()) {
+      setError("Give the item a name.");
+      return null;
+    }
+    const priceBlank = price.trim() === "";
+    const priceNum = priceBlank ? 0 : Number(price);
+    if (Number.isNaN(priceNum) || priceNum < 0 || (priceBlank && !allowNoPrice)) {
+      setError("Enter an asking price of 0 or more.");
+      return null;
+    }
+    const purchaseNum = purchase.trim() === "" ? null : Number(purchase);
+    if (purchaseNum != null && (Number.isNaN(purchaseNum) || purchaseNum < 0)) {
+      setError("Purchase price must be 0 or more.");
+      return null;
+    }
+    const qtyNum = Number(quantity);
+    if (!Number.isInteger(qtyNum) || qtyNum < 1) {
+      setError("Quantity must be a whole number of 1 or more.");
+      return null;
+    }
+    setError(null);
+    return {
+      kind: "item",
+      name: name.trim(),
+      color: null,
+      card_type: null,
+      rarity: null,
+      category,
+      product_id: null,
+      set_code: code.trim() || null,
+      set_name: null,
+      edition: edition.trim() || null,
+      part: part.trim() || null,
+      price: priceNum,
+      purchase_price: purchaseNum,
+      image_url: image.trim() || null,
+      quantity: qtyNum,
+      condition: condition.trim() || null,
+      notes: notes.trim() || null,
+    };
+  };
+
+  const submit = () => {
+    const payload = buildPayload();
+    if (!payload) return;
+    if (bundleCount > 0) setAskBundle(true);
+    else onSubmit(payload);
+  };
+  const listSolo = () => {
+    const payload = buildPayload();
+    if (payload) onListSolo(payload);
+  };
+  const addToBundle = () => {
+    const payload = buildPayload(true);
+    if (!payload) return;
+    onAddToBundle({
+      name: payload.name,
+      product_id: null,
+      category,
+      code: payload.set_code ?? null,
+      image_url: payload.image_url,
+      detail: [payload.part, payload.edition].filter(Boolean).join(" · ") || null,
+      quantity: payload.quantity,
+      price: price.trim() === "" ? null : payload.price,
+      purchase_price: payload.purchase_price,
+      card_quantities: {},
+      card_prices: {},
+      parts: [],
+      part_prices: {},
+    });
+  };
+
+  return (
+    <div className="flex flex-col gap-4" data-testid="add-item-custom">
+      <div className="flex gap-4">
+        {/* photo: preview, upload from the computer, or paste a link */}
+        <div className="flex w-28 shrink-0 flex-col gap-2 sm:w-32">
+          <div className="flex aspect-square items-center justify-center overflow-hidden rounded-md border border-slate-800 bg-slate-950/60">
+            {image ? (
+              <img src={image} alt="" className="size-full object-contain" data-testid="add-item-custom-preview" />
+            ) : (
+              <Package className="size-8 text-slate-600" aria-hidden />
+            )}
+          </div>
+          <label className="cursor-pointer rounded-md border border-slate-700 px-2 py-1.5 text-center text-xs text-slate-300 hover:border-slate-500">
+            {photoBusy ? "Reading…" : image ? "Change photo" : "Upload photo"}
+            <input
+              type="file"
+              accept="image/*"
+              className="sr-only"
+              data-testid="add-item-custom-photo"
+              onChange={(e) => {
+                void pickPhoto(e.target.files?.[0]);
+                e.target.value = "";
+              }}
+            />
+          </label>
+          {image && (
+            <button type="button" className="text-xs text-slate-500 hover:text-slate-300" onClick={() => setImage("")}>
+              Remove photo
+            </button>
+          )}
+        </div>
+
+        <div className="flex min-w-0 flex-1 flex-col gap-3">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="custom-name" className={LABEL}>
+              Item name
+            </Label>
+            <Input
+              id="custom-name"
+              data-testid="add-item-custom-name"
+              placeholder="e.g. Tournament playmat — Store championship"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              autoFocus
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <span className={LABEL} id="custom-category-label">
+              Category
+            </span>
+            <div role="radiogroup" aria-labelledby="custom-category-label" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {ITEM_CATEGORIES.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  role="radio"
+                  aria-checked={category === c}
+                  data-testid={`add-item-custom-category-${c.replace(/\s+/g, "-")}`}
+                  onClick={() => setCategory(c)}
+                  className={`rounded-md border px-2 py-1.5 text-sm transition-colors ${
+                    category === c
+                      ? "border-sky-500 bg-sky-950/50 text-slate-100"
+                      : "border-slate-700 bg-slate-950/40 text-slate-300 hover:border-slate-500"
+                  }`}
+                >
+                  {CATEGORY_LABELS[c]}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="custom-code" className={LABEL}>
+                Code <span className="normal-case text-slate-500">(optional)</span>
+              </Label>
+              <Input
+                id="custom-code"
+                data-testid="add-item-custom-code"
+                placeholder="e.g. PR-01"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="custom-edition" className={LABEL}>
+                Edition / variant <span className="normal-case text-slate-500">(optional)</span>
+              </Label>
+              <Input
+                id="custom-edition"
+                data-testid="add-item-custom-edition"
+                placeholder="e.g. Japanese, Limited"
+                value={edition}
+                onChange={(e) => setEdition(e.target.value)}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="custom-part" className={LABEL}>
+            Part / contents <span className="normal-case text-slate-500">(optional)</span>
+          </Label>
+          <Input
+            id="custom-part"
+            data-testid="add-item-custom-part"
+            placeholder="e.g. Playmat only"
+            value={part}
+            onChange={(e) => setPart(e.target.value)}
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="custom-condition" className={LABEL}>
+            Condition <span className="normal-case text-slate-500">(optional)</span>
+          </Label>
+          <Input
+            id="custom-condition"
+            data-testid="add-item-custom-condition"
+            placeholder="e.g. Sealed, Opened, Like new"
+            value={condition}
+            onChange={(e) => setCondition(e.target.value)}
+          />
+        </div>
+        <div className="col-span-2 flex flex-col gap-1.5">
+          <Label htmlFor="custom-image" className={LABEL}>
+            Photo link <span className="normal-case text-slate-500">(optional — or upload one above)</span>
+          </Label>
+          <Input
+            id="custom-image"
+            data-testid="add-item-custom-image-url"
+            placeholder="https://…"
+            value={image.startsWith("data:") ? "" : image}
+            onChange={(e) => setImage(e.target.value)}
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="custom-price" className={LABEL}>
+            Asking price (AUD)
+          </Label>
+          <Input
+            id="custom-price"
+            data-testid="add-item-custom-price"
+            type="number"
+            inputMode="decimal"
+            min="0"
+            step="0.01"
+            placeholder="0.00"
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+          />
+          <span className="text-[0.7rem] text-slate-500">Optional when adding to a bundle.</span>
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="custom-purchase" className={LABEL}>
+            Purchase price (AUD)
+          </Label>
+          <Input
+            id="custom-purchase"
+            data-testid="add-item-custom-purchase"
+            type="number"
+            inputMode="decimal"
+            min="0"
+            step="0.01"
+            placeholder="What you paid"
+            value={purchase}
+            onChange={(e) => setPurchase(e.target.value)}
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="custom-qty" className={LABEL}>
+            Qty
+          </Label>
+          <Input
+            id="custom-qty"
+            data-testid="add-item-custom-quantity"
+            type="number"
+            inputMode="numeric"
+            min="1"
+            step="1"
+            value={quantity}
+            onChange={(e) => setQuantity(e.target.value)}
+          />
+        </div>
+        <div className="col-span-2 flex flex-col gap-1.5">
+          <Label htmlFor="custom-notes" className={LABEL}>
+            Notes
+          </Label>
+          <Textarea
+            id="custom-notes"
+            data-testid="add-item-custom-notes"
+            rows={3}
+            placeholder="e.g. event exclusive, small dent on the box"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+          />
+        </div>
+      </div>
+
+      {error && (
+        <p className="text-sm text-red-400" role="alert">
+          {error}
+        </p>
+      )}
+
+      {askBundle && (
+        <div
+          role="alertdialog"
+          aria-labelledby="custom-ask-bundle"
+          className="space-y-2 rounded-lg border border-amber-500/40 bg-amber-950/30 p-3"
+          data-testid="add-item-ask-bundle"
+        >
+          <p id="custom-ask-bundle" className="text-sm text-slate-200">
+            You have a bundle in progress ({bundleCount} {bundleCount === 1 ? "item" : "items"}). Should{" "}
+            <span className="font-semibold">{code.trim() || name.trim()}</span> go in the bundle?
+          </p>
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <Button variant="ghost" size="sm" onClick={() => setAskBundle(false)}>
+              Cancel
+            </Button>
+            <Button variant="outline" size="sm" onClick={listSolo} disabled={pending}>
+              {pending && <Loader2 className="size-4 animate-spin" />} List it on its own (keep the bundle)
+            </Button>
+            <Button size="sm" onClick={addToBundle} disabled={pending}>
+              <Layers className="size-4" /> Add to bundle
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <DialogFooter className="gap-2 sm:justify-between">
+        <Button variant="ghost" onClick={onBack} data-testid="add-item-custom-back">
+          <ArrowLeft className="size-4" /> Back to search
+        </Button>
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center">
+          <span className="flex items-center justify-center gap-1.5">
+            <Button
+              variant={bundleCount > 0 ? "default" : "outline"}
+              onClick={addToBundle}
+              disabled={pending || photoBusy}
+              data-testid="add-item-custom-add-to-bundle"
+            >
+              <Layers className="size-4" /> {bundleCount > 0 ? `Add to bundle (${bundleCount + 1})` : "Add to bundle"}
+            </Button>
+            <InfoTip label="How Add to bundle works">{TIP_ADD_TO_BUNDLE}</InfoTip>
+          </span>
+          <Button
+            variant={bundleCount > 0 ? "outline" : "default"}
+            onClick={submit}
+            disabled={pending || photoBusy}
+            data-testid="add-item-custom-submit"
+          >
+            {pending && <Loader2 className="size-4 animate-spin" />} Add item
+          </Button>
+        </div>
+      </DialogFooter>
+    </div>
+  );
+}
 
 /* ---------------- bundle of several products ---------------- */
 
@@ -1221,8 +1633,10 @@ function BundleBar({
 
 /* ---------------- dialog ---------------- */
 
-export default function AddItemDialog({ onClose, onSubmit, onManual, pending }: AddItemDialogProps) {
+export default function AddItemDialog({ onClose, onSubmit, pending }: AddItemDialogProps) {
   const [product, setProduct] = useState<CatalogProduct | null>(null);
+  // "Custom item": something not in the product database, entered by hand.
+  const [custom, setCustom] = useState(false);
   // Products put in a bundle so far (each with its price); listed together as one item.
   const [bundle, setBundle] = useState<BundleEntry[]>([]);
 
@@ -1236,7 +1650,9 @@ export default function AddItemDialog({ onClose, onSubmit, onManual, pending }: 
         <DialogHeader>
           <DialogTitle className="font-heading uppercase tracking-tight">Add Item</DialogTitle>
           <DialogDescription>
-            {product
+            {custom
+              ? "Enter the item's details yourself — for anything that isn't in the product database."
+              : product
               ? "Set your asking price and details — add it on its own, or add it to a bundle with other items."
               : bundle.length > 0
                 ? "Pick the next item for the bundle, or list the bundle."
@@ -1249,12 +1665,25 @@ export default function AddItemDialog({ onClose, onSubmit, onManual, pending }: 
             entries={bundle}
             onRemove={(i) => setBundle((cur) => cur.filter((_, j) => j !== i))}
             onList={(total) => onSubmit(bundlePayload(bundle, total))}
-            itemOpen={product ? (product.code ?? product.name) : null}
+            itemOpen={product ? (product.code ?? product.name) : custom ? "The custom item" : null}
             pending={pending}
           />
         )}
 
-        {product ? (
+        {custom ? (
+          <CustomItemForm
+            key={`custom-${bundle.length}`}
+            onBack={() => setCustom(false)}
+            onSubmit={onSubmit}
+            onAddToBundle={(entry) => {
+              setBundle((cur) => [...cur, entry]);
+              setCustom(false);
+            }}
+            onListSolo={(payload) => onSubmit(payload, { keepOpen: true, onDone: () => setCustom(false) })}
+            bundleCount={bundle.length}
+            pending={pending}
+          />
+        ) : product ? (
           <ProductDetailsForm
             key={product.id + bundle.length}
             product={product}
@@ -1273,14 +1702,18 @@ export default function AddItemDialog({ onClose, onSubmit, onManual, pending }: 
         ) : (
           <>
             <ProductSearch onPick={setProduct} />
-            <button
-              type="button"
-              className="self-start text-xs text-slate-500 underline-offset-2 hover:text-slate-300 hover:underline"
-              data-testid="add-item-manual"
-              onClick={onManual}
-            >
-              Can’t find it? Enter the item manually
-            </button>
+            <div className="flex items-center gap-2 rounded-md border border-dashed border-slate-700 px-3 py-2">
+              <span className="text-xs text-slate-400">Can’t find it in the database?</span>
+              <Button
+                size="sm"
+                variant="outline"
+                className="ml-auto"
+                data-testid="add-item-manual"
+                onClick={() => setCustom(true)}
+              >
+                <Plus className="size-4" /> Add a custom item
+              </Button>
+            </div>
           </>
         )}
       </DialogContent>
