@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast, Toaster } from "sonner";
 import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from "@/lib/api";
@@ -13,17 +13,31 @@ import DealDialog, { type DealState } from "@/components/DealDialog";
 import AddCardDialog from "@/components/AddCardDialog";
 import AddItemDialog from "@/components/AddItemDialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Archive,
   ArrowDownUp,
+  FileSpreadsheet,
+  Download,
+  Mail,
+  Share2,
+  Loader2,
   CheckSquare,
   Layers,
   Package,
   Plus,
   RefreshCw,
-  Sparkle,
   Table2,
   LayoutGrid,
   Trash2,
@@ -35,20 +49,27 @@ const TABS: { id: TabId; label: string; testId: string }[] = [
   { id: "all", label: "All Items", testId: "tab-all" },
   { id: "for_sale", label: "For Sale", testId: "tab-for-sale" },
   { id: "pending", label: "Pending", testId: "tab-pending" },
+  { id: "on_hold", label: "Storage", testId: "tab-storage" },
   { id: "archive", label: "Sold", testId: "tab-archive" },
 ];
 
 const PAGE_SIZE = 10;
 
+// Footer / About text and links
+const DISCLAIMER =
+  "CardStakk is an unofficial, fan-made tool for tracking a personal collection and sales. It is not affiliated with, endorsed or sponsored by Bandai, BANDAI NAMCO, SOTSU or SUNRISE. GUNDAM, the GUNDAM CARD GAME and all related names, card images and product photos are trademarks and copyrights of their respective owners and are shown for identification only. Prices are your own entries, not market values.";
+const FEEDBACK_URL = "https://github.com/vincenttsungaa/GCG-Sales-Tracker/issues/new";
+
 // Sort: newest / oldest first, or one category of item first (then newest).
-type SortId = "newest" | "oldest" | "starter deck" | "accessories" | "premium bandai" | "other";
+type SortId = "newest" | "oldest" | "cards" | "starter deck" | "accessories" | "premium bandai" | "other";
 const SORT_OPTIONS: { value: SortId; label: string }[] = [
   { value: "newest", label: "Newest" },
   { value: "oldest", label: "Oldest" },
-  { value: "starter deck", label: "Starter decks first" },
-  { value: "accessories", label: "Accessories first" },
-  { value: "premium bandai", label: "Premium Bandai first" },
-  { value: "other", label: "Others first" },
+  { value: "cards", label: "Cards" },
+  { value: "starter deck", label: "Starter Decks" },
+  { value: "accessories", label: "Accessories" },
+  { value: "premium bandai", label: "Premium Bandai" },
+  { value: "other", label: "Others" },
 ];
 const SORT_KEY = "cardstakk:sort";
 function savedSort(): SortId {
@@ -59,9 +80,11 @@ function savedSort(): SortId {
     return "newest";
   }
 }
-// "Others": items in the Other category, and cards.
+// "Cards": cards; "Others": items in the Other category (or none); the rest: items in that category.
 const inSortGroup = (item: CollectionItem, sort: SortId) =>
-  sort === "other" ? item.kind === "card" || item.category === "other" || !item.category : item.category === sort;
+  sort === "cards"
+    ? item.kind === "card"
+    : item.kind === "item" && (sort === "other" ? item.category === "other" || !item.category : item.category === sort);
 
 export default function Dashboard() {
   const queryClient = useQueryClient();
@@ -87,6 +110,8 @@ export default function Dashboard() {
   const [formState, setFormState] = useState<FormState | null>(null);
   const [addCardOpen, setAddCardOpen] = useState(false);
   const [addItemOpen, setAddItemOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const [dealState, setDealState] = useState<DealState | null>(null);
   // Select mode: tick several listings and delete them together.
   const [selecting, setSelecting] = useState(false);
@@ -165,11 +190,12 @@ export default function Dashboard() {
   const items = itemsQuery.data ?? [];
 
   const tabCounts = useMemo(() => {
-    const counts: Record<TabId, number> = { all: 0, for_sale: 0, pending: 0, archive: 0 };
+    const counts: Record<TabId, number> = { all: 0, for_sale: 0, pending: 0, on_hold: 0, archive: 0 };
     for (const item of items) {
       if (item.status !== "sold") counts.all += 1;
       if (item.status === "for_sale") counts.for_sale += 1;
       else if (item.status === "pending") counts.pending += 1;
+      else if (item.status === "on_hold") counts.on_hold += 1;
       else counts.archive += 1;
     }
     return counts;
@@ -183,7 +209,9 @@ export default function Dashboard() {
           ? item.status === "for_sale"
           : tab === "pending"
             ? item.status === "pending"
-            : item.status !== "sold",
+            : tab === "on_hold"
+              ? item.status === "on_hold"
+              : item.status !== "sold",
     );
     const q = filters.search.trim().toLowerCase();
     const buyer = filters.buyer.trim().toLowerCase();
@@ -215,6 +243,17 @@ export default function Dashboard() {
   const pageCount = Math.max(1, Math.ceil(visible.length / PAGE_SIZE));
   const currentPage = Math.min(page, pageCount); // e.g. after deleting the last item on the last page
   const pageItems = visible.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  // Changing page: back to the top once the new page has been drawn (not on the first load).
+  const firstPage = useRef(true);
+  useLayoutEffect(() => {
+    if (firstPage.current) {
+      firstPage.current = false;
+      return;
+    }
+    // straight after the new page is in place, before it's shown — an instant jump, nothing to interrupt
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  }, [currentPage]);
 
   // Keep the selection to listings still shown (after a tab / filter change or a delete).
   useEffect(() => {
@@ -254,6 +293,12 @@ export default function Dashboard() {
       { onSuccess: () => toast.success(`${item.name} is back in your inventory`) },
     );
 
+  const hold = (item: CollectionItem) =>
+    statusMut.mutate(
+      { id: item.id, payload: { status: "on_hold" } },
+      { onSuccess: () => toast.success(`${item.name} moved to storage`) },
+    );
+
   const deleteItem = (item: CollectionItem) => {
     if (window.confirm(`Delete "${item.name}" permanently? This cannot be undone.`)) {
       deleteMut.mutate(item.id);
@@ -263,6 +308,7 @@ export default function Dashboard() {
   const actionProps = {
     onEdit: (item: CollectionItem) => setFormState({ type: "edit", item }),
     onMarkPending: (item: CollectionItem) => setDealState({ item, target: "pending" }),
+    onHold: hold,
     onSell: (item: CollectionItem) => setDealState({ item, target: "sold" }),
     onRestore: unmark,
     onDelete: deleteItem,
@@ -277,16 +323,12 @@ export default function Dashboard() {
       {/* HUD top bar */}
       <header className="sticky top-0 z-40 border-b border-slate-800/80 bg-[#0B0F17]/90 backdrop-blur">
         <div className="mx-auto flex max-w-[1600px] items-center gap-2 px-4 py-3 sm:gap-3 sm:px-6">
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-md border border-sky-500/40 bg-sky-950/60 text-sky-300">
-            <Sparkle className="size-5 fill-current" aria-hidden />
-          </div>
+          {/* app icon (same as the browser tab icon): two fanned cards with a star */}
+          <img src="/favicon.svg" alt="" aria-hidden className="size-9 shrink-0" data-testid="app-logo" />
           <div className="mr-auto min-w-0">
             <h1 className="truncate font-heading text-base font-bold tracking-tight text-slate-100 sm:text-lg">
               CardStakk
             </h1>
-            <p className="hidden font-mono text-xs uppercase tracking-wider text-slate-500 sm:block">
-              Gundam Card Game sales tracker
-            </p>
           </div>
           <Button
             variant="outline"
@@ -347,6 +389,16 @@ export default function Dashboard() {
             </TabsList>
           </Tabs>
           </div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="shrink-0"
+            data-testid="export-open"
+            onClick={() => setExportOpen(true)}
+            title="Export to Excel"
+          >
+            <FileSpreadsheet className="size-4" /> <span className="hidden sm:inline">Export</span>
+          </Button>
           <Select value={sort} onValueChange={(value) => value && setSort(value as SortId)} items={SORT_OPTIONS}>
             <SelectTrigger
               size="sm"
@@ -512,7 +564,11 @@ export default function Dashboard() {
                 pageCount={pageCount}
                 pageSize={PAGE_SIZE}
                 total={visible.length}
-                onPageChange={setPage}
+                onPageChange={(p) => {
+                  // leave the clicked page button, so the browser doesn't keep it in view
+                  if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+                  setPage(p);
+                }}
               />
             )}
           </div>
@@ -520,6 +576,84 @@ export default function Dashboard() {
         </div>
         </div>
       </main>
+
+      {/* Footer: disclaimer, About and feedback */}
+      <footer data-testid="site-footer" className="mt-6 border-t border-slate-800/80 bg-[#0B0F17]/60">
+        <div className="mx-auto flex max-w-[1600px] flex-col gap-3 px-4 py-5 sm:px-6 lg:flex-row lg:items-start lg:justify-between lg:gap-8">
+          <div className="max-w-3xl space-y-1.5">
+            <p className="font-mono text-xs uppercase tracking-wider text-slate-300">
+              CardStakk · Gundam Card Game sales tracker
+            </p>
+            <p className="text-xs leading-relaxed text-slate-500">{DISCLAIMER}</p>
+          </div>
+          <nav className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1 text-xs" aria-label="Site">
+            <button
+              type="button"
+              data-testid="footer-about"
+              onClick={() => setAboutOpen(true)}
+              className="font-medium text-slate-300 underline-offset-4 hover:text-sky-300 hover:underline"
+            >
+              About this site
+            </button>
+            <a
+              data-testid="footer-feedback"
+              href={FEEDBACK_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="font-medium text-slate-300 underline-offset-4 hover:text-sky-300 hover:underline"
+            >
+              Send feedback
+            </a>
+            <span className="font-mono text-slate-600">© {new Date().getFullYear()} CardStakk</span>
+          </nav>
+        </div>
+      </footer>
+
+      {exportOpen && (
+        <ExportDialog
+          shown={visible}
+          total={items.length}
+          tabLabel={TABS.find((t) => t.id === tab)?.label ?? "All Items"}
+          onClose={() => setExportOpen(false)}
+        />
+      )}
+
+      {aboutOpen && (
+        <Dialog open onOpenChange={(open) => !open && setAboutOpen(false)}>
+          <DialogContent className="sm:max-w-lg" data-testid="about-dialog">
+            <DialogHeader>
+              <DialogTitle className="font-heading uppercase tracking-tight">About CardStakk</DialogTitle>
+              <DialogDescription>A personal tracker for Gundam Card Game cards and products.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3 text-sm leading-relaxed text-slate-300">
+              <p>
+                CardStakk keeps track of the cards and products you own and sell: what's for sale, what's pending with a
+                buyer, and what's sold — with asking prices, what you paid, and your profit after costs.
+              </p>
+              <ul className="list-disc space-y-1 pl-5 text-slate-400">
+                <li>Add cards and products from a database built from the official card list and product pages.</li>
+                <li>List sets part by part, bundle several products together, and price each part or card.</li>
+                <li>Add custom items for anything that isn't in the database.</li>
+                <li>Your listings are stored in your own database, on your own computer.</li>
+              </ul>
+              <p className="text-xs text-slate-500">{DISCLAIMER}</p>
+            </div>
+            <DialogFooter className="gap-2 sm:justify-between">
+              <a
+                href={FEEDBACK_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="self-center text-sm text-slate-300 underline-offset-4 hover:text-sky-300 hover:underline"
+              >
+                Send feedback
+              </a>
+              <Button onClick={() => setAboutOpen(false)} data-testid="about-close">
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {formState && (
         <ItemFormDialog
@@ -591,5 +725,211 @@ export default function Dashboard() {
 
       <Toaster richColors />
     </div>
+  );
+}
+
+/* ---------------- export to Excel ---------------- */
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Fetch the .xlsx for these listings (empty ids = every listing).
+async function fetchWorkbook(ids: string[]): Promise<{ blob: Blob; filename: string }> {
+  const res = await fetch("/api/items/export", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ids }),
+  });
+  if (!res.ok) throw new Error("Could not create the Excel file — please try again.");
+  const match = /filename="([^"]+)"/.exec(res.headers.get("Content-Disposition") ?? "");
+  return { blob: await res.blob(), filename: match?.[1] ?? "cardstakk-listings.xlsx" };
+}
+
+// Export the listings as an editable Excel workbook: download it, share it (phones), or email it.
+function ExportDialog({
+  shown,
+  total,
+  tabLabel,
+  onClose,
+}: {
+  shown: CollectionItem[];
+  total: number;
+  tabLabel: string;
+  onClose: () => void;
+}) {
+  const [scope, setScope] = useState<"shown" | "all">("shown");
+  const [email, setEmail] = useState("");
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState<"download" | "share" | "email" | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const ids = scope === "all" ? [] : shown.map((i) => i.id);
+  const count = scope === "all" ? total : shown.length;
+  const canShare = typeof navigator !== "undefined" && typeof navigator.canShare === "function";
+
+  const download = async () => {
+    setBusy("download");
+    setError(null);
+    try {
+      const { blob, filename } = await fetchWorkbook(ids);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+      toast.success(`Downloaded ${filename}`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not create the Excel file.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  // Phones: hand the file to the share sheet (save to Files / Drive, open in Excel, send …).
+  const share = async () => {
+    setBusy("share");
+    setError(null);
+    try {
+      const { blob, filename } = await fetchWorkbook(ids);
+      const file = new File([blob], filename, { type: blob.type });
+      if (!navigator.canShare?.({ files: [file] })) throw new Error("This device can't share files — use Download instead.");
+      await navigator.share({ files: [file], title: filename });
+    } catch (e) {
+      if (!(e instanceof DOMException && e.name === "AbortError")) {
+        setError(e instanceof Error ? e.message : "Could not share the file.");
+      }
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const sendEmail = async () => {
+    const to = email.trim();
+    if (!EMAIL_RE.test(to)) {
+      setError("Enter a valid email address, e.g. name@example.com.");
+      return;
+    }
+    setBusy("email");
+    setError(null);
+    try {
+      const res = await fetch("/api/items/export/email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids, to, note: note.trim() || null }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        const detail = typeof body?.detail === "string" ? body.detail : "Could not send the email — please try again.";
+        throw new Error(detail);
+      }
+      toast.success(`Sent to ${to}`);
+      onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not send the email.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const LBL = "font-mono text-xs uppercase tracking-wider text-slate-400";
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-lg" data-testid="export-dialog">
+        <DialogHeader>
+          <DialogTitle className="font-heading uppercase tracking-tight">Export to Excel</DialogTitle>
+          <DialogDescription>
+            An editable .xlsx spreadsheet — opens in Excel, Google Sheets, LibreOffice, Numbers and the Excel / Sheets
+            phone apps.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div className="flex flex-col gap-1.5">
+            <span className={LBL} id="export-scope-label">
+              Listings
+            </span>
+            <div role="radiogroup" aria-labelledby="export-scope-label" className="grid grid-cols-2 gap-2">
+              {(
+                [
+                  ["shown", `Shown now (${shown.length})`, `${tabLabel}, with your filters and sort`],
+                  ["all", `Everything (${total})`, "All listings, including sold"],
+                ] as const
+              ).map(([value, label, hint]) => (
+                <button
+                  key={value}
+                  type="button"
+                  role="radio"
+                  aria-checked={scope === value}
+                  data-testid={`export-scope-${value}`}
+                  onClick={() => setScope(value)}
+                  className={`rounded-md border px-3 py-2 text-left text-sm transition-colors ${
+                    scope === value
+                      ? "border-sky-500 bg-sky-950/50 text-slate-100"
+                      : "border-slate-700 bg-slate-950/40 text-slate-300 hover:border-slate-500"
+                  }`}
+                >
+                  <span className="block font-medium">{label}</span>
+                  <span className="block text-xs text-slate-500">{hint}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={download} disabled={busy !== null || count === 0} data-testid="export-download">
+              {busy === "download" ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />} Download
+              .xlsx
+            </Button>
+            {canShare && (
+              <Button variant="outline" onClick={share} disabled={busy !== null || count === 0} data-testid="export-share">
+                {busy === "share" ? <Loader2 className="size-4 animate-spin" /> : <Share2 className="size-4" />} Share…
+              </Button>
+            )}
+          </div>
+
+          <div className="space-y-2 border-t border-slate-800/80 pt-4">
+            <label htmlFor="export-email" className={LBL}>
+              Send by email
+            </label>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Input
+                id="export-email"
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                placeholder="name@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && void sendEmail()}
+                data-testid="export-email"
+              />
+              <Button
+                variant="outline"
+                onClick={sendEmail}
+                disabled={busy !== null || count === 0}
+                data-testid="export-send"
+                className="shrink-0"
+              >
+                {busy === "email" ? <Loader2 className="size-4 animate-spin" /> : <Mail className="size-4" />} Send
+              </Button>
+            </div>
+            <Textarea
+              rows={2}
+              placeholder="Message (optional)"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              data-testid="export-note"
+            />
+          </div>
+
+          {error && (
+            <p className="text-sm text-red-400" role="alert" data-testid="export-error">
+              {error}
+            </p>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
