@@ -16,6 +16,11 @@ __pycache__/
 Thumbs.db
 .vscode/
 
-# Card / product images downloaded from gundam-gcg.com (re-created by `python scrape_cards.py`)
+# Card images downloaded from gundam-gcg.com (re-created by `python scrape_cards.py`)
 backend/data/card_images/
-backend/data/product_images/
+# Product images: the photos (incl. the edited / background-removed ones and the source photos
+# the set pieces are cut from) are kept in git; the pictures built from them (*.svg) are not —
+# the app rebuilds those on demand.
+backend/data/product_images/*
+!backend/data/product_images/*.webp
+!backend/data/product_images/*.jpg

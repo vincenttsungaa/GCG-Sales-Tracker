@@ -347,3 +347,13 @@
 html {
   scrollbar-gutter: stable;
 }
+
+/* Item tiles: product photos float on a graphite hexagon backdrop (photos are cut out of their
+   own backgrounds in the browser — see lib/cutout.ts). */
+.item-photo-backdrop {
+  background-color: #2e3136 !important;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='49' viewBox='0 0 84 146'%3E%3Cg fill='none' stroke='%23c9ccd1' stroke-opacity='.2' stroke-width='2'%3E%3Cpath d='M42 1 L83 25 L83 72 L42 96 L1 72 L1 25 Z'/%3E%3Cpath d='M42 96 L42 146'/%3E%3C/g%3E%3C/svg%3E"),
+    radial-gradient(circle at 50% 42%, #4a4f57 0%, #2e3136 72%) !important;
+  background-size: 28px 49px, 100% 100% !important;
+}

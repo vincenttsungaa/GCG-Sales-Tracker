@@ -9,7 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ColorBadge, KindBadge, RarityBadge, StatusBadge } from "@/components/badges";
+import { ColorBadge, KindBadge, RarityBadge, StatusBadge, bundleKind } from "@/components/badges";
 import { COLOR_TRIM_CLASS, formatAud, formatDate } from "@/lib/format";
 import { bundleLineTotal, cardCopies, saleProfit, saleTotal, type CollectionItem } from "@/lib/types";
 import { useMediaQuery } from "@/lib/useMediaQuery";
@@ -27,6 +27,7 @@ type Actions = ItemActionProps;
 /* ------------------------------------------------------------------ */
 
 function typeLabel(item: CollectionItem): string | null {
+  if (bundleKind(item)) return "bundle"; // any bundle: items, cards or both
   return item.card_type ?? item.category ?? null;
 }
 
@@ -237,7 +238,8 @@ function DesktopTable({ items, actions }: { items: CollectionItem[]; actions: Ac
                   </div>
                 </TableCell>
                 <TableCell>
-                  <KindBadge kind={item.kind} />
+                  {/* a bundle has no single kind: blank */}
+                  {bundleKind(item) ? <span className="text-slate-600">—</span> : <KindBadge kind={item.kind} />}
                 </TableCell>
                 <TableCell>
                   <ColorBadge color={item.color} />
@@ -425,7 +427,7 @@ function MobileRow({ item, actions }: { item: CollectionItem; actions: Actions }
             </p>
           )}
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            <KindBadge kind={item.kind} />
+            {!bundleKind(item) && <KindBadge kind={item.kind} />}
             {item.color && <ColorBadge color={item.color} />}
             {item.rarity && <RarityBadge rarity={item.rarity} />}
           </div>

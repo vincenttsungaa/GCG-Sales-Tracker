@@ -50,13 +50,31 @@ TAG_TO_CATEGORY = {
 # Premium Bandai accessory sets are often split and sold part by part. The site doesn't list
 # the parts, so they're configured here: the Add Item form asks which part is being listed,
 # and for "Resources" which resource cards (multi-select) — card numbers from the card database.
-PB_PARTS = ["Storage Box", "Sleeves", "Playmat", "Deck Box", "Resources", "Alt-Art Cards", "Divider"]
+PB_PARTS = ["Storage Box", "Sleeves", "Playmat", "Deck Box", "Separator", "Resources", "Alt-Art Cards"]
 # "Sealed": the whole set, unopened — listed on its own (it can't be combined with the parts).
 SEALED_PART = "Sealed"
+BRICK_PART = "Brick"
 PC01A_KITS = ["ASSEMBLE: Gundam Barbatos 4th Form", "ASSEMBLE: Graze Custom", "ASSEMBLE: CGS Mobile Worker"]
+# ST04A (SEED Strike, Special Edition): its three GUNDAM ASSEMBLE mini kits
+# ST01A–ST03A (Special Editions): their GUNDAM ASSEMBLE mini kits, each with its photo
+# ST02A: Leo (A) standing with its rifle, Leo (B) kneeling with the big gun, Tallgeese with lance and shield
+# ST03A: Char's Zaku II (commander horn, machine gun), Zaku II (A) with bazooka, Zaku II (B) with heat hawk
+ST01A_KITS = ["ASSEMBLE: Gundam", "ASSEMBLE: Guncannon", "ASSEMBLE: Guntank"]
+ST02A_KITS = ["ASSEMBLE: Leo (A)", "ASSEMBLE: Leo (B)", "ASSEMBLE: Tallgeese"]
+ST03A_KITS = ["ASSEMBLE: Char's Zaku II", "ASSEMBLE: Zaku II (A)", "ASSEMBLE: Zaku II (B)"]
+ST04A_KITS = ["ASSEMBLE: Launcher Strike Gundam", "ASSEMBLE: Sword Strike Gundam", "ASSEMBLE: Skygrasper"]
 PC02A_KITS = ["ASSEMBLE: GQuuuuuuX (Omega Psycommu)", "ASSEMBLE: Red Gundam", "ASSEMBLE: GFreD"]
 RESOURCES_PART = "Resources"
 PRODUCT_OPTIONS: dict[str, dict[str, Any]] = {
+    # ST04: the Special Edition can be listed sealed or kit by kit (Add Item shows these parts only
+    # for that edition)
+    "st01": {"parts": [SEALED_PART, *ST01A_KITS]},
+    "st02": {"parts": [SEALED_PART, *ST02A_KITS]},
+    "st03": {"parts": [SEALED_PART, *ST03A_KITS]},
+    "st04": {"parts": [SEALED_PART, *ST04A_KITS]},
+    # the other starter decks (one edition): sealed, or a brick (a case of sealed decks).
+    # ST01–ST04's Regular Version offers the same two (set in Add Item).
+    **{f"st{n:02d}": {"parts": [SEALED_PART, BRICK_PART]} for n in range(5, 15)},
     "pb01": {
         "parts": [SEALED_PART, *PB_PARTS],
         "resource_cards": [f"RP-{n:03d}" for n in range(24, 34)],  # RP-024 … RP-033
@@ -69,15 +87,17 @@ PRODUCT_OPTIONS: dict[str, dict[str, Any]] = {
         # "Alt-Art Cards" choices — PB02's own printings: Awakened Power, Mikazuki Augus
         "alt_art_cards": ["GD02-110_p3", "ST05-010_p4"],
     },
-    # GUNDAM CARD GAME 1st Anniversary Set: two sleeve designs, a leather card case and dice
-    # instead of a single sleeve design, deck box and divider.
+    # GUNDAM CARD GAME 1st Anniversary Set: two sleeve designs (picked under "Sleeves", like the
+    # resource cards — SLEEVE_DESIGNS["pb03"]), a leather card case and dice instead of a single
+    # sleeve design, deck box and separator.
     "pb03": {
         "parts": [
-            "Storage Box", "Sleeves (Blue)", "Sleeves (Green)", "Playmat", "Card Case",
-            "Damage Counter Dice", "Resources", "Alt-Art Cards",
+            SEALED_PART, "Storage Box", "Sleeves", "Playmat", "Card Case",
+            "Damage Counter Dice", "Resources", "Alt-Art Cards", "EX Tokens",
         ],
         "resource_cards": ["RP-068", "RP-068_p1"],  # standard / special finish
-        # its 10 special printings, plus the set's EX Resource and EX Base
+        # its 10 special printings, plus the set's EX Resource and EX Base (picked under "EX Tokens"
+        # in Add Item: the EX… ids)
         "alt_art_cards": [
             "ST03-001_p3", "ST03-008_p5", "ST03-013_p6", "ST07-001_p2", "ST09-008_p2",
             "ST09-009_p2", "GD01-001_p3", "GD01-024_p3", "GD01-118_p8", "GD04-003_p2",
@@ -104,23 +124,11 @@ PRODUCT_OPTIONS: dict[str, dict[str, Any]] = {
     "limitedbox-beta": {
         "parts": ["Storage Box", "Booster Pack", "Damage Counter Dice", "Resources", "Alt-Art Cards"],
         "resource_cards": ["R-001_p4", "R-001_p5", "EXR-001_p5"],
+        # only its alternate-art (parallel, "+") printings; the plain Edition Beta reprints aren't alt-art
         "alt_art_cards": [
-            "ST01-001_p2", "ST01-001_p3", "ST01-002_p2", "ST01-005_p2", "ST01-007_p2",
-            "ST01-008_p2", "ST01-010_p2", "ST01-011_p2", "ST01-011_p3", "ST01-012_p2",
-            "ST01-013_p2", "ST01-015_p2", "ST01-016_p2", "ST02-001_p2", "ST02-001_p3",
-            "ST02-002_p2", "ST02-005_p2", "ST02-010_p2", "ST02-012_p2", "ST02-013_p2",
-            "ST02-015_p2", "ST03-007_p2", "ST03-008_p2", "ST03-011_p2", "ST03-011_p3",
-            "ST03-016_p2", "ST04-001_p2", "ST04-001_p3", "ST04-002_p2", "ST04-005_p2",
-            "ST04-010_p2", "ST04-013_p2", "ST04-015_p2", "GD01-004_p1", "GD01-004_p2",
-            "GD01-005_p2", "GD01-008_p1", "GD01-009_p1", "GD01-011_p1", "GD01-013_p1",
-            "GD01-015_p1", "GD01-016_p1", "GD01-018_p1", "GD01-026_p1", "GD01-026_p2",
-            "GD01-028_p1", "GD01-030_p1", "GD01-031_p1", "GD01-034_p1", "GD01-040_p1",
-            "GD01-041_p1", "GD01-068_p1", "GD01-070_p1", "GD01-070_p2", "GD01-072_p1",
-            "GD01-075_p1", "GD01-076_p1", "GD01-077_p1", "GD01-081_p1", "GD01-088_p1",
-            "GD01-088_p2", "GD01-089_p1", "GD01-091_p1", "GD01-097_p1", "GD01-099_p1",
-            "GD01-100_p2", "GD01-100_p3", "GD01-105_p2", "GD01-107_p1", "GD01-107_p2",
-            "GD01-117_p2", "GD01-118_p2", "GD01-118_p3", "GD01-120_p1", "GD01-124_p1",
-            "T-001_p1", "T-002_p1", "T-003_p1", "T-006_p1", "EXB-001_p5",
+            "ST01-001_p3", "ST01-011_p3", "ST02-001_p3", "ST03-011_p3", "ST04-001_p3",
+            "GD01-004_p2", "GD01-026_p2", "GD01-070_p2", "GD01-088_p2", "GD01-100_p3",
+            "GD01-107_p2", "GD01-118_p3",
         ],
     },
 }
@@ -185,7 +193,7 @@ PART_PHOTOS: dict[str, dict[str, tuple]] = {
         # just the deck box from its own white-background photo, zoomed out on white (like PB02)
         "Deck Box": (_PB01_DECK_BOX, (0.22, 0.18, 0.78, 0.89), {"pad": 0.3, "whiten": 1.04}),
         # tight crop of just the divider, zoomed out on white
-        "Divider": (_PB01_OVERVIEW, (0.365, 0.152, 0.613, 0.513), {"pad": 0.3}),
+        "Separator": (_PB01_OVERVIEW, (0.365, 0.152, 0.613, 0.513), {"pad": 0.3}),
     },
     "pb02": {
         # whole photo; the caption printed under the box is painted over in white
@@ -195,7 +203,7 @@ PART_PHOTOS: dict[str, dict[str, tuple]] = {
         # just the deck box from the white-background photo, zoomed out with white space around it
         "Deck Box": (_PB02_DECK_BOX, (0.02, 0.10, 0.575, 0.89), {"pad": 0.3}),
         # tight crop of just the divider (leaves the photo's grey backdrop out), zoomed out on white
-        "Divider": (_PB02_OVERVIEW, (0.42, 0.13, 0.655, 0.478), {"pad": 0.3}),
+        "Separator": (_PB02_OVERVIEW, (0.42, 0.13, 0.655, 0.478), {"pad": 0.3}),
     },
     "pb03": {
         # each piece cropped from the photo and zoomed out on white; "whiten" lifts the pale
@@ -208,15 +216,42 @@ PART_PHOTOS: dict[str, dict[str, tuple]] = {
         "Damage Counter Dice": (_PB03_ITEMS, (0.6029, 0.4457, 0.9729, 0.6543), {"pad": 0.1, "whiten": 1.03}),
     },
     # ASSEMBLE kits: the whole kit photo
-    "pc01a": {
-        PC01A_KITS[0]: (f"{_ASSEMBLE}/2025/09/24/PKUGxwWta3xFYom3/assemble_orphans_barbatos.webp", None),
-        PC01A_KITS[1]: (f"{_ASSEMBLE}/2025/09/24/MUfF05n20UfRHIqZ/assemble_orphans_graze.webp", None),
-        PC01A_KITS[2]: (f"{_ASSEMBLE}/2025/09/24/PCdVcRzgrRDft02u/assemble_orphans_mobile%20worker.webp", None),
+    # ST04A kits: background-removed photos kept as local files (source-local_st04_….webp),
+    # cropped tight so they fill a bundle's mosaic cells
+    # ST01A kits: transparent photos (source-local_st01_….webp), cropped tight
+    "st01": {
+        ST01A_KITS[0]: ("local/st01_gundam.webp", (0.268, 0.24, 0.732, 0.683)),
+        ST01A_KITS[1]: ("local/st01_guncannon.webp", (0.24, 0.332, 0.758, 0.668)),
+        ST01A_KITS[2]: ("local/st01_guntank.webp", (0.35, 0.24, 0.65, 0.713)),
     },
+    # ST02A kits: transparent photos (source-local_st02_….webp), cropped tight
+    "st02": {
+        ST02A_KITS[0]: ("local/st02_leo_a.webp", (0.295, 0.24, 0.603, 0.677)),
+        ST02A_KITS[1]: ("local/st02_leo_b.webp", (0.302, 0.24, 0.697, 0.655)),
+        ST02A_KITS[2]: ("local/st02_tallgeese.webp", (0.24, 0.28, 0.76, 0.645)),
+    },
+    # ST03A kits: transparent photos (source-local_st03_….webp), cropped tight
+    "st03": {
+        ST03A_KITS[0]: ("local/st03_chars_zaku_ii.webp", (0.37, 0.24, 0.605, 0.705)),
+        ST03A_KITS[1]: ("local/st03_zaku_ii_a.webp", (0.24, 0.30, 0.665, 0.655)),
+        ST03A_KITS[2]: ("local/st03_zaku_ii_b.webp", (0.38, 0.24, 0.65, 0.70)),
+    },
+    "st04": {
+        ST04A_KITS[0]: ("local/st04_launcher_strike_gundam.webp", (0.13, 0.13, 0.86, 0.79)),
+        ST04A_KITS[1]: ("local/st04_sword_strike_gundam.webp", (0.24, 0.25, 0.76, 0.68)),
+        ST04A_KITS[2]: ("local/st04_skygrasper.webp", (0.24, 0.24, 0.76, 0.57)),
+    },
+    # PC01A kits: transparent photos (source-local_pc01a_….webp), cropped tight
+    "pc01a": {
+        PC01A_KITS[0]: ("local/pc01a_barbatos_4th_form.webp", (0.26, 0.24, 0.738, 0.76)),
+        PC01A_KITS[1]: ("local/pc01a_graze_custom.webp", (0.273, 0.24, 0.727, 0.705)),
+        PC01A_KITS[2]: ("local/pc01a_cgs_mobile_worker.webp", (0.24, 0.322, 0.758, 0.64)),
+    },
+    # PC02A kits: transparent photos (source-local_pc02a_….webp), cropped tight
     "pc02a": {
-        PC02A_KITS[0]: (f"{_ASSEMBLE}/2025/11/18/VtnYcqpQnl1t54sk/assemble_gquuuuuuX.webp", None),
-        PC02A_KITS[1]: (f"{_ASSEMBLE}/2025/09/24/WC2i0MpXrhAgc5eP/assemble_red%20gundam.webp", None),
-        PC02A_KITS[2]: (f"{_ASSEMBLE}/2025/11/18/dbPYm34o8AbtbIeC/assemble_gfred.webp", None),
+        PC02A_KITS[0]: ("local/pc02a_gquuuuuux.webp", (0.357, 0.24, 0.628, 0.697)),
+        PC02A_KITS[1]: ("local/pc02a_red_gundam.webp", (0.335, 0.265, 0.77, 0.633)),  # saber tip trimmed so it matches the others in size
+        PC02A_KITS[2]: ("local/pc02a_gfred.webp", (0.27, 0.24, 0.688, 0.673)),
     },
     # Edition Beta: Premium Bandai's photos on white — the box and the dice on their own, and the
     # booster pack cropped from the photo of it beside sample cards; zoomed out a little on white
@@ -280,10 +315,21 @@ def part_photo_svg(
     )
 
 
+def _source_file(src: str) -> Path:
+    source_name = re.sub(r"[^A-Za-z0-9._-]+", "_", src.split("://", 1)[-1].split("?", 1)[0])[-80:]
+    return IMAGE_DIR / f"source-{source_name}"
+
+
+def photo_stamp(src: str) -> int:
+    """When the stored photo last changed (0 if not downloaded yet). Part in the cache key of every
+    picture cut from it, so replacing a photo (e.g. with a background-removed one) rebuilds them."""
+    source_file = _source_file(src)
+    return int(source_file.stat().st_mtime) if source_file.exists() else 0
+
+
 def source_photo(src: str) -> bytes | None:
     """An official photo, downloaded once and kept in data/product_images; None if unreachable."""
-    source_name = re.sub(r"[^A-Za-z0-9._-]+", "_", src.split("://", 1)[-1].split("?", 1)[0])[-80:]
-    source_file = IMAGE_DIR / f"source-{source_name}"
+    source_file = _source_file(src)
     if not (source_file.exists() and source_file.stat().st_size > 0):
         try:
             r = requests.get(src, headers=HEADERS, timeout=30)
@@ -306,7 +352,7 @@ def ensure_part_photo(product_id: str, slug: str) -> Path | None:
     extras = rest[0] if rest else {}
     # The cache file name carries a fingerprint of the photo + crop + extras, so changing any
     # of them (a better photo, a wider crop, padding) rebuilds the picture automatically.
-    fingerprint = hashlib.sha1(f"{src}|{crop}|{sorted(extras.items())}".encode()).hexdigest()[:8]
+    fingerprint = hashlib.sha1(f"{src}|{crop}|{sorted(extras.items())}|{photo_stamp(src)}".encode()).hexdigest()[:8]
     dest = IMAGE_DIR / f"{product_id}-part-{slug}-{fingerprint}.svg"
     if dest.exists() and dest.stat().st_size > 0:
         return dest
@@ -332,7 +378,7 @@ def ensure_part_photo(product_id: str, slug: str) -> Path | None:
 # selected cards: an SVG mosaic built from the card images in data/card_images and cached
 # in data/product_images (one file per selection).
 
-_RESOURCE_SET_VERSION = "v2"  # bump to rebuild cached mosaics after a layout change
+_RESOURCE_SET_VERSION = "v3"  # bump to rebuild cached mosaics after a layout change
 
 
 def resource_set_path(product_id: str, codes: list[str]) -> Path:
@@ -353,7 +399,6 @@ def resource_set_svg(product_id: str, card_images: dict[str, bytes | None]) -> s
         f'<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" '
         f'viewBox="0 0 {width} {height}" width="{width}" height="{height}">',
         f"<title>{html.escape(product_id.upper())} resource set</title>",
-        f'<rect width="{width}" height="{height}" rx="10" fill="#0B0F17"/>',
     ]
     for i, code in enumerate(codes):
         row, col = divmod(i, cols)
@@ -432,6 +477,13 @@ _DECK_CASE02 = f"{_GCG}/en/news/2026/03/25/fZumAcw3xApR9KbI/products_thumbnail_e
 _PLAYMAT01 = f"{_GCG}/en/news/2026/03/25/FexyOy90fSiGykB7/products_thumbnail_en.webp"
 _EVX11 = f"{_GCG}/en/news/2026/08/03/J3RR1KJyn7uSQXJY/products_thumbnail_en.webp"
 _DICE01 = f"{_GCG}/en/news/2025/04/08/2LYV6alslbLD5hXa/thumbnail_jp.webp"
+# no official photo online for this one: a background-removed photo kept in data/product_images
+# (source-local_ev02_playmat_card.webp), never downloaded
+_EV02 = "local/ev02_playmat_card.webp"
+# background-removed photos (same kind of local file): SC01's three boxes, EVX07's box
+_SC01_BOXES_CLEAN = "local/sc01_boxes.webp"
+_EVX07_BOX_CLEAN = "local/evx07_box.webp"
+_SC01_BONUS_PACK = "local/sc01_bonus_pack.webp"
 
 
 def _photo(name: str, photo: str, box: Box, fill: bool = False) -> dict[str, Any]:
@@ -456,6 +508,7 @@ def _sleeves(photo: str, *designs: tuple[str, str, Box]) -> dict[str, dict[str, 
 
 # Sleeve crops are measured per sleeve and sit 1 px inside its edge, so no background shows.
 SLEEVES_LABEL, CONTENTS_LABEL = "Sleeve designs", "Set contents"
+EXTRAS_LABEL = "Extras"  # optional picks: the product can also be listed without any
 # product id → (picker label, pick id → {"name", and "photo" + "box", or "card"})
 SLEEVE_DESIGNS: dict[str, tuple[str, dict[str, dict[str, Any]]]] = {
     "sleeve01": (SLEEVES_LABEL, _sleeves(
@@ -466,13 +519,28 @@ SLEEVE_DESIGNS: dict[str, tuple[str, dict[str, dict[str, Any]]]] = {
         ("zaku", "Char's Zaku Ⅱ/Zeon", (0.517, 0.516, 0.804, 0.91)),
     )),
     # Official Card Sleeves 02 — names from the Japanese product page (the English one has none)
-    "sleeve03": (SLEEVES_LABEL, _sleeves(
-        _SLEEVE03_PHOTO,
-        ("suletta", "Suletta Mercury", (0.1957, 0.0914, 0.4814, 0.4843)),
-        ("goddess", "Goddess of Fortune", (0.5171, 0.0914, 0.8029, 0.4843)),
-        ("shining", "Shining Gundam VS Master Gundam", (0.1971, 0.5186, 0.4814, 0.9071)),
-        ("nu", "ν Gundam VS Sazabi", (0.5186, 0.5186, 0.8029, 0.9086)),
-    )),
+    # each design from its own sharp photo: shown as-is (frontend/public/cutouts/sleeve03-….webp) and
+    # cut from a square copy (source-local_sleeve03_….webp) for multi-design pictures
+    "sleeve03": (SLEEVES_LABEL, {
+        pick_id: {
+            **_photo(name, f"local/sleeve03_{pick_id}.webp", (0.1362, 0.0, 0.8638, 1.0), fill=True),
+            "image": f"/cutouts/sleeve03-{pick_id}.webp",
+        }
+        for pick_id, name in (
+            ("suletta", "Suletta Mercury"),
+            ("goddess", "Goddess of Fortune"),
+            ("shining", "Shining Gundam VS Master Gundam"),
+            ("nu", "ν Gundam VS Sazabi"),
+        )
+    }),
+    # PB03's two sleeve designs, shown when its "Sleeves" part is picked. Ids match the part photo
+    # slugs (so a bundle picture can show them); each is shown (and listed) as its flat sleeve art,
+    # a static file in frontend/public/cutouts/.
+    "pb03": (SLEEVES_LABEL, {
+        f"sleeves-{c.lower()}": {**_photo(f"Sleeves ({c})", "local/pb03_sleeves.webp", box, fill=True), "image": f"/cutouts/pb03-sleeve-{c.lower()}.webp"}
+        # crops of the background-removed sleeve photo (source-local_pb03_sleeves.webp, 1200×1200)
+        for c, box in (("Blue", (0.0525, 0.2092, 0.4758, 0.7917)), ("Green", (0.525, 0.2092, 0.9483, 0.7908)))
+    }),
     "sleeve02": (SLEEVES_LABEL, _sleeves(  # Official Matte Sleeves EX
         _SLEEVE02_PHOTO,
         ("char", "Char", (0.1957, 0.0914, 0.48, 0.4829)),
@@ -503,7 +571,7 @@ SLEEVE_DESIGNS: dict[str, tuple[str, dict[str, dict[str, Any]]]] = {
         **_cards(*(f"RP-{n:03d}" for n in range(11, 21))),  # RP-011 … RP-020
     }),
     "evx07": (CONTENTS_LABEL, {  # [EVX07] Storage Box & Resource Card Set
-        "storage-box": _photo("Storage Box", _EVX07_BOX, (0.086, 0.311, 0.891, 0.82)),
+        "storage-box": _photo("Storage Box", _EVX07_BOX_CLEAN, (0.2571, 0.0386, 0.75, 0.43)),
         **_cards(*(f"RP-{n:03d}" for n in range(45, 55))),  # RP-045 … RP-054
     }),
     "evx09": (CONTENTS_LABEL, {  # [EVX09] Special Booster Bundle 01 (its EX Base isn't in the card list)
@@ -511,9 +579,10 @@ SLEEVE_DESIGNS: dict[str, tuple[str, dict[str, dict[str, Any]]]] = {
         "ex-base": _photo("EX Base", _EVX09_EX_BASE, (0.261, 0.167, 0.737, 0.831), fill=True),
     }),
     "deck-build-box": (CONTENTS_LABEL, {  # [SC01] Deck Build Box Freedom Ascension
-        "storage-box-1": _photo("Storage Box (Design 1)", _SC01_BOXES, (0.02, 0.117, 0.494, 0.494)),
-        "storage-box-2": _photo("Storage Box (Design 2)", _SC01_BOXES, (0.509, 0.126, 0.983, 0.494)),
-        "storage-box-3": _photo("Storage Box (Design 3)", _SC01_BOXES, (0.257, 0.526, 0.731, 0.903)),
+        "storage-box-1": _photo("Storage Box (Design 1)", _SC01_BOXES_CLEAN, (0.02, 0.1171, 0.4914, 0.4929)),
+        "storage-box-2": _photo("Storage Box (Design 2)", _SC01_BOXES_CLEAN, (0.5086, 0.1171, 0.98, 0.4929)),
+        "storage-box-3": _photo("Storage Box (Design 3)", _SC01_BOXES_CLEAN, (0.2571, 0.5257, 0.7286, 0.9014)),
+        "bonus-pack": _photo("Bonus Pack", _SC01_BONUS_PACK, (0.2257, 0.0143, 0.7743, 0.9857)),
         **_cards("EXBP-025", "EXBP-026", "EXBP-027", "EXB-001_p7", "EXR-001_p7"),  # bonus EX Bases, tokens
     }),
     "deck-case01": (CONTENTS_LABEL, {  # Official Card Case Set 01
@@ -530,6 +599,19 @@ SLEEVE_DESIGNS: dict[str, tuple[str, dict[str, dict[str, Any]]]] = {
         "playmat": _photo("Playmat", _PLAYMAT01, _px(90, 57, 610, 360)),
         **_cards("EXRP-015"),
     }),
+    "ev02": (CONTENTS_LABEL, {  # [EVX02] Official Playmat and Card Set Suletta & Miorine
+        "playmat": _photo("Playmat", _EV02, _px(95, 61, 605, 354)),
+        **_cards("EXRP-003"),  # EX Resource (Suletta & Miorine)
+    }),
+    # Starter decks: their bonus pack (background-removed photos kept as local files). Optional —
+    # with nothing picked the listing is the deck itself.
+    **{
+        deck: (EXTRAS_LABEL, {"bonus-pack": _photo("Bonus Pack", f"local/{deck}_bonus_pack.webp", (0.2571, 0.0729, 0.7457, 0.9371))})
+        for deck in ("st01", "st02", "st03", "st04", "st05", "st06", "st07", "st08", "st09", "st10", "st11", "st12", "st13", "st14")
+    },
+    # Premium Card Collection GUNDAM ASSEMBLE Sets: their bonus pack (one of five EX Resources)
+    "pc01a": (EXTRAS_LABEL, {"bonus-pack": _photo("Bonus Pack", "local/pc01_bonus_pack.webp", (0.2571, 0.0729, 0.7457, 0.9371))}),
+    "pc02a": (EXTRAS_LABEL, {"bonus-pack": _photo("Bonus Pack", "local/pc02_bonus_pack.webp", (0.2571, 0.0729, 0.7457, 0.9371))}),
     "evx11": (CONTENTS_LABEL, {  # [EVX11] Official Playmat and Card Set Athrun & Cagalli
         "playmat": _photo("Playmat", _EVX11, _px(89, 56, 610, 359)),
         **_cards("EXRP-019"),  # EX Resource (Athrun & Cagalli)
@@ -542,6 +624,14 @@ SLEEVE_DESIGNS: dict[str, tuple[str, dict[str, dict[str, Any]]]] = {
         "case": _photo("Dice Case", _DICE01, _px(363, 159, 623, 540)),
     }),
 }
+
+# Sleeve designs cut from a shared photo are small (about 200 px wide), so each also has an enlarged,
+# sharpened copy (frontend/public/cutouts/<product>-<design>.webp) shown on its tile and in the hover
+# preview at the same size as a card. Multi-design pictures are still cut from the photo.
+for _pid in ("sleeve01", "sleeve02", "ev03", "evx06", "evx12"):
+    for _pick_id, _pick in SLEEVE_DESIGNS[_pid][1].items():
+        _pick.setdefault("image", f"/cutouts/{_pid}-{_pick_id}.webp")
+
 
 def _card_shaped(pick: dict[str, Any]) -> bool:
     """Cards and sleeves fill a mosaic cell; boxes, playmats, dice and separators are fitted inside it."""
@@ -561,6 +651,8 @@ def sleeve_designs(product_id: str) -> list[dict[str, str]]:
             "name": pick["name"],
             "image_url": f"/api/card-images/{pick['card']}.webp"
             if "card" in pick
+            else pick["image"]
+            if "image" in pick
             else f"/api/product-images/{product_id}-sleeves.svg?designs={pick_id}",
             "fit": "cover" if _card_shaped(pick) else "contain",
         }
@@ -609,8 +701,8 @@ def sleeve_set_svg(cells: list[tuple[bytes, Box | None, bool]], size: int = 700)
     cw, ch, gap, pad = 126, 176, 8, 12  # same cells as the resource card mosaic
     width = pad * 2 + cols * cw + (cols - 1) * gap
     height = pad * 2 + rows * ch + (rows - 1) * gap
-    parts = [f'{head}viewBox="0 0 {width} {height}" width="{width}" height="{height}">', defs_xml,
-             f'<rect width="{width}" height="{height}" rx="10" fill="#0B0F17"/>']
+    # transparent between the cells, so the mosaic floats on the listing tile's backdrop
+    parts = [f'{head}viewBox="0 0 {width} {height}" width="{width}" height="{height}">', defs_xml]
     for i, (data, box, fill) in enumerate(cells):
         row, col = divmod(i, cols)
         in_row = min(cols, n - row * cols)
@@ -629,7 +721,7 @@ def sleeve_set_svg(cells: list[tuple[bytes, Box | None, bool]], size: int = 700)
     return "".join(parts)
 
 
-_SLEEVE_SET_VERSION = "2"  # bump to rebuild cached pictures after a layout change
+_SLEEVE_SET_VERSION = "3"  # bump to rebuild cached pictures after a layout change
 
 
 def ensure_sleeve_image(product_id: str, selected: list[str]) -> Path | None:
@@ -639,7 +731,8 @@ def ensure_sleeve_image(product_id: str, selected: list[str]) -> Path | None:
     if not ids:
         return None
     chosen = [picks[p] for p in ids]
-    fingerprint = hashlib.sha1(f"{_SLEEVE_SET_VERSION}|{chosen!r}".encode()).hexdigest()[:8]
+    stamps = [photo_stamp(p["photo"]) for p in chosen if "photo" in p]
+    fingerprint = hashlib.sha1(f"{_SLEEVE_SET_VERSION}|{chosen!r}|{stamps}".encode()).hexdigest()[:8]
     dest = IMAGE_DIR / f"{product_id}-sleeves-{'_'.join(ids)}-{fingerprint}.svg"
     if dest.exists() and dest.stat().st_size > 0:
         return dest
@@ -685,18 +778,20 @@ def _part_crop(crop: Box | None, extras: dict[str, Any]) -> Box:
     return (left, top, right, bottom)
 
 
-_BUNDLE_VERSION = "1"  # bump to rebuild cached bundle pictures after a layout change
+_BUNDLE_VERSION = "2"  # bump to rebuild cached bundle pictures after a layout change
 
 
 def ensure_bundle_image(product_id: str, part_slugs: list[str], cards: list[str]) -> Path | None:
     """Mosaic of the picked parts' photos and the picked cards (the product's own only)."""
     photos = {part_slug(p): v for p, v in PART_PHOTOS.get(product_id, {}).items()}
+    part_slugs = ["separator" if s == "divider" else s for s in part_slugs]  # listings saved before the rename
     opts = product_options(product_id)
     slugs = [s for s in photos if s in part_slugs]  # keep the product's order
     codes = [c for c in opts["resource_cards"] + opts["alt_art_cards"] if c in cards]
     if len(slugs) + len(codes) == 0:
         return None
-    key = hashlib.sha1(f"{_BUNDLE_VERSION}|{slugs}|{codes}|{[photos[s] for s in slugs]!r}".encode()).hexdigest()[:10]
+    stamps = [photo_stamp(photos[s][0]) for s in slugs]
+    key = hashlib.sha1(f"{_BUNDLE_VERSION}|{slugs}|{codes}|{[photos[s] for s in slugs]!r}|{stamps}".encode()).hexdigest()[:10]
     dest = IMAGE_DIR / f"{product_id}-bundle-{key}.svg"
     if dest.exists() and dest.stat().st_size > 0:
         return dest

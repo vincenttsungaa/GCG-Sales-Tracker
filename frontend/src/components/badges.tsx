@@ -45,11 +45,28 @@ export function rarityClass(rarity: Rarity): string {
   return "border-slate-500/50 bg-slate-800/70 text-slate-200";
 }
 
+type BundleLike = {
+  category: string | null;
+  bundle_items?: { category: string | null; kind?: ItemKind | null }[] | null;
+};
+
+// A bundle of several entries: "same" when they're all one kind of product (shown as "Bundle"),
+// "mixed" when the kinds differ (shown as "Items"), "item-card" when products and cards are
+// bundled together (shown as "Item/Card"). Mixed and item/card bundles are of type "Other".
+// oxlint-disable-next-line react/only-export-components -- shared with the list view
+export function bundleKind(item: BundleLike): "same" | "mixed" | "item-card" | null {
+  const entries = item.bundle_items ?? [];
+  if (entries.length < 2) return null;
+  const cards = entries.filter((e) => e.kind === "card").length;
+  if (cards > 0 && cards < entries.length) return "item-card";
+  return new Set(entries.map((e) => e.category)).size > 1 ? "mixed" : "same";
+}
+
 // Item chips (the box icon on item tiles): one colour per category, like the rarity chips on cards.
-// Bundles of several products get their own colour.
+// Every bundle (items, cards, or both) gets the bundle colour (indigo).
 // oxlint-disable-next-line react/only-export-components -- shared colour map for category chips
-export function categoryClass(item: { category: string | null; bundle_items?: unknown[] | null }): string {
-  if ((item.bundle_items?.length ?? 0) > 1) return "border-teal-400/60 bg-teal-950/70 text-teal-200";
+export function categoryClass(item: BundleLike): string {
+  if (bundleKind(item)) return "border-indigo-400/60 bg-indigo-950/70 text-indigo-200";
   switch (item.category) {
     case "starter deck":
       return "border-emerald-400/60 bg-emerald-950/70 text-emerald-200";
@@ -74,15 +91,17 @@ export function RarityBadge({ rarity }: { rarity: Rarity | null }) {
   );
 }
 
-export function KindBadge({ kind }: { kind: ItemKind }) {
+// kind "item-card": a bundle of products and cards (both icons, "Item/Card")
+export function KindBadge({ kind }: { kind: ItemKind | "item-card" }) {
   return (
     <Badge
       data-testid={`kind-badge-${kind}`}
       variant="outline"
       className="gap-1.5 border-slate-600/60 text-slate-300"
     >
-      {kind === "card" ? <Layers className="size-3" /> : <Package className="size-3" />}
-      {labelize(kind)}
+      {kind !== "card" && <Package className="size-3" />}
+      {kind !== "item" && <Layers className="size-3" />}
+      {kind === "item-card" ? "Item/Card" : labelize(kind)}
     </Badge>
   );
 }

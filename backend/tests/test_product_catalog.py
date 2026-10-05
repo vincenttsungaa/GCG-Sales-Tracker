@@ -35,14 +35,15 @@ def test_parse_list_page():
 def test_premium_bandai_parts_and_resource_cards():
     pb01 = pc.product_options("pb01")
     pb02 = pc.product_options("pb02")
-    assert pb01["parts"] == pb02["parts"] == ["Sealed", "Storage Box", "Sleeves", "Playmat", "Deck Box", "Resources", "Alt-Art Cards", "Divider"]
+    assert pb01["parts"] == pb02["parts"] == ["Sealed", "Storage Box", "Sleeves", "Playmat", "Deck Box", "Separator", "Resources", "Alt-Art Cards"]
     assert pb01["resource_cards"][0] == "RP-024" and pb01["resource_cards"][-1] == "RP-033"
     assert len(pb01["resource_cards"]) == 10
     assert pb02["resource_cards"][0] == "RP-034" and pb02["resource_cards"][-1] == "RP-043"
     assert len(pb02["resource_cards"]) == 10
     assert pb01["alt_art_cards"] == ["ST02-010_p4", "GD01-100_p4"]
     assert pb02["alt_art_cards"] == ["GD02-110_p3", "ST05-010_p4"]
-    assert pc.product_options("st01") == {"parts": [], "resource_cards": [], "alt_art_cards": []}
+    assert pc.product_options("st05")["parts"] == ["Sealed", "Brick"]
+    assert pc.product_options("sleeve01") == {"parts": [], "resource_cards": [], "alt_art_cards": []}
 
 
 def test_resource_set_svg_layout():
@@ -84,9 +85,9 @@ def test_product_names_lead_with_their_code():
 def test_part_photos_for_pb01_and_pb02():
     for pid in ("pb01", "pb02"):
         urls = pc.part_photo_urls(pid)
-        assert set(urls) == {"Storage Box", "Sleeves", "Playmat", "Deck Box", "Divider"}
+        assert set(urls) == {"Storage Box", "Sleeves", "Playmat", "Deck Box", "Separator"}
         assert urls["Storage Box"] == f"/api/product-images/{pid}-part-storage-box.svg?v={pc.PART_PHOTO_VERSION}"
-    assert pc.part_photo_urls("st01") == {}
+    assert pc.part_photo_urls("st05") == {}
     svg = pc.part_photo_svg(b"webp", (0.1, 0.2, 0.5, 0.6))
     assert 'viewBox="70 140 280 280"' in svg and "data:image/webp;base64," in svg
     assert 'viewBox="0 0 700 700"' in pc.part_photo_svg(b"webp", None)
@@ -138,7 +139,7 @@ def test_sleeve01_designs():
         "Gundam/EFSF",
         "Char's Zaku Ⅱ/Zeon",
     ]
-    assert designs[2]["image_url"] == "/api/product-images/sleeve01-sleeves.svg?designs=efsf"
+    assert designs[2]["image_url"] == "/cutouts/sleeve01-efsf.webp"  # the enlarged, sharpened copy
     assert pc.sleeve_designs("pb01") == []  # only sleeve products with designs get the picker
 
 
@@ -197,8 +198,8 @@ def test_mosaic_cells_are_clipped_to_their_crop():
 def test_pb03_first_anniversary_set():
     opts = pc.product_options("pb03")
     assert opts["parts"] == [
-        "Storage Box", "Sleeves (Blue)", "Sleeves (Green)", "Playmat", "Card Case",
-        "Damage Counter Dice", "Resources", "Alt-Art Cards",
+        "Sealed", "Storage Box", "Sleeves", "Playmat", "Card Case",
+        "Damage Counter Dice", "Resources", "Alt-Art Cards", "EX Tokens",
     ]
     assert opts["resource_cards"] == ["RP-068", "RP-068_p1"]
     assert len(opts["alt_art_cards"]) == 12 and opts["alt_art_cards"][-2:] == ["EXRP-017", "EXBP-035"]
@@ -207,6 +208,10 @@ def test_pb03_first_anniversary_set():
         "Storage Box", "Sleeves (Blue)", "Sleeves (Green)", "Playmat", "Card Case", "Damage Counter Dice",
     }
     assert pc.part_photo_urls("pb03")["Sleeves (Blue)"].startswith("/api/product-images/pb03-part-sleeves-blue.svg")
+    # "Sleeves" opens a picker of the two designs, each shown as its flat sleeve art
+    designs = pc.sleeve_designs("pb03")
+    assert [d["name"] for d in designs] == ["Sleeves (Blue)", "Sleeves (Green)"]
+    assert designs[0]["image_url"] == "/cutouts/pb03-sleeve-blue.webp" and designs[0]["fit"] == "cover"
 
 
 def test_premium_card_collection_assemble_sets_and_edition_beta():
@@ -225,7 +230,8 @@ def test_premium_card_collection_assemble_sets_and_edition_beta():
     beta = pc.product_options("limitedbox-beta")
     assert beta["parts"] == ["Storage Box", "Booster Pack", "Damage Counter Dice", "Resources", "Alt-Art Cards"]
     assert beta["resource_cards"] == ["R-001_p4", "R-001_p5", "EXR-001_p5"]
-    assert len(beta["alt_art_cards"]) == 80
+    # only the alternate-art ("+") printings
+    assert len(beta["alt_art_cards"]) == 12 and "ST01-001_p3" in beta["alt_art_cards"] and "ST01-001_p2" not in beta["alt_art_cards"]
     assert set(pc.part_photo_urls("limitedbox-beta")) == {"Storage Box", "Booster Pack", "Damage Counter Dice"}
     # the six-card Premium Card Collections use the set-contents picker
     assert [d["name"] for d in pc.sleeve_designs("evx05")] == [

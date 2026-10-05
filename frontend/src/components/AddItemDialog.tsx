@@ -32,14 +32,25 @@ import {
   type PricedPart,
 } from "@/lib/types";
 import { PriceLines } from "@/components/PriceLines";
-import { InfoTip } from "@/components/InfoTip";
+import { HoverZoom, InfoTip } from "@/components/InfoTip";
 
 // PB01 / PB02: the whole set, unopened (listed on its own, never in a part bundle).
 const SEALED = "Sealed";
+// PB03: its EX Base / EX Resource tokens, picked like the alt-art cards
+const EX_TOKENS = "EX Tokens";
+// a case of sealed starter decks; like Sealed, listed on its own
+const BRICK = "Brick";
+const WHOLE = new Set([SEALED, BRICK]);
+// ST01–ST04 Regular Version: sealed or by the brick (their kit parts are Special Edition only)
+const REGULAR_DECK_PARTS = [SEALED, BRICK];
 
 // Hover tips (the (i) icons) explaining pricing in Add Item.
 const TIP_PARTS =
-  "Tick one part to list it on its own, or tick several to sell them together as one bundle. In a bundle each part can have its own price (optional) — leave it blank and it shares whatever is left of the bundle's price. \"Sealed\" (the whole set, unopened) is always listed on its own.";
+  "Tick one part to list it on its own, or tick several to sell them together as one bundle. In a bundle each part can have its own price (optional) — leave it blank and it shares whatever is left of the bundle's price. Only one type can be listed at a time: sealed and opened product can't be listed together — \"Brick\" is always listed on its own.";
+const TIP_SEALED_SLEEVES =
+  "Sleeves are always listed as Sealed (unopened packs). Pick nothing to list the whole product, or pick designs to list just those — they're still marked Sealed.";
+const TIP_SEALED =
+  "Listed as Sealed by default: if you don't tick or pick anything, the item is listed as Sealed (the whole product, unopened). Tick an option to list that instead.";
 const TIP_CARDS =
   "Pick the cards and set copies with − / +. A price per copy is optional: price every card and you can leave the asking price blank (it becomes their total); price only some and the rest share what's left; no card prices = the usual price per copy.";
 const TIP_ASKING =
@@ -49,6 +60,50 @@ const TIP_ADD_TO_BUNDLE =
 const TIP_BUNDLE =
   "Several products listed as one. Leave the bundle price blank to use the total of their prices, or set your own (e.g. a discount). It's needed when an item has no price of its own.";
 import { ArrowLeft, Check, Layers, Loader2, Minus, Package, Plus, Search, X } from "lucide-react";
+import { useCutout } from "@/components/ItemCard";
+
+// A set piece (playmat, box, dice …) cut out of its photo and shown on the tiles' hex backdrop,
+// like the listing it will become.
+function PieceImage({ src, alt, dim }: { src: string; alt: string; dim: boolean }) {
+  const cutout = useCutout(src, true);
+  return (
+    <span className="item-photo-backdrop flex aspect-[63/88] w-full items-center justify-center overflow-hidden rounded">
+      <img
+        src={cutout && cutout !== "pending" ? cutout : src}
+        alt={alt}
+        loading="lazy"
+        className={`size-full object-contain p-3 ${cutout === "pending" ? "opacity-0" : dim ? "opacity-60" : ""}`}
+      />
+    </span>
+  );
+}
+
+// Pictures for the pick tiles (Resources / Alt-Art Cards / EX Tokens / Sleeves) of PB01–PB03.
+const PICK_TILE_IMAGES: Record<string, string> = {
+  "pb01:Resources": "/cutouts/pb01-resources.webp",
+  "pb02:Resources": "/cutouts/pb02-resources.webp",
+  "pb03:Resources": "/cutouts/pb03-resources.webp",
+  "pb01:Alt-Art Cards": "/cutouts/pb01-alt-arts.webp",
+  "pb02:Alt-Art Cards": "/cutouts/pb02-alt-arts.webp",
+  "pb03:Alt-Art Cards": "/cutouts/pb03-alt-arts.webp",
+  "pb03:EX Tokens": "/cutouts/pb03-ex-tokens.webp",
+  "pb03:Sleeves": "/cutouts/pb03-sleeves.webp",
+};
+
+// A part's photo (cut out, on the hex backdrop) at the top of its button in "Part of the set".
+function PartThumb({ src, dim }: { src: string; dim: boolean }) {
+  const cutout = useCutout(src, true);
+  return (
+    <span className="item-photo-backdrop flex h-20 w-full items-center justify-center overflow-hidden rounded">
+      <img
+        src={cutout && cutout !== "pending" ? cutout : src}
+        alt=""
+        loading="lazy"
+        className={`size-full object-contain p-1.5 ${cutout === "pending" ? "opacity-0" : dim ? "opacity-60" : ""}`}
+      />
+    </span>
+  );
+}
 
 // keepOpen: list the item but leave Add Item open (a bundle is still being built); onDone runs
 // once it has been added.
@@ -62,6 +117,11 @@ interface AddItemDialogProps {
   onSubmit: (payload: ItemPayload, options?: SubmitOptions) => void;
   onManual?: () => void; // no longer used: custom items are entered inside Add Item
   pending: boolean;
+  // the bundle being built — shared with Add Card, so products and cards can be bundled together
+  bundle: BundleEntry[];
+  setBundle: (update: (cur: BundleEntry[]) => BundleEntry[]) => void;
+  onListBundle: (payload: ItemPayload) => void;
+  onAddCard: () => void; // switch to Add Card, keeping the bundle
 }
 
 const LABEL = "font-mono text-xs uppercase tracking-wider text-slate-400";
@@ -280,29 +340,60 @@ function ProductDetailsForm({
   // Products sold in more than one edition (ST01–ST04) must pick one; Regular Version is the default.
   const [edition, setEdition] = useState<string | null>(product.editions[0]?.name ?? null);
   const editionInfo = product.editions.find((e) => e.name === edition);
+  // each edition is listed with its own photo (data/product_images/st01-special-edition.webp …);
+  // the product's own photo shows them side by side
+  const editionImage =
+    product.editions.length > 1 && edition
+      ? `/api/product-images/${product.id}-${edition.toLowerCase().replace(/\s+/g, "-")}.webp`
+      : null;
   // Sets sold part by part (PB01–PB03, PC01A, PC02A, Edition Beta): which parts are being listed
   // (multi-select, kept in the set's order). One part is listed on its own; two or more are one
   // bundle listing, e.g. "Storage Box + Playmat + Resources".
-  const [parts, setParts] = useState<string[]>([]);
+  // ST01–ST04 offer their mini kits only for the Special Edition; the Regular Version is Sealed / Brick.
+  const offeredParts =
+    product.editions.length > 1 && edition !== "Special Edition" && product.parts.length > 0 ? REGULAR_DECK_PARTS : product.parts;
+  const partsOffered = offeredParts.length > 0;
+  const [pickedParts, setParts] = useState<string[]>([]);
+  const parts = pickedParts.filter((p) => offeredParts.includes(p));
+  // PB03 "Sleeves" opens a picker of its sleeve designs, like Resources does for its cards.
+  const sleevePart = offeredParts.includes("Sleeves") && product.sleeve_designs.length > 0;
+  const isPickPart = (p: string) => CARD_PARTS.has(p) || (sleevePart && p === "Sleeves");
+  // Sets with a "Sealed" choice (PB01–PB03, ST01A–ST04A) have no Qty box: every part (Sealed too)
+  // sets its copies with − / + over its photo. GUNDAM ASSEMBLE kits always do.
+  const noQtyBox = offeredParts.includes(SEALED);
+  const [partCopies, setPartCopies] = useState<Record<string, number>>({});
+  const isStepped = (p: string) => p.startsWith("ASSEMBLE:") || (noQtyBox && !isPickPart(p));
+  const partCopiesOf = (p: string) => (isStepped(p) ? (partCopies[p] ?? 1) : 1);
+  const singleKit = parts.length === 1 && isStepped(parts[0]);
   // "Sealed" (PB01 / PB02) is the whole set unopened: it's listed on its own, so ticking it clears
   // the other parts and ticking a part clears it.
   const togglePart = (p: string) =>
     setParts((cur) =>
       cur.includes(p)
         ? cur.filter((x) => x !== p)
-        : p === SEALED
+        : WHOLE.has(p)
           ? [p]
-          : product.parts.filter((x) => x !== SEALED && (x === p || cur.includes(x))),
+          : offeredParts.filter((x) => !WHOLE.has(x) && (x === p || cur.includes(x))),
     );
   const isBundle = parts.length > 1;
-  const part = parts.length > 0 ? parts.join(" + ") : null;
+  // in a bundle, a kit picked more than once reads "ASSEMBLE: Gundam ×2"
+  const part =
+    parts.length > 0 ? parts.map((p) => (parts.length > 1 && partCopiesOf(p) > 1 ? `${p} ×${partCopiesOf(p)}` : p)).join(" + ") : null;
   // Storage Box / Sleeves / Playmat / Deck Box / Divider …: a single part is listed with its own photo
   // instead of the whole set's box art.
-  const partImage = (!isBundle && part && product.part_images[part]) || null;
+  const partImage = (!isBundle && parts[0] && product.part_images[parts[0]]) || null;
   const [resources, setResources] = useState<string[]>([]);
   // PB01 "Alt-Art Cards": which alt-art printings (multi-select, print ids e.g. "ST02-010_p4").
-  const [altArts, setAltArts] = useState<string[]>([]);
-  const showAltArts = parts.includes("Alt-Art Cards") && product.alt_art_cards.length > 0;
+  // PB03 "EX Tokens": its EX Base / EX Resource (EX… print ids) are picked under their own part.
+  const tokenPart = offeredParts.includes(EX_TOKENS);
+  const isToken = (c: { card_no: string }) => tokenPart && c.card_no.startsWith("EX");
+  const altArtPartOf = (c: { card_no: string }) => (isToken(c) ? EX_TOKENS : "Alt-Art Cards");
+  const [pickedAltArts, setAltArts] = useState<string[]>([]);
+  const altArts = pickedAltArts.filter((id) => {
+    const c = product.alt_art_cards.find((x) => x.id === id);
+    return c != null && parts.includes(altArtPartOf(c));
+  });
+  const showAltArts = product.alt_art_cards.some((c) => parts.includes(altArtPartOf(c)));
   const toggleAltArt = (id: string) =>
     setAltArts((cur) =>
       cur.includes(id)
@@ -317,8 +408,24 @@ function ProductDetailsForm({
         : product.resource_cards.map((c) => c.card_no).filter((c) => c === cardNo || cur.includes(c)),
     );
   // Sleeve products sold in several designs (Official Card Sleeves 01): which designs (multi-select).
-  const [sleeves, setSleeves] = useState<string[]>([]);
-  const showSleeves = product.sleeve_designs.length > 0;
+  const [pickedSleeves, setSleeves] = useState<string[]>([]);
+  // "Extras" (a starter deck's bonus pack) are optional: nothing picked lists the product itself.
+  const optionalPicks = product.sleeve_label === "Extras";
+  // A bonus pack in Extras counts as opened product (taken out of its deck), so it can't be listed
+  // with unopened Sealed / Brick.
+  const wholePicked = parts.find((p) => WHOLE.has(p));
+  const extrasLocked = optionalPicks && wholePicked != null;
+  // Nothing ticked under "Part of the set" (and not just a bonus pack): the item is listed as Sealed.
+  // Any product (not just sets with parts) is listed as Sealed when nothing is ticked or picked.
+  // Sleeves stay Sealed with designs picked too (unopened sleeve packs) — also PB03's Sleeves
+  // when listed on their own.
+  const sealedSleeves = product.sleeve_label === "Sleeve designs";
+  const sealedByDefault =
+    (parts.length === 0 && (pickedSleeves.length === 0 || sealedSleeves)) ||
+    (sleevePart && parts.length === 1 && parts[0] === "Sleeves");
+  const sleeves = extrasLocked ? [] : pickedSleeves;
+  const showSleeves =
+    product.sleeve_designs.length > 0 && !extrasLocked && (!sleevePart || parts.includes("Sleeves"));
   const toggleSleeve = (id: string) =>
     setSleeves((cur) =>
       cur.includes(id)
@@ -329,7 +436,8 @@ function ProductDetailsForm({
   // Listing just cards / designs: quantity is the total copies (set with + / −). In a bundle the
   // copies are what's in each bundle, and Qty is how many bundles.
   const [copies, setCopies] = useState<Record<string, number>>({});
-  const hasCardPicks = showResources || showAltArts || showSleeves;
+  // picks are optional: none picked = the product itself (Sealed); PB03's Sleeves part needs a design
+  const hasCardPicks = showResources || showAltArts || (showSleeves && (sleevePart || sleeves.length > 0));
   const cardMode = hasCardPicks && !isBundle;
   const pickedIds = [...(showResources ? resources : []), ...(showAltArts ? altArts : []), ...(showSleeves ? sleeves : [])];
   const copiesOf = (id: string) => copies[id] ?? 1;
@@ -345,19 +453,19 @@ function ProductDetailsForm({
     const v = (cardPrices[id] ?? "").trim();
     return v === "" ? null : Number(v);
   };
-  // In a part bundle each physical part (storage box, playmat …) can have its own price too.
+  // Each picked physical part (storage box, playmat …) can have its own price — on its own too.
   const [partPrices, setPartPrices] = useState<Record<string, string>>({});
   const setPartPrice = (p: string, value: string) => setPartPrices((cur) => ({ ...cur, [p]: value }));
   const partPriceOf = (p: string): number | null => {
     const v = (partPrices[p] ?? "").trim();
     return v === "" ? null : Number(v);
   };
-  const physicalPicked = isBundle ? parts.filter((p) => !CARD_PARTS.has(p)) : [];
+  const physicalPicked = parts.filter((p) => !isPickPart(p) && !WHOLE.has(p));
   const isBad = (n: number | null) => n != null && (Number.isNaN(n) || n < 0);
   const badCardPrice = pickedIds.some((id) => isBad(cardPriceOf(id))) || physicalPicked.some((p) => isBad(partPriceOf(p)));
   const anyCardPrice = pickedIds.some((id) => cardPriceOf(id) != null) || physicalPicked.some((p) => partPriceOf(p) != null);
   const priceParts: PricedPart[] = [
-    ...physicalPicked.map((p) => ({ label: p, qty: 1, each: badCardPrice ? null : partPriceOf(p) })),
+    ...physicalPicked.map((p) => ({ label: p, qty: isBundle ? partCopiesOf(p) : 1, each: badCardPrice ? null : partPriceOf(p) })),
     ...pickedIds.map((id) => ({
       label: labelOf(id).replace(/_p\d+$/, ""),
       qty: copiesOf(id),
@@ -403,7 +511,7 @@ function ProductDetailsForm({
     const priceNum = autoPrice ? pricedTotal(priceParts) : noPrice ? 0 : Number(price);
     // Card parts: quantity is the total copies across the picked cards (set with + / −); a priced
     // lot of cards is one listing.
-    const qtyNum = cardLot ? 1 : cardMode ? Math.max(totalCopies, 1) : Number(quantity);
+    const qtyNum = cardLot ? 1 : cardMode ? Math.max(totalCopies, 1) : singleKit ? partCopiesOf(parts[0]) : noQtyBox && parts.length > 0 ? 1 : Number(quantity);
     let purchaseNum: number | null = null;
     if (Number.isNaN(priceNum) || priceNum < 0) {
       setError("Enter an asking price of zero or more.");
@@ -420,24 +528,26 @@ function ProductDetailsForm({
       setError("Quantity must be a whole number of 1 or more.");
       return null;
     }
-    if (product.parts.length > 0 && parts.length === 0) {
-      setError("Choose which part of the set you're listing (pick several to list them as a bundle).");
-      return null;
-    }
     if (showResources && resources.length === 0) {
       setError("Select at least one resource card.");
       return null;
     }
-    if (showAltArts && altArts.length === 0) {
-      setError("Select at least one alt-art card.");
-      return null;
+    for (const [p, what] of [["Alt-Art Cards", "alt-art card"], [EX_TOKENS, "EX token"]]) {
+      const picked = altArts.some((id) => altArtPartOf(product.alt_art_cards.find((c) => c.id === id)!) === p);
+      if (parts.includes(p) && !picked) {
+        setError(`Select at least one ${what}.`);
+        return null;
+      }
     }
-    if (showSleeves && sleeves.length === 0) {
-      setError(product.sleeve_label === "Set contents" ? "Select at least one item from the set." : "Select at least one sleeve design.");
+    if (showSleeves && sleevePart && sleeves.length === 0) {
+      setError("Select at least one sleeve design.");
       return null;
     }
     // Bundle: one picture of every picked part's photo and every picked card.
-    const bundleParts = parts.filter((p) => product.part_images[p]).map((p) => p.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""));
+    const bundleParts = [
+      ...parts.filter((p) => product.part_images[p]).map((p) => p.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")),
+      ...(sleevePart && showSleeves ? sleeves : []), // PB03 sleeve ids are their part photo slugs
+    ];
     const bundleCards = [...(showResources ? resources : []), ...(showAltArts ? altArts : [])];
     const bundleImage =
       isBundle && product.bundle_image_url && bundleParts.length + bundleCards.length > 0
@@ -460,7 +570,7 @@ function ProductDetailsForm({
           ? `${product.resource_set_image_url}?cards=${altArts.join(",")}`
           : null;
     // Sleeve designs: one design → that sleeve; several → a picture of just those sleeves.
-    const sleeveImage = !showSleeves
+    const sleeveImage = !showSleeves || sleeves.length === 0
       ? null
       : sleeves.length === 1
         ? (product.sleeve_designs.find((d) => d.id === sleeves[0])?.image_url ?? null)
@@ -476,7 +586,7 @@ function ProductDetailsForm({
       category: product.category,
       product_id: product.id,
       edition,
-      part,
+      part: sealedByDefault ? SEALED : part,
       resource_cards: showResources ? resources : [],
       alt_art_cards: showAltArts ? altArts : [],
       sleeve_designs: showSleeves ? sleeves.map(labelOf) : [],
@@ -491,7 +601,7 @@ function ProductDetailsForm({
       set_name: null,
       price: priceNum,
       purchase_price: purchaseNum,
-      image_url: bundleImage ?? resourceImage ?? altArtImage ?? sleeveImage ?? partImage ?? product.image_url,
+      image_url: bundleImage ?? resourceImage ?? altArtImage ?? sleeveImage ?? partImage ?? editionImage ?? product.image_url,
       quantity: qtyNum,
       condition: null,
       notes: notes.trim() || null,
@@ -518,7 +628,7 @@ function ProductDetailsForm({
     if (!payload) return;
     const unpriced = !priceEntered && !everythingPriced;
     const picked = hasCardPicks && pickedIds.length > 0 ? copiesSummary : null;
-    const detail = [part, product.editions.length > 1 ? edition : null, picked].filter(Boolean).join(" · ");
+    const detail = [payload.part, product.editions.length > 1 ? edition : null, picked].filter(Boolean).join(" · ");
     onAddToBundle({
       name: payload.name,
       product_id: product.id,
@@ -602,14 +712,14 @@ function ProductDetailsForm({
         </div>
       )}
 
-      {product.parts.length > 0 && (
+      {partsOffered && (
         <div className="flex flex-col gap-1.5">
           <span className={LABEL} id="add-item-part-label">
             Part of the set{" "}
             <span className="normal-case text-slate-500">
-              {isBundle ? `(bundle of ${parts.length})` : "(pick several to list them as a bundle)"}
+              {isBundle ? `(bundle of ${parts.length})` : product.category === "starter deck" ? "" : "(pick several to list them as a bundle)"}
             </span>{" "}
-            <InfoTip label="How parts and bundles are priced">{TIP_PARTS}</InfoTip>
+            {product.category !== "starter deck" && <InfoTip label="How parts and bundles are priced">{TIP_PARTS}</InfoTip>}
           </span>
           <div
             role="group"
@@ -617,29 +727,73 @@ function ProductDetailsForm({
             className="grid grid-cols-2 gap-2 sm:grid-cols-4"
             data-testid="add-item-part"
           >
-            {product.parts.map((p) => {
+            {(() => {
+              const shown = offeredParts.filter((p) => p !== SEALED);
+              const imageOf = (p: string) => product.part_images[p] ?? PICK_TILE_IMAGES[`${product.id}:${p}`];
+              const textOnly = shown.filter((p) => !imageOf(p));
+              // with photo tiles around, the text-only tiles (e.g. Alt-Art Cards + Resources) share one
+              // grid cell, stacked, so the row stays even
+              const stack = textOnly.length >= 2 && textOnly.length < shown.length;
+              const tile = (p: string, compact: boolean) => {
               const selected = parts.includes(p);
-              // a physical part ticked in a bundle gets its own (optional) price box
-              const priced = selected && isBundle && !CARD_PARTS.has(p);
+              // a picked physical part gets its own (optional) price box
+              const priced = selected && !isPickPart(p) && !WHOLE.has(p);
+              const tileImage = product.part_images[p] ?? PICK_TILE_IMAGES[`${product.id}:${p}`];
               return (
-                <div key={p} className="flex flex-col">
+                <div key={p} className={compact ? "flex flex-1 flex-col" : "flex flex-col"}>
+                <div className="relative flex-1">
                 <button
                   type="button"
                   role="checkbox"
                   aria-checked={selected}
                   data-testid={`add-item-part-${p.toLowerCase().replace(/\s+/g, "-")}`}
                   onClick={() => {
+                    if (!selected) setPartCopies((cur) => ({ ...cur, [p]: 1 }));
                     togglePart(p);
                     setError(null);
                   }}
-                  className={`rounded-md border px-2.5 py-2 text-left text-sm font-medium transition-colors ${
+                  className={`flex size-full flex-col gap-1.5 rounded-md border ${tileImage || compact ? "" : "min-h-24"} px-2.5 py-2 text-left text-sm font-medium transition-colors ${
                     selected
                       ? "border-sky-500 bg-sky-950/50 text-slate-100"
                       : "border-slate-700 bg-slate-950/40 text-slate-300 hover:border-slate-500"
                   }`}
                 >
+                  {tileImage && <PartThumb src={tileImage} dim={!selected} />}
                   {p}
                 </button>
+                {selected && isStepped(p) && (
+                  <div
+                    className={
+                      tileImage
+                        ? "pointer-events-none absolute inset-x-0 top-[9px] flex h-20 items-center justify-center"
+                        : "pointer-events-none absolute inset-x-0 top-7 bottom-0 flex items-center justify-center"
+                    }
+                    data-testid={`add-item-part-copies-${p.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
+                  >
+                    <div className="pointer-events-auto flex items-center gap-1 rounded-full bg-slate-950/90 p-1 shadow-lg ring-1 ring-slate-600">
+                      <button
+                        type="button"
+                        aria-label={`One fewer ${p}`}
+                        onClick={() => (partCopiesOf(p) <= 1 ? togglePart(p) : setPartCopies((cur) => ({ ...cur, [p]: partCopiesOf(p) - 1 })))}
+                        className="flex size-7 items-center justify-center rounded-full bg-slate-800 text-slate-100 hover:bg-slate-700"
+                      >
+                        <Minus className="size-3.5" aria-hidden />
+                      </button>
+                      <span className="min-w-6 text-center font-mono text-sm font-semibold text-white" aria-live="polite">
+                        {partCopiesOf(p)}
+                      </span>
+                      <button
+                        type="button"
+                        aria-label={`One more ${p}`}
+                        onClick={() => setPartCopies((cur) => ({ ...cur, [p]: Math.min(partCopiesOf(p) + 1, 99) }))}
+                        className="flex size-7 items-center justify-center rounded-full bg-slate-800 text-slate-100 hover:bg-slate-700"
+                      >
+                        <Plus className="size-3.5" aria-hidden />
+                      </button>
+                    </div>
+                  </div>
+                )}
+                </div>
                 {priced && (
                   <CardPriceInput
                     label={p}
@@ -650,7 +804,14 @@ function ProductDetailsForm({
                 )}
                 </div>
               );
-            })}
+              };
+              return (
+                <>
+                  {shown.filter((p) => !stack || imageOf(p)).map((p) => tile(p, false))}
+                  {stack && <div className="flex flex-col gap-2">{textOnly.map((p) => tile(p, true))}</div>}
+                </>
+              );
+            })()}
           </div>
         </div>
       )}
@@ -695,12 +856,14 @@ function ProductDetailsForm({
                       selected ? "border-sky-500 bg-sky-950/50" : "border-slate-800 bg-slate-950/40 hover:border-slate-500"
                     }`}
                   >
-                    <img
-                      src={c.image_url}
-                      alt={c.card_no}
-                      loading="lazy"
-                      className={`aspect-[63/88] w-full rounded object-cover ${selected ? "" : "opacity-60"}`}
-                    />
+                    <HoverZoom src={c.image_url} alt={c.card_no} className="block w-full">
+                      <img
+                        src={c.image_url}
+                        alt={c.card_no}
+                        loading="lazy"
+                        className={`aspect-[63/88] w-full rounded object-cover ${selected ? "" : "opacity-60"}`}
+                      />
+                    </HoverZoom>
                     <span className="text-center font-mono text-[0.65rem] text-slate-300">{c.card_no}</span>
                     {selected && (
                       <span className="absolute top-1.5 right-1.5 flex size-5 items-center justify-center rounded-full bg-sky-500 text-white">
@@ -732,11 +895,14 @@ function ProductDetailsForm({
         </div>
       )}
 
-      {showAltArts && (
-        <div className="flex flex-col gap-1.5" data-testid="add-item-alt-arts">
+      {([["Alt-Art Cards", "Alt-art cards", "add-item-alt-arts"], [EX_TOKENS, "EX tokens", "add-item-ex-tokens"]] as const).map(([pickPart, title, testId]) => {
+        const list = product.alt_art_cards.filter((c) => altArtPartOf(c) === pickPart);
+        const ids = list.map((c) => c.id);
+        return parts.includes(pickPart) && list.length > 0 && (
+        <div key={pickPart} className="flex flex-col gap-1.5" data-testid={testId}>
           <div className="flex items-center justify-between gap-2">
             <span className={LABEL}>
-              Alt-art cards <span className="normal-case text-slate-500">({altArts.length} selected)</span>{" "}
+              {title} <span className="normal-case text-slate-500">({altArts.filter((id) => ids.includes(id)).length} selected)</span>{" "}
               <InfoTip label="How card prices work">{TIP_CARDS}</InfoTip>
             </span>
             <span className="flex gap-2">
@@ -744,17 +910,17 @@ function ProductDetailsForm({
                 variant="link"
                 size="xs"
                 className="h-auto px-0 text-xs"
-                onClick={() => setAltArts(product.alt_art_cards.map((c) => c.id))}
+                onClick={() => setAltArts((cur) => product.alt_art_cards.map((c) => c.id).filter((id) => ids.includes(id) || cur.includes(id)))}
               >
                 Select all
               </Button>
-              <Button variant="link" size="xs" className="h-auto px-0 text-xs" onClick={() => setAltArts([])}>
+              <Button variant="link" size="xs" className="h-auto px-0 text-xs" onClick={() => setAltArts((cur) => cur.filter((id) => !ids.includes(id)))}>
                 Clear
               </Button>
             </span>
           </div>
           <ul className="grid grid-cols-3 gap-2 sm:grid-cols-5">
-            {product.alt_art_cards.map((c) => {
+            {list.map((c) => {
               const selected = altArts.includes(c.id);
               return (
                 <li key={c.id} className="group relative">
@@ -773,12 +939,14 @@ function ProductDetailsForm({
                       selected ? "border-sky-500 bg-sky-950/50" : "border-slate-800 bg-slate-950/40 hover:border-slate-500"
                     }`}
                   >
-                    <img
-                      src={c.image_url}
-                      alt={c.name ?? c.card_no}
-                      loading="lazy"
-                      className={`aspect-[63/88] w-full rounded object-cover ${selected ? "" : "opacity-60"}`}
-                    />
+                    <HoverZoom src={c.image_url} alt={c.name ?? c.card_no} className="block w-full">
+                      <img
+                        src={c.image_url}
+                        alt={c.name ?? c.card_no}
+                        loading="lazy"
+                        className={`aspect-[63/88] w-full rounded object-cover ${selected ? "" : "opacity-60"}`}
+                      />
+                    </HoverZoom>
                     <span className="text-center font-mono text-[0.65rem] text-slate-300">{c.card_no}</span>
                     {c.name && <span className="line-clamp-1 text-center text-[0.65rem] text-slate-400">{c.name}</span>}
                     {selected && (
@@ -809,6 +977,27 @@ function ProductDetailsForm({
             })}
           </ul>
         </div>
+      );
+      })}
+
+      {/* every product says when it will be listed as Sealed */}
+      {sealedByDefault && (
+        <p className="flex items-center gap-1.5 text-xs text-slate-400" data-testid="add-item-sealed-default">
+          Listed as <span className="font-medium text-amber-300">Sealed</span>
+          <InfoTip label="Listed as Sealed by default">
+            {sleevePart
+              ? `${TIP_SEALED} Sleeves listed on their own stay Sealed (unopened packs), whichever designs you pick.`
+              : sealedSleeves
+                ? TIP_SEALED_SLEEVES
+                : TIP_SEALED}
+          </InfoTip>
+        </p>
+      )}
+
+      {extrasLocked && (
+        <p className="text-xs text-slate-500" data-testid="add-item-extras-locked">
+          Extras: a bonus pack counts as opened product, so it can't be listed with {wholePicked} (opened). Untick {wholePicked} to list it.
+        </p>
       )}
 
       {showSleeves && (
@@ -816,6 +1005,7 @@ function ProductDetailsForm({
           <div className="flex items-center justify-between gap-2">
             <span className={LABEL}>
               {product.sleeve_label ?? "Sleeve designs"}{" "}
+              {!sleevePart && <span className="normal-case text-slate-500">(optional) </span>}
               <span className="normal-case text-slate-500">({sleeves.length} selected)</span>{" "}
               <InfoTip label="How prices work">{TIP_CARDS}</InfoTip>
             </span>
@@ -853,12 +1043,18 @@ function ProductDetailsForm({
                       selected ? "border-sky-500 bg-sky-950/50" : "border-slate-800 bg-slate-950/40 hover:border-slate-500"
                     }`}
                   >
-                    <img
-                      src={d.image_url}
-                      alt={d.name}
-                      loading="lazy"
-                      className={`aspect-[63/88] w-full rounded ${d.fit === "contain" ? "bg-white object-contain p-0.5" : "object-cover"} ${selected ? "" : "opacity-60"}`}
-                    />
+                    {d.fit === "contain" ? (
+                      <PieceImage src={d.image_url} alt={d.name} dim={!selected} />
+                    ) : (
+                      <HoverZoom src={d.image_url} alt={d.name} className="block w-full">
+                        <img
+                          src={d.image_url}
+                          alt={d.name}
+                          loading="lazy"
+                          className={`aspect-[63/88] w-full rounded object-cover ${selected ? "" : "opacity-60"}`}
+                        />
+                      </HoverZoom>
+                    )}
                     <span className="line-clamp-1 text-center text-[0.65rem] text-slate-300">{d.name}</span>
                     {selected && (
                       <span className="absolute top-1.5 right-1.5 flex size-5 items-center justify-center rounded-full bg-sky-500 text-white">
@@ -954,7 +1150,7 @@ function ProductDetailsForm({
         </div>
         {/* Picked cards / designs / set contents set their copies with + / −, so there's no Qty box
             (and no empty space for it): Notes follows the prices directly. */}
-        {!cardMode && (
+        {!cardMode && !singleKit && !(noQtyBox && parts.length > 0) && (
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="add-item-qty" className={LABEL}>
               Qty
@@ -1469,8 +1665,10 @@ function bundleParts(entries: BundleEntry[]): PricedPart[] {
   return entries.map((e) => ({ label: e.code ?? e.name, qty: e.quantity, each: e.price }));
 }
 
-// One listing for several products, e.g. "Bundle: ST09 + ST01", at the given total price.
-function bundlePayload(entries: BundleEntry[], total: number): ItemPayload {
+// One listing for several products and / or cards, e.g. "Bundle: ST09 + ST02-010", at the given
+// total price.
+// oxlint-disable-next-line react/only-export-components -- shared with Add Card
+export function bundlePayload(entries: BundleEntry[], total: number): ItemPayload {
   // one category if they share it (e.g. two starter decks), otherwise "other"
   const categories = new Set(entries.map((e) => e.category ?? "other"));
   const costs = entries.filter((e) => e.purchase_price != null);
@@ -1509,18 +1707,22 @@ function EntryCardLines({ entry }: { entry: BundleEntry }) {
   return <PriceLines lines={lines} className="mt-0.5 border-l border-slate-700 pl-2" />;
 }
 
-function BundleBar({
+export function BundleBar({
   entries,
   onRemove,
   onList,
   itemOpen,
   pending,
+  switchLabel,
+  onSwitch,
 }: {
   entries: BundleEntry[];
   onRemove: (index: number) => void;
   onList: (total: number) => void;
   itemOpen: string | null; // the item being set up below (not in the bundle until added)
   pending: boolean;
+  switchLabel: string; // "Add a card" / "Add an item": go to the other dialog, keeping the bundle
+  onSwitch: () => void;
 }) {
   // Optional price for the whole bundle; blank = the total of the item prices (when all have one).
   const [bundlePrice, setBundlePrice] = useState("");
@@ -1534,9 +1736,14 @@ function BundleBar({
   const canList = entries.length >= 2 && total != null;
   return (
     <div className="space-y-2 rounded-lg border border-sky-500/40 bg-sky-950/30 p-3" data-testid="add-item-bundle">
-      <p className={LABEL}>
-        Bundle <span className="normal-case text-slate-500">({entries.length} {entries.length === 1 ? "item" : "items"})</span>
-      </p>
+      <div className="flex items-center gap-2">
+        <p className={LABEL}>
+          Bundle <span className="normal-case text-slate-500">({entries.length} {entries.length === 1 ? "item" : "items"})</span>
+        </p>
+        <Button size="xs" variant="outline" className="ml-auto" onClick={onSwitch} data-testid="bundle-switch">
+          <Plus className="size-3.5" /> {switchLabel}
+        </Button>
+      </div>
       <ul className="space-y-1.5">
         {entries.map((e, i) => {
           const line = bundleLineTotal(e);
@@ -1633,18 +1840,24 @@ function BundleBar({
 
 /* ---------------- dialog ---------------- */
 
-export default function AddItemDialog({ onClose, onSubmit, pending }: AddItemDialogProps) {
+export default function AddItemDialog({
+  onClose,
+  onSubmit,
+  pending,
+  bundle,
+  setBundle,
+  onListBundle,
+  onAddCard,
+}: AddItemDialogProps) {
   const [product, setProduct] = useState<CatalogProduct | null>(null);
   // "Custom item": something not in the product database, entered by hand.
   const [custom, setCustom] = useState(false);
-  // Products put in a bundle so far (each with its price); listed together as one item.
-  const [bundle, setBundle] = useState<BundleEntry[]>([]);
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       {/* Pinned near the top so the dialog doesn't jump around as search results change height. */}
       <DialogContent
-        className="top-4 max-h-[calc(100svh-2rem)] translate-y-0 overflow-y-auto sm:top-[6svh] sm:max-h-[88svh] sm:max-w-2xl"
+        className="top-4 max-h-[calc(100svh-2rem)] translate-y-0 overflow-x-hidden overflow-y-auto sm:top-[6svh] sm:max-h-[88svh] sm:max-w-2xl [&>*]:min-w-0"
         data-testid="add-item-dialog"
       >
         <DialogHeader>
@@ -1664,9 +1877,11 @@ export default function AddItemDialog({ onClose, onSubmit, pending }: AddItemDia
           <BundleBar
             entries={bundle}
             onRemove={(i) => setBundle((cur) => cur.filter((_, j) => j !== i))}
-            onList={(total) => onSubmit(bundlePayload(bundle, total))}
+            onList={(total) => onListBundle(bundlePayload(bundle, total))}
             itemOpen={product ? (product.code ?? product.name) : custom ? "The custom item" : null}
             pending={pending}
+            switchLabel="Add a card"
+            onSwitch={onAddCard}
           />
         )}
 

@@ -1,6 +1,6 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
-import { StatusBadge, categoryClass, rarityClass } from "@/components/badges";
+import { StatusBadge, bundleKind, categoryClass, rarityClass } from "@/components/badges";
 import { COLOR_DOT_CLASS, formatAud, formatDate } from "@/lib/format";
 import {
   bundleLineTotal,
@@ -17,7 +17,8 @@ import {
   type PricedPart,
 } from "@/lib/types";
 import { PriceLines } from "@/components/PriceLines";
-import { OverflowTip } from "@/components/InfoTip";
+import { HoverZoom, OverflowTip } from "@/components/InfoTip";
+import { cutoutPhoto } from "@/lib/cutout";
 import { CalendarDays, ChevronDown, DollarSign, Layers, Package, Lock, Pencil, Tag, Trash2, Undo2, User } from "lucide-react";
 
 export interface ItemActionProps {
@@ -64,39 +65,85 @@ interface ItemCardProps extends ItemActionProps {
 }
 
 const PART_PHOTO_PARTS = new Set([
-  "Storage Box", "Sleeves", "Playmat", "Deck Box", "Divider",
+  "Storage Box", "Sleeves", "Playmat", "Deck Box", "Separator",
   "Sleeves (Blue)", "Sleeves (Green)", "Card Case", "Damage Counter Dice", // PB03
   "Booster Pack", // Edition Beta (ASSEMBLE kit photos are on black, so they keep the dark tile)
 ]);
 
+// Photos that the background cut-out gets wrong — these stay as they are, on a white frame.
+const NO_CUTOUT: RegExp[] = [];
+
+// An item's photo with its background removed, so it floats on the tile's graphite hex backdrop.
+// "pending" while it's being made; null when the original photo should be used.
+export function useCutout(src: string | null | undefined, enabled: boolean): string | null | "pending" {
+  const [result, setResult] = useState<{ src: string; url: string | null } | null>(null);
+  useEffect(() => {
+    if (!enabled || !src) return;
+    let alive = true;
+    cutoutPhoto(src).then((url) => alive && setResult({ src, url }));
+    return () => {
+      alive = false;
+    };
+  }, [src, enabled]);
+  if (!enabled || !src) return null;
+  return result?.src === src ? result.url : "pending";
+}
+
+// One product in a bundle's collage, cut out to float on the hex backdrop like a single listing.
+function BundleThumb({ src, alt }: { src: string; alt: string }) {
+  const cutout = useCutout(src, true);
+  return (
+    <img
+      src={cutout && cutout !== "pending" ? cutout : src}
+      alt={alt}
+      loading="lazy"
+      className={`aspect-square w-full object-contain p-1 drop-shadow-[0_6px_8px_rgba(0,0,0,0.45)] ${cutout === "pending" ? "opacity-0" : ""}`}
+    />
+  );
+}
+
 // Card art in the real card ratio (63 × 88 mm). Falls back to an icon if there is no image.
 function CardArt({ item }: { item: CollectionItem }) {
-  // PB01/PB02 part photos (storage box, sleeves, playmat, deck box, divider) are shown on white,
-  // so the space above and below a wide photo is white instead of the dark tile background.
-  const whiteBackdrop = !!item.part && PART_PHOTO_PARTS.has(item.part);
+  // PB01/PB02 part photos that can't be cut out cleanly are shown on white instead.
+  const whitePart = !!item.part && PART_PHOTO_PARTS.has(item.part);
   const [failed, setFailed] = useState(false);
   const showImage = item.image_url && !failed;
+  const canCutout = item.kind === "item" && !!item.image_url && !NO_CUTOUT.some((re) => re.test(item.image_url ?? ""));
+  const cutout = useCutout(item.image_url, canCutout && !failed);
+  const onHex = item.kind === "item" && showImage && cutout !== null; // photo floats on the hex backdrop
+  const whiteBackdrop = whitePart && !onHex;
   const bundle = item.bundle_items ?? [];
-  if (bundle.length > 1) {
-    // A bundle of products (e.g. ST09 + ST01): a collage of their pictures (up to 4; "+N" for the rest).
-    const shown = bundle.length > 4 ? bundle.slice(0, 3) : bundle;
+  // A bundle of GUNDAM ASSEMBLE kits (e.g. ST04A, PC01A): each kit's own photo, as in Add Item, instead
+  // of the mosaic the server builds from the source photos.
+  const kitBundle = /\/api\/product-images\/([a-z0-9-]+)-bundle\.svg\?parts=([a-z0-9,-]+)&cards=$/.exec(item.image_url ?? "");
+  const kitParts = kitBundle ? kitBundle[2].split(",") : [];
+  const kitSlugs = kitParts.length > 0 && kitParts.every((s) => s.startsWith("assemble-")) ? kitParts : null;
+  const collage =
+    bundle.length > 1
+      ? bundle.map((e) => ({ src: e.image_url, alt: e.name }))
+      : kitSlugs && kitSlugs.length > 1
+        ? kitSlugs.map((s) => ({ src: `/api/product-images/${kitBundle?.[1]}-part-${s}.svg`, alt: s }))
+        : null;
+  if (collage) {
+    // A bundle of products (e.g. ST09 + ST01) or kits: a collage of their pictures (up to 4; "+N" for the rest).
+    const shown = collage.length > 4 ? collage.slice(0, 3) : collage;
     return (
       <div
         data-testid={`item-photo-${item.id}`}
-        className="grid aspect-[63/88] grid-cols-2 content-center gap-1 overflow-hidden rounded-md border border-slate-800/80 bg-slate-950/70 p-1"
+        className="item-photo-backdrop grid aspect-[63/88] grid-cols-2 content-center gap-1 overflow-hidden rounded-md border border-slate-800/80 p-1"
       >
         {shown.map((e, i) =>
-          e.image_url ? (
-            <img key={i} src={e.image_url} alt={e.name} loading="lazy" className="aspect-square w-full rounded bg-slate-900 object-contain" />
+          e.src ? (
+            <BundleThumb key={i} src={e.src} alt={e.alt} />
           ) : (
-            <div key={i} className="flex aspect-square items-center justify-center rounded bg-slate-900 text-slate-600">
+            <div key={i} className="flex aspect-square items-center justify-center rounded text-slate-600">
               <Package className="size-6" aria-hidden />
             </div>
           ),
         )}
-        {bundle.length > 4 && (
-          <div className="flex aspect-square items-center justify-center rounded bg-slate-900 font-mono text-sm text-slate-300">
-            +{bundle.length - 3}
+        {collage.length > 4 && (
+          <div className="flex aspect-square items-center justify-center rounded font-mono text-sm text-slate-300">
+            +{collage.length - 3}
           </div>
         )}
       </div>
@@ -105,18 +152,44 @@ function CardArt({ item }: { item: CollectionItem }) {
   return (
     <div
       className={`relative aspect-[63/88] overflow-hidden rounded-md border border-slate-800/80 ${
-        whiteBackdrop && showImage ? "bg-white" : "bg-slate-950/70"
+        item.kind === "item" && (onHex || !showImage) ? "item-photo-backdrop" : whiteBackdrop && showImage ? "bg-white" : "bg-slate-950/70"
       }`}
     >
       {showImage ? (
-        <img
-          data-testid={`item-photo-${item.id}`}
-          src={item.image_url ?? undefined}
-          alt={item.name}
-          loading="lazy"
-          className={`size-full ${item.kind === "card" ? "object-cover" : "object-contain p-1"}`}
-          onError={() => setFailed(true)}
-        />
+        <>{item.kind === "card" ? (
+          // hovering a card shows it enlarged beside the tile
+          <HoverZoom src={item.image_url ?? ""} alt={item.name} className="block size-full">
+            <img
+              data-testid={`item-photo-${item.id}`}
+              src={onHex && cutout !== "pending" ? (cutout ?? undefined) : (item.image_url ?? undefined)}
+              alt={item.name}
+              loading="lazy"
+              className={`size-full transition-opacity duration-200 ${
+                item.kind === "card"
+                  ? "object-cover"
+                  : onHex
+                    ? `object-contain px-[7%] py-[11%] drop-shadow-[0_8px_12px_rgba(0,0,0,0.45)] ${cutout === "pending" ? "opacity-0" : ""}`
+                    : "object-contain p-1"
+              }`}
+              onError={() => setFailed(true)}
+            />
+          </HoverZoom>
+        ) : (
+          <img
+            data-testid={`item-photo-${item.id}`}
+            src={onHex && cutout !== "pending" ? (cutout ?? undefined) : (item.image_url ?? undefined)}
+            alt={item.name}
+            loading="lazy"
+            className={`size-full transition-opacity duration-200 ${
+              item.kind === "card"
+                ? "object-cover"
+                : onHex
+                  ? `object-contain px-[7%] py-[11%] drop-shadow-[0_8px_12px_rgba(0,0,0,0.45)] ${cutout === "pending" ? "opacity-0" : ""}`
+                  : "object-contain p-1"
+            }`}
+            onError={() => setFailed(true)}
+          />
+        )}</>
       ) : (
         <div className="flex size-full flex-col items-center justify-center gap-2 text-slate-600">
           {item.kind === "card" ? <Layers className="size-8" aria-hidden /> : <Package className="size-8" aria-hidden />}
@@ -150,7 +223,16 @@ export default function ItemCard({ item, ...actions }: ItemCardProps) {
   const [showItems, setShowItems] = useState(false);
   const isSold = item.status === "sold";
   const profit = isSold ? saleProfit(item) : null;
-  const typeText = item.kind === "card" ? item.card_type : item.category;
+  // a bundle of one kind of product is of type "Bundle"; of different kinds (or products and cards), "Other"
+  const bundleOf = bundleKind(item);
+  const bundleEntries = item.bundle_items ?? [];
+  const bundleCodes = new Set(bundleEntries.map((e) => e.code));
+  // a bundle has no single kind: the label is blank, unless every entry is the same product
+  // (e.g. "ST13" for ST13 + ST13); card bundles stay blank
+  const sharedCode =
+    bundleCodes.size === 1 && !bundleEntries.some((e) => e.kind === "card") ? [...bundleCodes][0] : null;
+  const headerText = bundleOf ? (sharedCode ?? "") : null;
+  const typeText = item.kind === "card" ? item.card_type : bundleOf ? "bundle" : item.category;
   // Resources / Alt-Art Cards listings with copies per card (PB01, PB02), and sleeve designs
   const pickedCards = [...item.resource_cards, ...item.alt_art_cards, ...(item.sleeve_designs ?? [])];
   const hasCopies = pickedCards.length > 0 && Object.keys(item.card_quantities ?? {}).length > 0;
@@ -202,7 +284,7 @@ export default function ItemCard({ item, ...actions }: ItemCardProps) {
           // items: the box icon coloured by category, like the rarity chips on cards
           <span
             data-testid={`category-chip-${item.category ?? "none"}`}
-            title={item.kind === "card" ? "Card" : labelize(item.category ?? "item")}
+            title={item.kind === "card" ? "Card" : labelize(typeText ?? "item")}
             className={`inline-flex size-6 items-center justify-center rounded-md border ${
               item.kind === "card" ? "border-slate-700 text-slate-500" : categoryClass(item)
             }`}
@@ -211,7 +293,7 @@ export default function ItemCard({ item, ...actions }: ItemCardProps) {
           </span>
         )}
         <span className="min-w-0 flex-1 truncate font-mono text-xs font-semibold tracking-wide text-slate-300">
-          {item.card_no ?? item.set_code ?? (item.kind === "card" ? "Card" : "Item")}
+          {headerText ?? item.card_no ?? item.set_code ?? (item.kind === "card" ? "Card" : "Item")}
         </span>
         <SelectBox item={item} actions={actions} />
       </div>

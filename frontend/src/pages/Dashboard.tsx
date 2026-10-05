@@ -43,7 +43,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import type { CollectionItem, ItemPayload, StatusPayload, TabId } from "@/lib/types";
+import type { BundleEntry, CollectionItem, ItemPayload, StatusPayload, TabId } from "@/lib/types";
 
 const TABS: { id: TabId; label: string; testId: string }[] = [
   { id: "all", label: "All Items", testId: "tab-all" },
@@ -110,6 +110,9 @@ export default function Dashboard() {
   const [formState, setFormState] = useState<FormState | null>(null);
   const [addCardOpen, setAddCardOpen] = useState(false);
   const [addItemOpen, setAddItemOpen] = useState(false);
+  // A bundle being built in Add Item / Add Card (products and cards), listed as one item.
+  const [bundle, setBundle] = useState<BundleEntry[]>([]);
+  const listBundle = (payload: ItemPayload) => createMut.mutate(payload, { onSuccess: () => setBundle([]) });
   const [aboutOpen, setAboutOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [dealState, setDealState] = useState<DealState | null>(null);
@@ -243,6 +246,18 @@ export default function Dashboard() {
   const pageCount = Math.max(1, Math.ceil(visible.length / PAGE_SIZE));
   const currentPage = Math.min(page, pageCount); // e.g. after deleting the last item on the last page
   const pageItems = visible.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  // shared by the page controls above and below the list
+  const paginationProps = {
+    page: currentPage,
+    pageCount,
+    pageSize: PAGE_SIZE,
+    total: visible.length,
+    onPageChange: (p: number) => {
+      // leave the clicked page button, so the browser doesn't keep it in view
+      if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+      setPage(p);
+    },
+  };
 
   // Changing page: back to the top once the new page has been drawn (not on the first load).
   const firstPage = useRef(true);
@@ -549,6 +564,7 @@ export default function Dashboard() {
           </div>
         ) : (
           <div className="space-y-4">
+            {visible.length > PAGE_SIZE && <Pagination {...paginationProps} testId="pagination-top" />}
             {view === "table" ? (
               <ItemTable items={pageItems} {...actionProps} />
             ) : (
@@ -558,19 +574,7 @@ export default function Dashboard() {
                 ))}
               </div>
             )}
-            {visible.length > PAGE_SIZE && (
-              <Pagination
-                page={currentPage}
-                pageCount={pageCount}
-                pageSize={PAGE_SIZE}
-                total={visible.length}
-                onPageChange={(p) => {
-                  // leave the clicked page button, so the browser doesn't keep it in view
-                  if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
-                  setPage(p);
-                }}
-              />
-            )}
+            {visible.length > PAGE_SIZE && <Pagination {...paginationProps} />}
           </div>
         )}
         </div>
@@ -675,6 +679,13 @@ export default function Dashboard() {
             setFormState({ type: "add", kind: "card" });
           }}
           pending={createMut.isPending}
+          bundle={bundle}
+          setBundle={setBundle}
+          onListBundle={listBundle}
+          onAddItem={() => {
+            setAddCardOpen(false);
+            setAddItemOpen(true);
+          }}
         />
       )}
 
@@ -695,6 +706,13 @@ export default function Dashboard() {
             setFormState({ type: "add", kind: "item" });
           }}
           pending={createMut.isPending}
+          bundle={bundle}
+          setBundle={setBundle}
+          onListBundle={listBundle}
+          onAddCard={() => {
+            setAddItemOpen(false);
+            setAddCardOpen(true);
+          }}
         />
       )}
 

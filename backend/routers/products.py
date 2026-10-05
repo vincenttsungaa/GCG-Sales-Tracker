@@ -166,7 +166,7 @@ def product_image(
     return FileResponse(
         pc.image_path(product_id),
         media_type="image/webp",
-        headers={"Cache-Control": "public, max-age=604800"},
+        headers={"Cache-Control": "no-cache"},  # revalidated, so a replaced photo shows up right away
     )
 
 

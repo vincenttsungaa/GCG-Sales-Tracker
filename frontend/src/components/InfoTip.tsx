@@ -183,27 +183,44 @@ export function OverflowTip({ text, children }: { text: string; children: ReactN
   );
 }
 
-const ZOOM_MAX_W = 320;
-const ZOOM_MAX_H = 450;
+const ZOOM_MAX_W = 270;
+const ZOOM_MAX_H = 380;
 
 // A small photo that shows a big copy of itself while it's hovered — beside it (right, or left
 // when there's no room), kept inside the window and drawn on top of the page.
-export function HoverZoom({ src, alt, children }: { src: string; alt: string; children: ReactNode }) {
+// className: lay the wrapper out like a block (e.g. "block w-full") instead of shrink-wrapping its child
+export function HoverZoom({
+  src,
+  alt,
+  children,
+  className,
+}: {
+  src: string;
+  alt: string;
+  children: ReactNode;
+  className?: string;
+}) {
   const wrapRef = useRef<HTMLSpanElement>(null);
   const bigRef = useRef<HTMLImageElement>(null);
   const [open, setOpen] = useState(false);
-  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+  const [pos, setPos] = useState<{ left: number; top: number; w: number; h: number } | null>(null);
 
   const place = useCallback(() => {
     const r = wrapRef.current?.getBoundingClientRect();
     const big = bigRef.current;
     if (!r || !big || !big.complete || big.naturalWidth === 0) return;
-    const w = big.offsetWidth;
-    const h = big.offsetHeight;
+    // shrink to fit the preview box, but never enlarge: small pictures (e.g. sleeve crops) would blur
+    const scale = Math.min(
+      1,
+      Math.min(ZOOM_MAX_W, window.innerWidth - MARGIN * 2) / big.naturalWidth,
+      Math.min(ZOOM_MAX_H, window.innerHeight - MARGIN * 2) / big.naturalHeight,
+    );
+    const w = Math.round(big.naturalWidth * scale);
+    const h = Math.round(big.naturalHeight * scale);
     const right = r.right + GAP * 2;
     const left = right + w <= window.innerWidth - MARGIN ? right : Math.max(r.left - GAP * 2 - w, MARGIN);
     const top = Math.min(Math.max(r.top + r.height / 2 - h / 2, MARGIN), window.innerHeight - h - MARGIN);
-    setPos({ left, top });
+    setPos({ left, top, w, h });
   }, []);
 
   useLayoutEffect(() => {
@@ -224,7 +241,8 @@ export function HoverZoom({ src, alt, children }: { src: string; alt: string; ch
   return (
     <span
       ref={wrapRef}
-      style={{ display: "inline-flex", flexShrink: 0, cursor: "zoom-in" }}
+      className={className}
+      style={className ? { cursor: "zoom-in" } : { display: "inline-flex", flexShrink: 0, cursor: "zoom-in" }}
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
     >
@@ -243,10 +261,8 @@ export function HoverZoom({ src, alt, children }: { src: string; alt: string; ch
               left: pos?.left ?? -9999,
               top: pos?.top ?? -9999,
               visibility: pos ? "visible" : "hidden",
-              width: "auto",
-              height: "auto",
-              maxWidth: `min(${ZOOM_MAX_W}px, calc(100vw - ${MARGIN * 2}px))`,
-              maxHeight: `min(${ZOOM_MAX_H}px, calc(100vh - ${MARGIN * 2}px))`,
+              width: pos?.w ?? "auto",
+              height: pos?.h ?? "auto",
               borderRadius: 0,
               border: "1px solid #334155",
               background: "#0f172a",

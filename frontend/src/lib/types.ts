@@ -2,7 +2,7 @@
 // nothing infers across the HTTP boundary, keep both sides in sync in one edit.
 
 export type ItemKind = "card" | "item";
-export type ItemStatus = "for_sale" | "pending" | "on_hold" | "sold";
+export type ItemStatus = "for_sale" | "pending" | "sold";
 
 export const GUNDAM_COLORS = ["red", "white", "blue", "green", "purple"] as const;
 export type GundamColor = (typeof GUNDAM_COLORS)[number];
@@ -87,6 +87,7 @@ export interface BundleEntry {
   name: string;
   product_id: string | null;
   category: ItemCategory | null;
+  kind?: ItemKind | null; // "card" for a single card in the bundle (products: "item" / unset)
   code: string | null; // e.g. "ST09"
   image_url: string | null;
   detail: string | null; // what was picked, e.g. "Storage Box · RP-034 (1x)"
@@ -157,12 +158,17 @@ export function priceBreakdown(parts: PricedPart[], total: number | null): Price
 }
 
 // Physical parts (storage box, playmat …) as priced parts; a part without a price shares the rest.
+// "ASSEMBLE: Gundam ×2" is two of that kit (priced by its name without the count).
 export function physicalParts(parts: string[], prices: Record<string, number> | undefined): PricedPart[] {
-  return parts.map((p) => ({ label: p, qty: 1, each: prices?.[p] ?? null }));
+  return parts.map((p) => {
+    const m = /^(.*) ×(\d+)$/.exec(p);
+    const label = m ? m[1] : p;
+    return { label, qty: m ? Number(m[2]) : 1, each: prices?.[label] ?? null };
+  });
 }
 
 // The physical parts of a part bundle, from its label ("Storage Box + Playmat + Resources").
-export const CARD_PARTS = new Set(["Resources", "Alt-Art Cards"]);
+export const CARD_PARTS = new Set(["Resources", "Alt-Art Cards", "EX Tokens"]);
 export function bundlePartNames(part: string | null): string[] {
   return part && part.includes(" + ") ? part.split(" + ").filter((p) => !CARD_PARTS.has(p)) : [];
 }
@@ -278,7 +284,7 @@ export interface StatusPayload {
   quantity_sold?: number | null;
 }
 
-export type TabId = "all" | "for_sale" | "pending" | "on_hold" | "archive";
+export type TabId = "all" | "for_sale" | "pending" | "archive";
 
 export function labelize(value: string): string {
   return value.replace(/\b\w/g, (c) => c.toUpperCase());

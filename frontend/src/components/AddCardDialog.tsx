@@ -17,14 +17,21 @@ import { rarityClass } from "@/components/badges";
 import { apiGet } from "@/lib/api";
 import { CatalogSyncPanel, useCatalogSync } from "@/components/CatalogSync";
 import { COLOR_DOT_CLASS } from "@/lib/format";
-import { labelize, type CatalogCard, type ItemPayload } from "@/lib/types";
-import { ArrowLeft, Loader2, Minus, Plus, Search } from "lucide-react";
+import { labelize, type BundleEntry, type CatalogCard, type ItemPayload } from "@/lib/types";
+import { ArrowLeft, Layers, Loader2, Minus, Plus, Search } from "lucide-react";
+import { BundleBar, bundlePayload } from "@/components/AddItemDialog";
+import { HoverZoom } from "@/components/InfoTip";
 
 interface AddCardDialogProps {
   onClose: () => void;
   onSubmit: (payload: ItemPayload) => void;
   onManual: () => void; // fall back to the free-form card form
   pending: boolean;
+  // the bundle being built — shared with Add Item, so cards and products can be bundled together
+  bundle: BundleEntry[];
+  setBundle: (update: (cur: BundleEntry[]) => BundleEntry[]) => void;
+  onListBundle: (payload: ItemPayload) => void;
+  onAddItem: () => void; // switch to Add Item, keeping the bundle
 }
 
 const LABEL = "font-mono text-xs uppercase tracking-wider text-slate-400";
@@ -149,12 +156,14 @@ function CardSearch({ onPick }: { onPick: (card: CatalogCard) => void }) {
                 onClick={() => onPick(card)}
                 className="group flex w-full flex-col gap-1.5 rounded-lg border border-slate-800/80 bg-slate-900/60 p-1.5 text-left transition-colors hover:border-sky-500/60 focus-visible:border-sky-500 focus-visible:outline-none"
               >
-                <img
-                  src={card.image_url}
-                  alt={card.name}
-                  loading="lazy"
-                  className="aspect-[63/88] w-full rounded object-cover"
-                />
+                <HoverZoom src={card.image_url} alt={card.name} className="block w-full">
+                  <img
+                    src={card.image_url}
+                    alt={card.name}
+                    loading="lazy"
+                    className="aspect-[63/88] w-full rounded object-cover"
+                  />
+                </HoverZoom>
                 <span className="flex items-center gap-1">
                   <RarityChip rarity={card.rarity} />
                   <span className="truncate font-mono text-[0.65rem] text-slate-400">
@@ -179,11 +188,15 @@ function CardDetailsForm({
   card,
   onBack,
   onSubmit,
+  onAddToBundle,
+  bundleCount,
   pending,
 }: {
   card: CatalogCard;
   onBack: () => void;
   onSubmit: (payload: ItemPayload) => void;
+  onAddToBundle: (entry: BundleEntry) => void;
+  bundleCount: number; // entries already in the bundle being built
   pending: boolean;
 }) {
   const [price, setPrice] = useState("");
@@ -193,25 +206,52 @@ function CardDetailsForm({
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  const submit = () => {
-    const priceNum = Number(price);
-    const qtyNum = quantity;
-    let purchaseNum: number | null = null;
-    if (price.trim() === "" || Number.isNaN(priceNum) || priceNum < 0) {
+  // Checked prices; null (with the error shown) if invalid. In a bundle the price is optional
+  // (the card can share the bundle's price).
+  const readPrices = (allowNoPrice: boolean): { price: number | null; purchase: number | null } | null => {
+    const priceNum = price.trim() === "" ? null : Number(price);
+    if ((priceNum == null && !allowNoPrice) || (priceNum != null && (Number.isNaN(priceNum) || priceNum < 0))) {
       setError("Enter an asking price of zero or more.");
-      return;
+      return null;
     }
+    let purchaseNum: number | null = null;
     if (purchase.trim() !== "") {
       purchaseNum = Number(purchase);
       if (Number.isNaN(purchaseNum) || purchaseNum < 0) {
         setError("Purchase price must be zero or more.");
-        return;
+        return null;
       }
     }
-    if (!Number.isInteger(qtyNum) || qtyNum < 1) {
-      setError("Quantity must be a whole number of 1 or more.");
-      return;
-    }
+    return { price: priceNum, purchase: purchaseNum };
+  };
+
+  const addToBundle = () => {
+    const prices = readPrices(true);
+    if (!prices) return;
+    onAddToBundle({
+      name: card.name,
+      product_id: null,
+      category: null,
+      kind: "card",
+      code: card.card_no,
+      image_url: card.image_url,
+      detail: [card.rarity, card.id !== card.card_no ? "Parallel" : null].filter(Boolean).join(" · ") || null,
+      quantity,
+      price: prices.price,
+      purchase_price: prices.purchase,
+      card_quantities: {},
+      card_prices: {},
+      parts: [],
+      part_prices: {},
+    });
+  };
+
+  const submit = () => {
+    const prices = readPrices(false);
+    if (!prices) return;
+    const qtyNum = quantity;
+    const priceNum = prices.price as number;
+    const purchaseNum = prices.purchase;
     onSubmit({
       kind: "card",
       name: card.name,
@@ -245,11 +285,13 @@ function CardDetailsForm({
     <div className="space-y-4" data-testid="card-details-form">
       <div className="flex gap-4">
         <div className="relative w-28 shrink-0 self-start sm:w-36">
-          <img
-            src={card.image_url}
-            alt={card.name}
-            className="aspect-[63/88] w-full rounded-md border border-slate-800 object-cover"
-          />
+          <HoverZoom src={card.image_url} alt={card.name} className="block w-full">
+            <img
+              src={card.image_url}
+              alt={card.name}
+              className="aspect-[63/88] w-full rounded-md border border-slate-800 object-cover"
+            />
+          </HoverZoom>
           {/* − / + always visible on the picked card: how many copies you're selling */}
           <div
             className="absolute inset-0 flex items-center justify-center"
@@ -369,9 +411,14 @@ function CardDetailsForm({
         <Button variant="ghost" onClick={onBack} data-testid="add-card-back">
           <ArrowLeft className="size-4" /> Choose another card
         </Button>
-        <Button onClick={submit} disabled={pending} data-testid="add-card-submit">
-          {pending && <Loader2 className="size-4 animate-spin" />} Add card
-        </Button>
+        <div className="flex flex-wrap justify-end gap-2">
+          <Button variant={bundleCount > 0 ? "outline" : "default"} onClick={submit} disabled={pending} data-testid="add-card-submit">
+            {pending && <Loader2 className="size-4 animate-spin" />} Add card
+          </Button>
+          <Button variant={bundleCount > 0 ? "default" : "outline"} onClick={addToBundle} disabled={pending} data-testid="add-card-add-to-bundle">
+            <Layers className="size-4" /> {bundleCount > 0 ? `Add to bundle (${bundleCount + 1})` : "Add to bundle"}
+          </Button>
+        </div>
       </DialogFooter>
     </div>
   );
@@ -379,14 +426,23 @@ function CardDetailsForm({
 
 /* ---------------- dialog ---------------- */
 
-export default function AddCardDialog({ onClose, onSubmit, onManual, pending }: AddCardDialogProps) {
+export default function AddCardDialog({
+  onClose,
+  onSubmit,
+  onManual,
+  pending,
+  bundle,
+  setBundle,
+  onListBundle,
+  onAddItem,
+}: AddCardDialogProps) {
   const [card, setCard] = useState<CatalogCard | null>(null);
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       {/* Pinned near the top so the dialog doesn't jump around as search results change height. */}
       <DialogContent
-        className="top-4 max-h-[calc(100svh-2rem)] translate-y-0 overflow-y-auto sm:top-[6svh] sm:max-h-[88svh] sm:max-w-2xl"
+        className="top-4 max-h-[calc(100svh-2rem)] translate-y-0 overflow-x-hidden overflow-y-auto sm:top-[6svh] sm:max-h-[88svh] sm:max-w-2xl [&>*]:min-w-0"
         data-testid="add-card-dialog"
       >
         <DialogHeader>
@@ -398,8 +454,31 @@ export default function AddCardDialog({ onClose, onSubmit, onManual, pending }: 
           </DialogDescription>
         </DialogHeader>
 
+        {bundle.length > 0 && (
+          <BundleBar
+            entries={bundle}
+            onRemove={(i) => setBundle((cur) => cur.filter((_, j) => j !== i))}
+            onList={(total) => onListBundle(bundlePayload(bundle, total))}
+            itemOpen={card ? card.card_no : null}
+            pending={pending}
+            switchLabel="Add an item"
+            onSwitch={onAddItem}
+          />
+        )}
+
         {card ? (
-          <CardDetailsForm card={card} onBack={() => setCard(null)} onSubmit={onSubmit} pending={pending} />
+          <CardDetailsForm
+            key={card.id + bundle.length}
+            card={card}
+            onBack={() => setCard(null)}
+            onSubmit={onSubmit}
+            onAddToBundle={(entry) => {
+              setBundle((cur) => [...cur, entry]);
+              setCard(null); // back to search for the next card
+            }}
+            bundleCount={bundle.length}
+            pending={pending}
+          />
         ) : (
           <>
             <CardSearch onPick={setCard} />

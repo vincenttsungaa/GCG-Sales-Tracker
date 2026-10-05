@@ -44,6 +44,7 @@ class BundleEntry(BaseModel):
     name: str
     product_id: str | None = None
     category: ItemCategory | None = None
+    kind: Literal["card", "item"] | None = None  # "card" for a single card in the bundle
     code: str | None = None  # e.g. "ST09"
     image_url: str | None = None
     detail: str | None = None  # what was picked, e.g. "Storage Box · RP-034 (1x)"
