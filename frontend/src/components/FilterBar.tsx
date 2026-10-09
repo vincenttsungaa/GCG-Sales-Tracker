@@ -105,7 +105,8 @@ export default function FilterBar({ filters, onChange, showBuyer = false }: Filt
           />
         </div>
         )}
-        {/* Deal date range */}
+        {/* Deal date range — also only on the Pending and Sold tabs (only those entries have a deal) */}
+        {showBuyer && (
         <div className="flex w-full flex-col gap-1.5 sm:w-auto lg:col-span-2 lg:w-full">
           <Label className="font-mono text-xs uppercase tracking-wider text-slate-400">
             Deal date
@@ -130,6 +131,7 @@ export default function FilterBar({ filters, onChange, showBuyer = false }: Filt
             />
           </div>
         </div>
+        )}
         {filtersActive(filters) && (
           <Button
             variant="ghost"

@@ -57,3 +57,18 @@ def test_search(monkeypatch):
     assert [c["id"] for c in cc.search_cards("zaku")] == ["GD01-010", "GD02-050"]
     assert [c["id"] for c in cc.search_cards("st11-003")] == ["ST11-003"]
     assert [c["id"] for c in cc.search_cards("zaku", set_code="GD02")] == ["GD02-050"]
+
+
+def test_search_type_keywords(monkeypatch):
+    fake = {"cards": [
+        {"id": "EXB-001", "card_no": "EXB-001", "name": "EX Base", "card_type": "ex base", "set_code": "ST01"},
+        {"id": "EXR-001", "card_no": "EXR-001", "name": "EX Resource", "card_type": "ex resource", "set_code": "ST01"},
+        {"id": "RP-024", "card_no": "RP-024", "name": "Resource", "card_type": "resource", "set_code": "R"},
+        {"id": "T-029", "card_no": "T-029", "name": "Bit / Funnel", "card_type": "unit token", "set_code": "ST13"},
+    ]}
+    monkeypatch.setattr(cc, "load_catalog", lambda force=False: fake)
+    ids = lambda q: [c["id"] for c in cc.search_cards(q)]  # noqa: E731
+    assert ids("ex token") == ids("EX Tokens") == ["EXB-001", "EXR-001"]
+    assert ids("resource") == ["RP-024"]  # not the EX Resource
+    assert ids("unit token") == ["T-029"]
+    assert ids("token") == ["EXB-001", "EXR-001", "T-029"]

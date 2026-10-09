@@ -23,6 +23,10 @@ Rarity = Literal[
 ItemCategory = Literal["starter deck", "accessories", "premium bandai", "other"]
 
 # Categories from before the product database — mapped on read so old records still load.
+# Products filed under a different category than the product site's tag (product id → category).
+# SC01 Deck Build Box is tagged ACCESSORIES on the site, but it's a sealed box like the "other" products.
+PRODUCT_CATEGORY_OVERRIDES = {"deck-build-box": "other"}
+
 LEGACY_CATEGORY = {
     "playmat": "accessories",
     "sleeves": "accessories",
@@ -212,6 +216,8 @@ def normalise_doc(doc: dict) -> dict:
     doc.pop("_id", None)
     if doc.get("category") in LEGACY_CATEGORY:
         doc["category"] = LEGACY_CATEGORY[doc["category"]]
+    if doc.get("product_id") in PRODUCT_CATEGORY_OVERRIDES:
+        doc["category"] = PRODUCT_CATEGORY_OVERRIDES[doc["product_id"]]
     # Items from the product database (starter decks, accessories, Premium Bandai, other)
     # show their code first — also for listings saved before this was the naming style.
     if doc.get("kind") == "item" and doc.get("product_id") and doc.get("name"):

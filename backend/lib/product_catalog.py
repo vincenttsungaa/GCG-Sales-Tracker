@@ -28,7 +28,7 @@ import requests
 
 from lib import card_catalog
 from lib.card_catalog import DATA_DIR, HEADERS, SITE
-from models.item import PART_PHOTO_VERSION, code_first
+from models.item import PART_PHOTO_VERSION, PRODUCT_CATEGORY_OVERRIDES, code_first
 
 logger = logging.getLogger(__name__)
 
@@ -75,6 +75,8 @@ PRODUCT_OPTIONS: dict[str, dict[str, Any]] = {
     # the other starter decks (one edition): sealed, or a brick (a case of sealed decks).
     # ST01–ST04's Regular Version offers the same two (set in Add Item).
     **{f"st{n:02d}": {"parts": [SEALED_PART, BRICK_PART]} for n in range(5, 15)},
+    # SC01 Deck Build Box: also sold by the brick (a case of sealed boxes)
+    "deck-build-box": {"parts": [SEALED_PART, BRICK_PART]},
     "pb01": {
         "parts": [SEALED_PART, *PB_PARTS],
         "resource_cards": [f"RP-{n:03d}" for n in range(24, 34)],  # RP-024 … RP-033
@@ -625,6 +627,13 @@ SLEEVE_DESIGNS: dict[str, tuple[str, dict[str, dict[str, Any]]]] = {
     }),
 }
 
+# ST09 also comes with damage counter dice (a transparent photo kept as a local file,
+# source-local_st09_damage_counter.webp, 700×700). The whole photo is used: the dice sit in it at the
+# same scale as EVX08's, so the tiles of all damage counters look the same size.
+SLEEVE_DESIGNS["st09"][1]["damage-counter"] = _photo(
+    "Damage Counter Dice", "local/st09_damage_counter.webp", (0.0, 0.0, 1.0, 1.0)
+)
+
 # Sleeve designs cut from a shared photo are small (about 200 px wide), so each also has an enlarged,
 # sharpened copy (frontend/public/cutouts/<product>-<design>.webp) shown on its tile and in the hover
 # preview at the same size as a card. Multi-design pictures are still cut from the photo.
@@ -885,12 +894,30 @@ _lock = threading.Lock()
 _cache: dict[str, Any] | None = None
 
 
+# Product pairs shown in each other's place in Add Item (the site lists EVX13 last, after Edition Beta).
+SWAPPED_PRODUCTS = [("limitedbox-beta", "evx13")]
+
+
+def _apply_category_overrides(catalog: dict[str, Any]) -> dict[str, Any]:
+    products = catalog["products"]
+    for p in products:
+        p["category"] = PRODUCT_CATEGORY_OVERRIDES.get(p["id"], p["category"])
+    ids = [p["id"] for p in products]
+    for first, second in SWAPPED_PRODUCTS:
+        if first in ids and second in ids:
+            i, j = ids.index(first), ids.index(second)
+            if i < j:  # not swapped yet (a cached catalog may already be)
+                products[i], products[j] = products[j], products[i]
+                ids[i], ids[j] = ids[j], ids[i]
+    return catalog
+
+
 def load_catalog(force: bool = False) -> dict[str, Any]:
     global _cache
     with _lock:
         if _cache is None or force:
             if CATALOG_PATH.exists():
-                _cache = json.loads(CATALOG_PATH.read_text(encoding="utf-8"))
+                _cache = _apply_category_overrides(json.loads(CATALOG_PATH.read_text(encoding="utf-8")))
             else:
                 _cache = {"synced_at": None, "products": []}
         return _cache
@@ -899,6 +926,7 @@ def load_catalog(force: bool = False) -> dict[str, Any]:
 def save_catalog(catalog: dict[str, Any]) -> None:
     global _cache
     DATA_DIR.mkdir(parents=True, exist_ok=True)
+    _apply_category_overrides(catalog)
     tmp = CATALOG_PATH.with_suffix(".json.tmp")
     tmp.write_text(json.dumps(catalog, ensure_ascii=False, indent=1), encoding="utf-8")
     tmp.replace(CATALOG_PATH)

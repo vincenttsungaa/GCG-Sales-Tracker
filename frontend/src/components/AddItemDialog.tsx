@@ -60,20 +60,23 @@ const TIP_ADD_TO_BUNDLE =
 const TIP_BUNDLE =
   "Several products listed as one. Leave the bundle price blank to use the total of their prices, or set your own (e.g. a discount). It's needed when an item has no price of its own.";
 import { ArrowLeft, Check, Layers, Loader2, Minus, Package, Plus, Search, X } from "lucide-react";
-import { useCutout } from "@/components/ItemCard";
+import { CARD_CORNERS, useCutout } from "@/components/ItemCard";
 
 // A set piece (playmat, box, dice …) cut out of its photo and shown on the tiles' hex backdrop,
 // like the listing it will become.
 function PieceImage({ src, alt, dim }: { src: string; alt: string; dim: boolean }) {
   const cutout = useCutout(src, true);
+  const img = (
+    <img
+      src={cutout && cutout !== "pending" ? cutout : src}
+      alt={alt}
+      loading="lazy"
+      className={`size-full object-contain p-3 ${cutout === "pending" ? "opacity-0" : dim ? "opacity-60" : ""}`}
+    />
+  );
   return (
     <span className="item-photo-backdrop flex aspect-[63/88] w-full items-center justify-center overflow-hidden rounded">
-      <img
-        src={cutout && cutout !== "pending" ? cutout : src}
-        alt={alt}
-        loading="lazy"
-        className={`size-full object-contain p-3 ${cutout === "pending" ? "opacity-0" : dim ? "opacity-60" : ""}`}
-      />
+      {img}
     </span>
   );
 }
@@ -93,14 +96,17 @@ const PICK_TILE_IMAGES: Record<string, string> = {
 // A part's photo (cut out, on the hex backdrop) at the top of its button in "Part of the set".
 function PartThumb({ src, dim }: { src: string; dim: boolean }) {
   const cutout = useCutout(src, true);
+  const img = (
+    <img
+      src={cutout && cutout !== "pending" ? cutout : src}
+      alt=""
+      loading="lazy"
+      className={`size-full object-contain p-1.5 ${cutout === "pending" ? "opacity-0" : dim ? "opacity-60" : ""}`}
+    />
+  );
   return (
     <span className="item-photo-backdrop flex h-20 w-full items-center justify-center overflow-hidden rounded">
-      <img
-        src={cutout && cutout !== "pending" ? cutout : src}
-        alt=""
-        loading="lazy"
-        className={`size-full object-contain p-1.5 ${cutout === "pending" ? "opacity-0" : dim ? "opacity-60" : ""}`}
-      />
+      {img}
     </span>
   );
 }
@@ -414,7 +420,8 @@ function ProductDetailsForm({
   // A bonus pack in Extras counts as opened product (taken out of its deck), so it can't be listed
   // with unopened Sealed / Brick.
   const wholePicked = parts.find((p) => WHOLE.has(p));
-  const extrasLocked = optionalPicks && wholePicked != null;
+  // Same for a set's contents (SC01's boxes, bonus pack, cards) when its Brick is picked.
+  const extrasLocked = (optionalPicks || product.sleeve_label === "Set contents") && wholePicked != null;
   // Nothing ticked under "Part of the set" (and not just a bonus pack): the item is listed as Sealed.
   // Any product (not just sets with parts) is listed as Sealed when nothing is ticked or picked.
   // Sleeves stay Sealed with designs picked too (unopened sleeve packs) — also PB03's Sleeves
@@ -861,7 +868,8 @@ function ProductDetailsForm({
                         src={c.image_url}
                         alt={c.card_no}
                         loading="lazy"
-                        className={`aspect-[63/88] w-full rounded object-cover ${selected ? "" : "opacity-60"}`}
+                        className={`aspect-[63/88] w-full object-cover ${selected ? "" : "opacity-60"}`}
+                        style={CARD_CORNERS}
                       />
                     </HoverZoom>
                     <span className="text-center font-mono text-[0.65rem] text-slate-300">{c.card_no}</span>
@@ -944,7 +952,8 @@ function ProductDetailsForm({
                         src={c.image_url}
                         alt={c.name ?? c.card_no}
                         loading="lazy"
-                        className={`aspect-[63/88] w-full rounded object-cover ${selected ? "" : "opacity-60"}`}
+                        className={`aspect-[63/88] w-full object-cover ${selected ? "" : "opacity-60"}`}
+                        style={CARD_CORNERS}
                       />
                     </HoverZoom>
                     <span className="text-center font-mono text-[0.65rem] text-slate-300">{c.card_no}</span>
@@ -996,7 +1005,11 @@ function ProductDetailsForm({
 
       {extrasLocked && (
         <p className="text-xs text-slate-500" data-testid="add-item-extras-locked">
-          Extras: a bonus pack counts as opened product, so it can't be listed with {wholePicked} (opened). Untick {wholePicked} to list it.
+          {optionalPicks
+            ? "Extras: a bonus pack counts"
+            : `${product.sleeve_label}: its contents count`}{" "}
+          as opened product, so {optionalPicks ? "it" : "they"} can't be listed with {wholePicked} (opened). Untick {wholePicked} to list{" "}
+          {optionalPicks ? "it" : "them"}.
         </p>
       )}
 
@@ -1046,12 +1059,18 @@ function ProductDetailsForm({
                     {d.fit === "contain" ? (
                       <PieceImage src={d.image_url} alt={d.name} dim={!selected} />
                     ) : (
-                      <HoverZoom src={d.image_url} alt={d.name} className="block w-full">
+                      <HoverZoom
+                        src={d.image_url}
+                        alt={d.name}
+                        className="block w-full"
+                        disabled={!d.image_url.startsWith("/api/card-images/")}
+                      >
                         <img
                           src={d.image_url}
                           alt={d.name}
                           loading="lazy"
                           className={`aspect-[63/88] w-full rounded object-cover ${selected ? "" : "opacity-60"}`}
+                          style={d.image_url.startsWith("/api/card-images/") ? CARD_CORNERS : undefined}
                         />
                       </HoverZoom>
                     )}

@@ -101,10 +101,11 @@ export default function Dashboard() {
     }
   };
 
-  // Buyer filter only applies on the Pending and Sold tabs — clear it elsewhere.
+  // Buyer and deal-date filters only apply on the Pending and Sold tabs — clear them elsewhere.
   const showBuyer = tab === "pending" || tab === "archive";
   useEffect(() => {
-    if (!showBuyer) setFilters((f) => (f.buyer ? { ...f, buyer: "" } : f));
+    if (!showBuyer)
+      setFilters((f) => (f.buyer || f.dateFrom || f.dateTo ? { ...f, buyer: "", dateFrom: "", dateTo: "" } : f));
   }, [showBuyer]);
   const [page, setPage] = useState(1);
   const [formState, setFormState] = useState<FormState | null>(null);

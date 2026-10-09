@@ -185,6 +185,8 @@ export function OverflowTip({ text, children }: { text: string; children: ReactN
 
 const ZOOM_MAX_W = 270;
 const ZOOM_MAX_H = 380;
+const BACKDROP_PAD = 24; // space around a product photo shown on the hex backdrop
+const ZOOM_WIDE_W = 520; // landscape pictures (playmats) get a wider preview
 
 // A small photo that shows a big copy of itself while it's hovered — beside it (right, or left
 // when there's no room), kept inside the window and drawn on top of the page.
@@ -194,11 +196,17 @@ export function HoverZoom({
   alt,
   children,
   className,
+  backdrop,
+  maxSize,
+  disabled,
 }: {
   src: string;
   alt: string;
   children: ReactNode;
   className?: string;
+  backdrop?: boolean; // show the picture on the tiles' hex backdrop (cut-out product photos)
+  maxSize?: { w: number; h: number }; // a fixed preview frame for the picture (e.g. to match another preview)
+  disabled?: boolean; // no preview (the wrapper stays, so the layout doesn't change)
 }) {
   const wrapRef = useRef<HTMLSpanElement>(null);
   const bigRef = useRef<HTMLImageElement>(null);
@@ -209,19 +217,24 @@ export function HoverZoom({
     const r = wrapRef.current?.getBoundingClientRect();
     const big = bigRef.current;
     if (!r || !big || !big.complete || big.naturalWidth === 0) return;
+    const pad = backdrop ? BACKDROP_PAD : 0;
     // shrink to fit the preview box, but never enlarge: small pictures (e.g. sleeve crops) would blur
     const scale = Math.min(
       1,
-      Math.min(ZOOM_MAX_W, window.innerWidth - MARGIN * 2) / big.naturalWidth,
-      Math.min(ZOOM_MAX_H, window.innerHeight - MARGIN * 2) / big.naturalHeight,
+      (Math.min(big.naturalWidth > big.naturalHeight ? ZOOM_WIDE_W : ZOOM_MAX_W, window.innerWidth - MARGIN * 2) - pad * 2) / big.naturalWidth,
+      (Math.min(ZOOM_MAX_H, window.innerHeight - MARGIN * 2) - pad * 2) / big.naturalHeight,
+      (maxSize?.w ?? Infinity) / big.naturalWidth,
+      (maxSize?.h ?? Infinity) / big.naturalHeight,
     );
-    const w = Math.round(big.naturalWidth * scale);
-    const h = Math.round(big.naturalHeight * scale);
+    // w/h: the whole preview, including the backdrop's padding around the picture
+    // with maxSize the frame is always that size (the picture is centred in it)
+    const w = (maxSize ? maxSize.w : Math.round(big.naturalWidth * scale)) + pad * 2;
+    const h = (maxSize ? maxSize.h : Math.round(big.naturalHeight * scale)) + pad * 2;
     const right = r.right + GAP * 2;
     const left = right + w <= window.innerWidth - MARGIN ? right : Math.max(r.left - GAP * 2 - w, MARGIN);
     const top = Math.min(Math.max(r.top + r.height / 2 - h / 2, MARGIN), window.innerHeight - h - MARGIN);
     setPos({ left, top, w, h });
-  }, []);
+  }, [backdrop, maxSize?.w, maxSize?.h]);
 
   useLayoutEffect(() => {
     if (!open) {
@@ -242,8 +255,8 @@ export function HoverZoom({
     <span
       ref={wrapRef}
       className={className}
-      style={className ? { cursor: "zoom-in" } : { display: "inline-flex", flexShrink: 0, cursor: "zoom-in" }}
-      onMouseEnter={() => setOpen(true)}
+      style={className ? { cursor: disabled ? undefined : "zoom-in" } : { display: "inline-flex", flexShrink: 0, cursor: "zoom-in" }}
+      onMouseEnter={() => !disabled && setOpen(true)}
       onMouseLeave={() => setOpen(false)}
     >
       {children}
@@ -255,7 +268,11 @@ export function HoverZoom({
             alt={alt}
             aria-hidden
             onLoad={place}
+            className={backdrop ? "item-photo-backdrop" : undefined}
             style={{
+              boxSizing: "border-box",
+              objectFit: "contain",
+              padding: backdrop ? BACKDROP_PAD : 0,
               position: "fixed",
               zIndex: 1000,
               left: pos?.left ?? -9999,
@@ -263,10 +280,17 @@ export function HoverZoom({
               visibility: pos ? "visible" : "hidden",
               width: pos?.w ?? "auto",
               height: pos?.h ?? "auto",
-              borderRadius: 0,
-              border: "1px solid #334155",
-              background: "#0f172a",
-              boxShadow: "0 16px 40px rgba(0, 0, 0, 0.6)",
+              // a product photo sits in a framed box on the hex backdrop; a card (or sleeve) is shown
+              // on its own, so its rounded corners show — the shadow follows its shape
+              ...(backdrop
+                ? { border: "1px solid #334155", boxShadow: "0 16px 40px rgba(0, 0, 0, 0.6)" }
+                : {
+                    background: "transparent",
+                    // a card's corner radius (≈3 mm on a 63 × 88 mm card): some printings come with
+                    // square, filled-in corners, so the preview rounds them itself
+                    borderRadius: "4.6% / 3.3%",
+                    filter: "drop-shadow(0 16px 24px rgba(0, 0, 0, 0.6))",
+                  }),
               pointerEvents: "none",
             }}
           />,

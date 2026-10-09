@@ -258,6 +258,24 @@ def list_releases() -> list[dict[str, Any]]:
     return out
 
 
+# Keywords that search by card type instead of name / number (Add Card's keyword chips).
+# EX tokens: the EX Base (each player starts with one) and EX Resource (the second player starts with
+# one; some green cards make more) — token cards kept outside the deck. Unit tokens are made by effects.
+_EX_TOKENS = {"ex base", "ex resource"}
+TYPE_KEYWORDS: dict[str, set[str]] = {
+    "extoken": _EX_TOKENS,
+    "extokens": _EX_TOKENS,
+    "exbase": {"ex base"},
+    "exresource": {"ex resource"},
+    "resource": {"resource"},
+    "resources": {"resource"},
+    "unittoken": {"unit token"},
+    "unittokens": {"unit token"},
+    "token": {"unit token", *_EX_TOKENS},
+    "tokens": {"unit token", *_EX_TOKENS},
+}
+
+
 def search_cards(
     q: str = "", set_code: str | None = None, limit: int = 30, release: str | None = None
 ) -> list[dict[str, Any]]:
@@ -268,6 +286,7 @@ def search_cards(
     """
     cards = load_catalog()["cards"]
     words = [_norm(w) for w in q.split() if _norm(w)]
+    types = TYPE_KEYWORDS.get("".join(words))  # e.g. "ex token" → EX Bases and EX Resources
     scored: list[tuple[int, int, dict[str, Any]]] = []
     for idx, card in enumerate(cards):
         if set_code and card.get("set_code") != set_code:
@@ -276,7 +295,10 @@ def search_cards(
             continue
         name = _norm(card["name"])
         ids = _norm(card["id"]) + " " + _norm(card["card_no"])
-        if words and not all(w in name or w in ids for w in words):
+        if types is not None:
+            if card.get("card_type") not in types:
+                continue
+        elif words and not all(w in name or w in ids for w in words):
             continue
         joined = "".join(words)
         score = 0 if not words else (0 if name.startswith(joined) or ids.startswith(joined) else 1)

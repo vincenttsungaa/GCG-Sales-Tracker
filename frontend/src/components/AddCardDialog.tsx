@@ -21,6 +21,7 @@ import { labelize, type BundleEntry, type CatalogCard, type ItemPayload } from "
 import { ArrowLeft, Layers, Loader2, Minus, Plus, Search } from "lucide-react";
 import { BundleBar, bundlePayload } from "@/components/AddItemDialog";
 import { HoverZoom } from "@/components/InfoTip";
+import { CARD_CORNERS } from "@/components/ItemCard";
 
 interface AddCardDialogProps {
   onClose: () => void;
@@ -58,6 +59,12 @@ interface Release {
 
 const ALL_RELEASES = "all";
 
+// Keyword chips: each searches by card type (see TYPE_KEYWORDS in backend/lib/card_catalog.py) and
+// shows every matching card. EX tokens = EX Base + EX Resource.
+const KEYWORDS = ["EX Token", "EX Base", "EX Resource", "Resource", "Unit Token"];
+const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "");
+const isKeyword = (q: string) => KEYWORDS.some((k) => norm(k) === norm(q) || `${norm(k)}s` === norm(q));
+
 function CardSearch({ onPick }: { onPick: (card: CatalogCard) => void }) {
   const [query, setQuery] = useState("");
   const [debounced, setDebounced] = useState("");
@@ -77,13 +84,13 @@ function CardSearch({ onPick }: { onPick: (card: CatalogCard) => void }) {
     staleTime: 5 * 60_000,
   });
 
-  // A picked release shows all of its cards (up to 400); otherwise the first 48 matches.
+  // A picked release or a keyword shows all of its cards (up to 400); otherwise the first 48 matches.
   const releaseParam = release === ALL_RELEASES ? "" : `&release=${encodeURIComponent(release)}`;
   const results = useQuery({
     queryKey: ["cards", "search", debounced, release],
     queryFn: () =>
       apiGet<CatalogCard[]>(
-        `/cards?limit=${release === ALL_RELEASES ? 48 : 400}&q=${encodeURIComponent(debounced)}${releaseParam}`,
+        `/cards?limit=${release === ALL_RELEASES && !isKeyword(debounced) ? 48 : 400}&q=${encodeURIComponent(debounced)}${releaseParam}`,
       ),
     enabled: hasCatalog,
     placeholderData: keepPreviousData,
@@ -111,7 +118,7 @@ function CardSearch({ onPick }: { onPick: (card: CatalogCard) => void }) {
           <Input
             autoFocus
             data-testid="card-search"
-            placeholder="Search card name or number — e.g. Zock, ST11-003"
+            placeholder="Search card name, number or keyword — e.g. Zock, ST11-003, EX Token"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="h-10 bg-slate-950/60 pl-9"
@@ -134,6 +141,27 @@ function CardSearch({ onPick }: { onPick: (card: CatalogCard) => void }) {
             ))}
           </SelectContent>
         </Select>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-1.5" data-testid="card-keywords">
+        <span className="text-xs text-slate-500">Keywords:</span>
+        {KEYWORDS.map((k) => {
+          const active = norm(k) === norm(query);
+          return (
+            <button
+              key={k}
+              type="button"
+              data-testid={`card-keyword-${norm(k)}`}
+              aria-pressed={active}
+              onClick={() => setQuery(active ? "" : k)}
+              className={`rounded border px-2 py-0.5 text-xs transition-colors ${
+                active ? "border-sky-500 bg-sky-950/50 text-sky-200" : "border-slate-700 text-slate-300 hover:border-slate-500"
+              }`}
+            >
+              {k}
+            </button>
+          );
+        })}
       </div>
 
       {results.isError ? (
@@ -161,7 +189,8 @@ function CardSearch({ onPick }: { onPick: (card: CatalogCard) => void }) {
                     src={card.image_url}
                     alt={card.name}
                     loading="lazy"
-                    className="aspect-[63/88] w-full rounded object-cover"
+                    className="aspect-[63/88] w-full object-cover"
+                    style={CARD_CORNERS}
                   />
                 </HoverZoom>
                 <span className="flex items-center gap-1">
@@ -289,7 +318,8 @@ function CardDetailsForm({
             <img
               src={card.image_url}
               alt={card.name}
-              className="aspect-[63/88] w-full rounded-md border border-slate-800 object-cover"
+              className="aspect-[63/88] w-full object-cover"
+              style={CARD_CORNERS}
             />
           </HoverZoom>
           {/* − / + always visible on the picked card: how many copies you're selling */}

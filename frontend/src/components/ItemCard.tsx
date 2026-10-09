@@ -102,16 +102,49 @@ function BundleThumb({ src, alt }: { src: string; alt: string }) {
   );
 }
 
+// A single card or a single sleeve design sold as an item (Add Item) — shown full-bleed like a card
+// from Add Card instead of floating on the hex backdrop. Returns the picture to show, or null.
+const SLEEVE_DESIGN_RE = /\/api\/product-images\/(sleeve0[123]|ev03|evx06|evx12)-sleeves\.svg\?designs=([a-z0-9-]+)$/;
+const PART_SLEEVES_RE = /\/api\/product-images\/(pb0[123]-part-sleeves(?:-blue|-green)?)\.svg/;
+const CARD_DESIGN_RE = /-sleeves\.svg\?designs=(?:ex[a-z]*-\d|rp-\d|gd\d|st\d)[a-z0-9_-]*$/; // one card picked from a set's contents
+function flatImage(item: CollectionItem): string | null {
+  const url = item.image_url;
+  if (item.kind !== "item" || !url || (item.bundle_items ?? []).length > 1) return null;
+  if (url.startsWith("/api/card-images/") || CARD_DESIGN_RE.test(url)) return url;
+  const sleeve = SLEEVE_DESIGN_RE.exec(url);
+  if (sleeve) return `/cutouts/${sleeve[1]}-${sleeve[2]}.webp`;
+  const part = PART_SLEEVES_RE.exec(url);
+  return part ? `/cutouts/${part[1]}.webp` : null;
+}
+
+// Listings enlarged on hover: a playmat or damage counter part, a set's playmat design
+// (…-sleeves.svg?designs=playmat), ST09's damage counter dice or Official Damage Counter Dice (dice01).
+// EVX08 (Official Damage Counter Dice - Haro) previews at the 1st Anniversary Set dice size.
+const DICE_PREVIEW = { w: 292, h: 178 };
+// Previews trimmed to the dice so they fill that frame (the tiles keep the full photo).
+const DICE_PREVIEW_IMAGE: [RegExp, string][] = [
+  [/\/evx08\.webp$/, "/cutouts/evx08.webp"],
+  [/\/st09-sleeves\.svg\?designs=damage-counter$/, "/cutouts/st09-damage-counter.webp"],
+];
+const dicePreview = (url: string) => DICE_PREVIEW_IMAGE.find(([re]) => re.test(url))?.[1];
+const ZOOM_RE = /^(?:Playmat|Damage Counter Dice) |designs=(?:playmat|damage-counter)$|\/dice01-sleeves\.svg/;
+
+// A card's own corner radius (≈3 mm on a 63 × 88 mm card). Card pictures get it themselves, with
+// no frame behind them: some printings come with square, filled-in corners.
+export const CARD_CORNERS = { borderRadius: "4.6% / 3.3%" };
+
 // Card art in the real card ratio (63 × 88 mm). Falls back to an icon if there is no image.
 function CardArt({ item }: { item: CollectionItem }) {
   // PB01/PB02 part photos that can't be cut out cleanly are shown on white instead.
   const whitePart = !!item.part && PART_PHOTO_PARTS.has(item.part);
   const [failed, setFailed] = useState(false);
+  const [wide, setWide] = useState(false); // a landscape picture (PB02 sleeves) fits instead of filling
+  const flat = flatImage(item);
   const showImage = item.image_url && !failed;
-  const canCutout = item.kind === "item" && !!item.image_url && !NO_CUTOUT.some((re) => re.test(item.image_url ?? ""));
+  const canCutout = item.kind === "item" && !flat && !!item.image_url && !NO_CUTOUT.some((re) => re.test(item.image_url ?? ""));
   const cutout = useCutout(item.image_url, canCutout && !failed);
   const onHex = item.kind === "item" && showImage && cutout !== null; // photo floats on the hex backdrop
-  const whiteBackdrop = whitePart && !onHex;
+  const whiteBackdrop = whitePart && !onHex && !flat;
   const bundle = item.bundle_items ?? [];
   // A bundle of GUNDAM ASSEMBLE kits (e.g. ST04A, PC01A): each kit's own photo, as in Add Item, instead
   // of the mosaic the server builds from the source photos.
@@ -149,47 +182,58 @@ function CardArt({ item }: { item: CollectionItem }) {
       </div>
     );
   }
+  // a product photo on the hex backdrop (or as is, when it has no background to remove)
+  const photo = (
+    <img
+      data-testid={`item-photo-${item.id}`}
+      src={onHex && cutout !== "pending" ? (cutout ?? undefined) : (item.image_url ?? undefined)}
+      alt={item.name}
+      loading="lazy"
+      className={`size-full transition-opacity duration-200 ${
+        onHex
+          ? `object-contain px-[7%] py-[11%] drop-shadow-[0_8px_12px_rgba(0,0,0,0.45)] ${cutout === "pending" ? "opacity-0" : ""}`
+          : "object-contain p-1"
+      }`}
+      onError={() => setFailed(true)}
+    />
+  );
+  // a card picture (from Add Card, or a single card from Add Item) stands on its own: no frame
+  const cardImage = !!showImage && (flat ?? item.image_url ?? "").startsWith("/api/card-images/");
   return (
     <div
-      className={`relative aspect-[63/88] overflow-hidden rounded-md border border-slate-800/80 ${
-        item.kind === "item" && (onHex || !showImage) ? "item-photo-backdrop" : whiteBackdrop && showImage ? "bg-white" : "bg-slate-950/70"
-      }`}
+      className={
+        cardImage
+          ? "relative aspect-[63/88]"
+          : `relative aspect-[63/88] overflow-hidden rounded-md border border-slate-800/80 ${
+              item.kind === "item" && (onHex || !showImage) ? "item-photo-backdrop" : whiteBackdrop && showImage ? "bg-white" : "bg-slate-950/70"
+            }`
+      }
     >
       {showImage ? (
-        <>{item.kind === "card" ? (
-          // hovering a card shows it enlarged beside the tile
-          <HoverZoom src={item.image_url ?? ""} alt={item.name} className="block size-full">
+        item.kind === "card" || flat ? (
+          // a card (or a single card / sleeve design from Add Item): full-bleed, enlarged on hover
+          <HoverZoom src={flat ?? item.image_url ?? ""} alt={item.name} className="block size-full">
             <img
               data-testid={`item-photo-${item.id}`}
-              src={onHex && cutout !== "pending" ? (cutout ?? undefined) : (item.image_url ?? undefined)}
+              src={flat ?? item.image_url ?? undefined}
               alt={item.name}
               loading="lazy"
-              className={`size-full transition-opacity duration-200 ${
-                item.kind === "card"
-                  ? "object-cover"
-                  : onHex
-                    ? `object-contain px-[7%] py-[11%] drop-shadow-[0_8px_12px_rgba(0,0,0,0.45)] ${cutout === "pending" ? "opacity-0" : ""}`
-                    : "object-contain p-1"
-              }`}
+              className={`size-full ${wide ? "object-contain" : "object-cover"}`}
+              style={cardImage ? CARD_CORNERS : undefined}
+              onLoad={(e) => setWide(e.currentTarget.naturalWidth > e.currentTarget.naturalHeight)}
               onError={() => setFailed(true)}
             />
           </HoverZoom>
+        ) : ZOOM_RE.test(`${item.part ?? ""} ${item.image_url ?? ""}`) ||
+          (item.part === "Storage Box" && item.category === "premium bandai") ||
+          item.product_id === "evx08" ? (
+          // playmats, damage counters (incl. EVX08) and Premium Bandai storage boxes are enlarged on hover too
+          <HoverZoom src={dicePreview(item.image_url ?? "") ?? (onHex && cutout !== "pending" ? cutout : null) ?? item.image_url ?? ""} alt={item.name} className="block size-full" backdrop={onHex} maxSize={item.product_id === "evx08" || /designs=damage-counter$/.test(item.image_url ?? "") ? DICE_PREVIEW : undefined}>
+            {photo}
+          </HoverZoom>
         ) : (
-          <img
-            data-testid={`item-photo-${item.id}`}
-            src={onHex && cutout !== "pending" ? (cutout ?? undefined) : (item.image_url ?? undefined)}
-            alt={item.name}
-            loading="lazy"
-            className={`size-full transition-opacity duration-200 ${
-              item.kind === "card"
-                ? "object-cover"
-                : onHex
-                  ? `object-contain px-[7%] py-[11%] drop-shadow-[0_8px_12px_rgba(0,0,0,0.45)] ${cutout === "pending" ? "opacity-0" : ""}`
-                  : "object-contain p-1"
-            }`}
-            onError={() => setFailed(true)}
-          />
-        )}</>
+          photo
+        )
       ) : (
         <div className="flex size-full flex-col items-center justify-center gap-2 text-slate-600">
           {item.kind === "card" ? <Layers className="size-8" aria-hidden /> : <Package className="size-8" aria-hidden />}
@@ -241,6 +285,9 @@ export default function ItemCard({ item, ...actions }: ItemCardProps) {
   // Several parts of a set listed together ("Storage Box + Playmat + Resources"): Qty counts bundles,
   // the card copies are what's in each one.
   const isBundle = !!item.part?.includes(" + ");
+  // the part chip; ST09's damage counter dice (an Extras pick, not a part) get one too, like
+  // the dice of PB03 and Edition Beta
+  const partChip = item.part ?? (item.sleeve_designs?.includes("Damage Counter Dice") ? "Damage Counter Dice" : null);
   // Several products listed together (e.g. ST09 + ST01), each with its own price.
   const bundleItems = item.bundle_items ?? [];
   // Picked cards / designs with their own prices; in a part bundle the other parts share the rest.
@@ -329,9 +376,9 @@ export default function ItemCard({ item, ...actions }: ItemCardProps) {
               {item.set_code}
             </span>
           )}
-          {item.part && (
+          {partChip && (
             <span className="rounded border border-sky-500/40 px-1 text-sky-300" data-testid={`item-part-${item.id}`}>
-              {item.part}
+              {partChip}
             </span>
           )}
           {item.edition && (
