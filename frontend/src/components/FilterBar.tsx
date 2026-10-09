@@ -26,6 +26,9 @@ interface FilterBarProps {
   showBuyer?: boolean;
 }
 
+const TYPE_ITEMS = [{ value: "all", label: "All types" }, ...CARD_TYPES.map((t) => ({ value: t, label: labelize(t) }))];
+const RARITY_ITEMS = [{ value: "all", label: "All rarities" }, ...RARITIES.map((r) => ({ value: r, label: r }))];
+
 export default function FilterBar({ filters, onChange, showBuyer = false }: FilterBarProps) {
   const set = (patch: Partial<InventoryFilters>) => onChange({ ...filters, ...patch });
 
@@ -51,12 +54,13 @@ export default function FilterBar({ filters, onChange, showBuyer = false }: Filt
         </div>
         {/* Type */}
         <div className="flex min-w-36 flex-1 flex-col gap-1.5 sm:flex-none lg:min-w-0">
-          <Label className="font-mono text-xs uppercase tracking-wider text-slate-400">Type</Label>
+          <Label htmlFor="filter-type" className="font-mono text-xs uppercase tracking-wider text-slate-400">Type</Label>
           <Select
             value={filters.cardType}
+            items={TYPE_ITEMS}
             onValueChange={(value: string) => set({ cardType: value as CardType | "all" })}
           >
-            <SelectTrigger data-testid="filter-type" className="w-full bg-slate-950/60">
+            <SelectTrigger id="filter-type" data-testid="filter-type" className="w-full bg-slate-950/60">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -71,12 +75,13 @@ export default function FilterBar({ filters, onChange, showBuyer = false }: Filt
         </div>
         {/* Rarity */}
         <div className="flex min-w-28 flex-1 flex-col gap-1.5 sm:flex-none lg:min-w-0">
-          <Label className="font-mono text-xs uppercase tracking-wider text-slate-400">Rarity</Label>
+          <Label htmlFor="filter-rarity" className="font-mono text-xs uppercase tracking-wider text-slate-400">Rarity</Label>
           <Select
             value={filters.rarity}
+            items={RARITY_ITEMS}
             onValueChange={(value: string) => set({ rarity: value as Rarity | "all" })}
           >
-            <SelectTrigger data-testid="filter-rarity" className="w-full bg-slate-950/60">
+            <SelectTrigger id="filter-rarity" data-testid="filter-rarity" className="w-full bg-slate-950/60">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

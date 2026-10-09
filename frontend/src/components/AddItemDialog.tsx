@@ -121,7 +121,6 @@ export interface SubmitOptions {
 interface AddItemDialogProps {
   onClose: () => void;
   onSubmit: (payload: ItemPayload, options?: SubmitOptions) => void;
-  onManual?: () => void; // no longer used: custom items are entered inside Add Item
   pending: boolean;
   // the bundle being built — shared with Add Card, so products and cards can be bundled together
   bundle: BundleEntry[];
@@ -1906,7 +1905,6 @@ export default function AddItemDialog({
 
         {custom ? (
           <CustomItemForm
-            key={`custom-${bundle.length}`}
             onBack={() => setCustom(false)}
             onSubmit={onSubmit}
             onAddToBundle={(entry) => {
@@ -1919,7 +1917,7 @@ export default function AddItemDialog({
           />
         ) : product ? (
           <ProductDetailsForm
-            key={product.id + bundle.length}
+            key={product.id} // not the bundle size: removing a bundle entry must keep the form
             product={product}
             onBack={() => setProduct(null)}
             onSubmit={onSubmit}

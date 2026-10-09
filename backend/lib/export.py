@@ -49,6 +49,7 @@ COLUMNS = [
     ("Added", 12),
 ]
 COL = {name: get_column_letter(i + 1) for i, (name, _) in enumerate(COLUMNS)}
+OWN_FORMULAS = {COL["Asking total"], COL["Sale total"], COL["Profit"]}
 
 
 def _title(value: str | None) -> str:
@@ -121,6 +122,9 @@ def build_workbook(items: list[dict]) -> bytes:
                 _date(item.get("created_at")),
             ]
         )
+        for cell in ws[row]:  # typed text starting with "=" stays text; only the app's totals are formulas
+            if cell.column_letter not in OWN_FORMULAS and isinstance(cell.value, str) and cell.value.startswith("="):
+                cell.data_type = "s"
 
     last = max(len(items) + 1, 2)
     money = ["Asking price (each)", "Asking total", "Purchase price (each)", "Sale price (each)", "Sale total", "Profit"]

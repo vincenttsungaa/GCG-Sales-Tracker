@@ -1,6 +1,6 @@
 """Seed sample Gundam collection data. Idempotent — skips when items exist.
 
-Run: cd /app/backend && python seed.py
+Run: cd backend && python seed.py
 """
 
 import asyncio

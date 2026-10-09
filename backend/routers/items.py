@@ -1,12 +1,13 @@
 """Collection inventory CRUD + sale-lifecycle transitions."""
 
 import asyncio
+import logging
 import smtplib
 from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, ValidationError
 from lib.export import XLSX_MIME, EmailNotConfigured, build_workbook, export_filename, send_workbook
 from models.item import (
     CollectionItem,
@@ -19,12 +20,20 @@ from models.item import (
 from lib.db import db
 
 router = APIRouter(tags=["items"])
+logger = logging.getLogger(__name__)
 
 
 @router.get("/items", response_model=list[CollectionItem])
 async def list_items():
-    docs = await db.items.find().sort("created_at", -1).to_list(2000)
-    return [CollectionItem(**normalise_doc(doc)) for doc in docs]
+    docs = await db.items.find().sort("created_at", -1).to_list(None)
+    items = []
+    for doc in docs:
+        # one unreadable record (a value an older version allowed) must not hide the rest
+        try:
+            items.append(CollectionItem(**normalise_doc(doc)))
+        except ValidationError as e:
+            logger.warning("skipping item %s: %s", doc.get("id"), e)
+    return items
 
 
 @router.post("/items", response_model=CollectionItem, status_code=201)
@@ -41,10 +50,11 @@ async def update_item(item_id: str, input: ItemUpdate):
         raise HTTPException(status_code=404, detail="item not found")
     # The edit form does not touch the sale record — preserve it.
     payload = input.model_dump()
-    # Older clients don't send the catalog link — keep it rather than wiping it.
-    for key in ("card_id", "card_no", "set_code", "set_name", "product_id", "edition", "part", "resource_cards", "alt_art_cards", "sleeve_designs", "card_quantities", "card_prices", "part_prices", "bundle_items"):
-        if payload.get(key) in (None, [], {}):
-            payload[key] = doc.get(key)
+    # Any field the request leaves out keeps its stored value (fields it sends — even empty —
+    # replace it). A record saved before a field existed has none: the model's default applies.
+    for key in ItemUpdate.model_fields:
+        if key not in input.model_fields_set and doc.get(key) is not None:
+            payload[key] = doc[key]
     payload.update(
         id=item_id,
         status=doc["status"],
@@ -59,14 +69,74 @@ async def update_item(item_id: str, input: ItemUpdate):
     return obj
 
 
+_ACTIVE = ("for_sale", "on_hold")  # listings restored units can merge into (not pending: that has a deal)
+_SAME_LISTING = ("kind", "name", "product_id", "card_id", "card_no", "edition", "part", "price", "purchase_price", "image_url")
+
+
+async def _split_origin(doc: dict) -> dict | None:
+    """The active listing a partial-sale record was split from, if it's still there.
+
+    Records split before `split_from` existed are matched by what the split copied: the same
+    listing fields, and created at the moment of the sale (a whole-sale record keeps the
+    listing's own, earlier created_at, so it's restored as itself).
+    """
+    if doc.get("card_quantities") or len(doc.get("bundle_items") or []) > 1:
+        return None  # bundles are never split
+    if doc.get("split_from"):
+        origin = await db.items.find_one({"id": doc["split_from"]})
+        return origin if origin and origin["status"] in _ACTIVE else None
+    created, sold = doc.get("created_at"), doc.get("sold_at")
+    if not created or not sold or abs((sold - created).total_seconds()) > 5:
+        return None
+    matches = await db.items.find({k: doc.get(k) for k in _SAME_LISTING}).sort("created_at", 1).to_list(None)
+    return next((m for m in matches if m["id"] != doc["id"] and m["status"] in _ACTIVE and not m.get("card_quantities")), None)
+
+
 @router.patch("/items/{item_id}/status", response_model=CollectionItem)
 async def update_status(item_id: str, input: StatusUpdate):
     doc = await db.items.find_one({"id": item_id})
     if not doc:
         raise HTTPException(status_code=404, detail="item not found")
 
+    if input.status == "sold" and doc["status"] == "sold":
+        raise HTTPException(status_code=422, detail="this item is already sold")
+
     update: dict = {"status": input.status}
-    if input.status == "pending":
+    owned = doc["quantity"]
+    units = input.quantity_sold
+    if units is not None and input.status in ("pending", "sold", "on_hold"):
+        if units > owned:
+            raise HTTPException(status_code=422, detail=f"cannot sell {units} units — only {owned} owned")
+        if units < owned and (doc.get("card_quantities") or len(doc.get("bundle_items") or []) > 1):
+            # a bundle, or picked cards (e.g. RP-025 ×2, RP-027 ×1), goes as a whole
+            raise HTTPException(
+                status_code=422,
+                detail="this listing is a bundle — it can only be sold, held or stored as a whole",
+            )
+
+    if input.status in ("pending", "on_hold") and units is not None and units < owned:
+        # Pending / Storage for some of the units: they split off into their own record (like a
+        # partial sale); the rest stay listed as they are. Back to For Sale merges them back.
+        record = CollectionItem(**normalise_doc(dict(doc)))
+        record.id = str(uuid4())
+        record.quantity = units
+        record.status = input.status
+        record.buyer_name = input.buyer_name
+        record.deal_date = input.deal_date if input.status == "pending" else None
+        record.sale_price = input.sale_price if input.status == "pending" else None
+        record.sold_at = None
+        record.created_at = utcnow()
+        record.split_from = item_id
+        await db.items.insert_one(record.model_dump())
+        res = await db.items.update_one(
+            {"id": item_id, "quantity": owned, "status": doc["status"]},
+            {"$set": {"quantity": owned - units}},
+        )
+        if res.modified_count == 0:
+            await db.items.delete_one({"id": record.id})
+            raise HTTPException(status_code=409, detail="this item just changed — reload and try again")
+        update = {}
+    elif input.status == "pending":
         update["buyer_name"] = input.buyer_name or doc.get("buyer_name")
         update["deal_date"] = input.deal_date or doc.get("deal_date")
         update["sale_price"] = (
@@ -74,20 +144,14 @@ async def update_status(item_id: str, input: StatusUpdate):
         )
         update["sold_at"] = None
     elif input.status == "sold":
-        buyer = input.buyer_name or doc.get("buyer_name")
+        buyer = (input.buyer_name or doc.get("buyer_name") or "").strip()
         deal_date = input.deal_date or doc.get("deal_date")
         if not buyer or not deal_date:
             raise HTTPException(
                 status_code=422,
                 detail="buyer name and deal date are required to mark an item as sold",
             )
-        owned = doc["quantity"]
-        qty_sold = input.quantity_sold if input.quantity_sold is not None else owned
-        if qty_sold > owned:
-            raise HTTPException(
-                status_code=422,
-                detail=f"cannot sell {qty_sold} units — only {owned} owned",
-            )
+        qty_sold = units if units is not None else owned
         sold_fields = {
             "status": "sold",
             "buyer_name": buyer,
@@ -95,8 +159,12 @@ async def update_status(item_id: str, input: StatusUpdate):
             "sale_price": input.sale_price if input.sale_price is not None else doc.get("sale_price"),
             "sold_at": utcnow(),
         }
+        # Only if nothing changed the listing since it was read (another tab, a double-click).
+        unchanged = {"id": item_id, "quantity": owned, "status": doc["status"]}
         if qty_sold == owned:
-            update.update(sold_fields)
+            res = await db.items.update_one(unchanged, {"$set": sold_fields})
+            if res.modified_count == 0:
+                raise HTTPException(status_code=409, detail="this item just changed — reload and try again")
         else:
             # Partial sale: remaining units stay listed; the deal becomes its own
             # archived record (new id, quantity = units sold, its own sold_at).
@@ -109,16 +177,24 @@ async def update_status(item_id: str, input: StatusUpdate):
             record.sale_price = sold_fields["sale_price"]
             record.sold_at = sold_fields["sold_at"]
             record.created_at = utcnow()
+            record.split_from = item_id
+            # sold record first: if the listing update then fails, nothing is lost
             await db.items.insert_one(record.model_dump())
-            # The listing survives with the leftover units and a cleared deal record.
-            update = {
-                "quantity": owned - qty_sold,
-                "status": "for_sale",
-                "buyer_name": None,
-                "deal_date": None,
-                "sale_price": None,
-                "sold_at": None,
-            }
+            res = await db.items.update_one(
+                unchanged,
+                {"$set": {
+                    "quantity": owned - qty_sold,
+                    "status": "on_hold" if doc["status"] == "on_hold" else "for_sale",  # Storage stays in Storage
+                    "buyer_name": None,
+                    "deal_date": None,
+                    "sale_price": None,
+                    "sold_at": None,
+                }},
+            )
+            if res.modified_count == 0:
+                await db.items.delete_one({"id": record.id})
+                raise HTTPException(status_code=409, detail="this item just changed — reload and try again")
+        update = {}
     elif input.status == "on_hold":
         # Held back from sale (e.g. reserved, or keeping it for now) — no deal; an optional
         # name of who it's held for is kept as the buyer.
@@ -126,13 +202,26 @@ async def update_status(item_id: str, input: StatusUpdate):
         update["deal_date"] = None
         update["sale_price"] = None
         update["sold_at"] = None
+    elif doc["status"] in ("sold", "pending", "on_hold") and (origin := await _split_origin(doc)):
+        # Restoring units split off by a partial sale, pending deal or storage: back into that listing
+        # (qty 1 + 2 sold → qty 3 again) instead of becoming a second copy of it.
+        res = await db.items.update_one(
+            {"id": origin["id"], "quantity": origin["quantity"], "status": origin["status"]},
+            {"$inc": {"quantity": doc["quantity"]}},
+        )
+        if res.modified_count == 0:
+            raise HTTPException(status_code=409, detail="that listing just changed — reload and try again")
+        await db.items.delete_one({"id": item_id})
+        merged = await db.items.find_one({"id": origin["id"]})
+        return CollectionItem(**normalise_doc(merged))
     else:  # for_sale — (re)listing or restoring clears the deal record
         update["buyer_name"] = None
         update["deal_date"] = None
         update["sale_price"] = None
         update["sold_at"] = None
 
-    await db.items.update_one({"id": item_id}, {"$set": update})
+    if update:
+        await db.items.update_one({"id": item_id}, {"$set": update})
     fresh = await db.items.find_one({"id": item_id})
     if not fresh:
         raise HTTPException(status_code=404, detail="item not found")
@@ -173,8 +262,8 @@ class EmailExportRequest(ExportRequest):
 
 async def _export_items(ids: list[str]) -> list[dict]:
     if not ids:
-        return await db.items.find().sort("created_at", -1).to_list(5000)
-    docs = await db.items.find({"id": {"$in": ids}}).to_list(5000)
+        return await db.items.find().sort("created_at", -1).to_list(None)
+    docs = await db.items.find({"id": {"$in": ids}}).to_list(None)
     order = {item_id: i for i, item_id in enumerate(ids)}
     return sorted((normalise_doc(d) for d in docs), key=lambda d: order.get(d["id"], len(order)))
 
@@ -183,7 +272,7 @@ async def _export_items(ids: list[str]) -> list[dict]:
 async def export_items(body: ExportRequest):
     """The listings as an .xlsx download."""
     items = await _export_items(body.ids)
-    data = build_workbook([normalise_doc(dict(d)) for d in items])
+    data = await asyncio.to_thread(build_workbook, [normalise_doc(dict(d)) for d in items])
     name = export_filename()
     return Response(
         content=data,
@@ -196,7 +285,7 @@ async def export_items(body: ExportRequest):
 async def email_export(body: EmailExportRequest):
     """Email the .xlsx to an address typed in by the user (SMTP settings in backend/.env)."""
     items = await _export_items(body.ids)
-    data = build_workbook([normalise_doc(dict(d)) for d in items])
+    data = await asyncio.to_thread(build_workbook, [normalise_doc(dict(d)) for d in items])
     try:
         await asyncio.to_thread(send_workbook, body.to, data, export_filename(), len(items), body.note)
     except EmailNotConfigured as e:

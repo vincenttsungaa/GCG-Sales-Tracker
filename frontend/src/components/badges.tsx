@@ -91,17 +91,15 @@ export function RarityBadge({ rarity }: { rarity: Rarity | null }) {
   );
 }
 
-// kind "item-card": a bundle of products and cards (both icons, "Item/Card")
-export function KindBadge({ kind }: { kind: ItemKind | "item-card" }) {
+export function KindBadge({ kind }: { kind: ItemKind }) {
   return (
     <Badge
       data-testid={`kind-badge-${kind}`}
       variant="outline"
       className="gap-1.5 border-slate-600/60 text-slate-300"
     >
-      {kind !== "card" && <Package className="size-3" />}
-      {kind !== "item" && <Layers className="size-3" />}
-      {kind === "item-card" ? "Item/Card" : labelize(kind)}
+      {kind === "item" ? <Package className="size-3" /> : <Layers className="size-3" />}
+      {labelize(kind)}
     </Badge>
   );
 }

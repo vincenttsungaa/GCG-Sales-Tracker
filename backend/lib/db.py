@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 INDEXES: dict[str, list[IndexModel]] = {
     "items": [
         IndexModel([("id", ASCENDING)], name="id", unique=True),
-        IndexModel([("status", ASCENDING), ("created_at", DESCENDING)], name="status_created"),
+        IndexModel([("created_at", DESCENDING)], name="created_at"),  # list/export sort
         IndexModel([("buyer_name", ASCENDING)], name="buyer_name"),
         IndexModel([("deal_date", ASCENDING)], name="deal_date"),
     ],

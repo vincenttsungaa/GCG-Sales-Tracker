@@ -2,7 +2,7 @@
 // nothing infers across the HTTP boundary, keep both sides in sync in one edit.
 
 export type ItemKind = "card" | "item";
-export type ItemStatus = "for_sale" | "pending" | "sold";
+export type ItemStatus = "for_sale" | "pending" | "on_hold" | "sold"; // on_hold = Storage
 
 export const GUNDAM_COLORS = ["red", "white", "blue", "green", "purple"] as const;
 export type GundamColor = (typeof GUNDAM_COLORS)[number];
@@ -80,6 +80,7 @@ export interface CollectionItem {
   sale_price: number | null;
   created_at: string;
   sold_at: string | null;
+  split_from?: string | null; // sold record split off a listing by a partial sale (restoring merges it back)
 }
 
 // One product in a bundle listing, with its own price (mirror of models/item.py BundleEntry).
@@ -284,7 +285,7 @@ export interface StatusPayload {
   quantity_sold?: number | null;
 }
 
-export type TabId = "all" | "for_sale" | "pending" | "archive";
+export type TabId = "all" | "for_sale" | "pending" | "on_hold" | "archive";
 
 export function labelize(value: string): string {
   return value.replace(/\b\w/g, (c) => c.toUpperCase());
@@ -317,3 +318,7 @@ export function cardCopies(ids: string[], counts?: Record<string, number> | null
     })
     .join(", ");
 }
+
+// Sold, held or stored as a whole: several products listed together, or a set's picked cards.
+export const isBundle = (item: CollectionItem) =>
+  (item.bundle_items?.length ?? 0) > 1 || Object.keys(item.card_quantities ?? {}).length > 0;

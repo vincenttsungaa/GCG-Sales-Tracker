@@ -1,11 +1,11 @@
 """Pydantic models for the unified collection inventory (cards + general items)."""
 
 import re
-from datetime import datetime, timezone
-from typing import Literal
+from datetime import date, datetime, timezone
+from typing import Annotated, Literal
 from uuid import uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 Kind = Literal["card", "item"]
 Status = Literal["for_sale", "pending", "on_hold", "sold"]
@@ -22,11 +22,14 @@ Rarity = Literal[
 # Item categories follow the official product list (booster packs are not tracked as items).
 ItemCategory = Literal["starter deck", "accessories", "premium bandai", "other"]
 
-# Categories from before the product database — mapped on read so old records still load.
 # Products filed under a different category than the product site's tag (product id → category).
 # SC01 Deck Build Box is tagged ACCESSORIES on the site, but it's a sealed box like the "other" products.
 PRODUCT_CATEGORY_OVERRIDES = {"deck-build-box": "other"}
 
+# Values from older versions — mapped on read so old records still load.
+LEGACY_RARITY = {"UC": "U", "UC+": "U+"}
+LEGACY_PART = {"Divider": "Separator"}
+# Categories from before the product database.
 LEGACY_CATEGORY = {
     "playmat": "accessories",
     "sleeves": "accessories",
@@ -104,14 +107,32 @@ class CollectionItem(BaseModel):
     # Deal record — filled when a sale moves to pending/sold
     buyer_name: str | None = None
     deal_date: str | None = None  # YYYY-MM-DD
-    sale_price: float | None = None  # AUD, defaults to price when not overridden
+    sale_price: float | None = None  # AUD, per unit (the deal dialog pre-fills the asking price)
     created_at: datetime = Field(default_factory=utcnow)
     sold_at: datetime | None = None
+    # a sold record split off a listing by a partial sale: the listing's id (restoring merges it back)
+    split_from: str | None = None
+
+
+# Input-only limits: the read models (CollectionItem, BundleEntry) stay lenient, so a listing
+# saved by an older version is never hidden for breaking a newer rule.
+Copies = dict[str, Annotated[int, Field(ge=1)]]
+Prices = dict[str, Annotated[float, Field(ge=0)]]
+ImageUrl = Annotated[str | None, Field(default=None, pattern=r"^(https?://|/|data:image/)")]  # web, app, or uploaded photo
+ShortText = Annotated[str | None, Field(default=None, max_length=200)]
+LongText = Annotated[str | None, Field(default=None, max_length=5000)]
+
+
+class BundleEntryIn(BundleEntry):
+    image_url: ImageUrl
+    card_quantities: Copies = Field(default_factory=dict)
+    card_prices: Prices = Field(default_factory=dict)
+    part_prices: Prices = Field(default_factory=dict)
 
 
 class ItemCreate(BaseModel):
     kind: Kind = "card"
-    name: str
+    name: str = Field(max_length=500)
     color: GundamColor | None = None
     card_type: CardType | None = None
     rarity: Rarity | None = None
@@ -126,16 +147,16 @@ class ItemCreate(BaseModel):
     resource_cards: list[str] = Field(default_factory=list)
     alt_art_cards: list[str] = Field(default_factory=list)
     sleeve_designs: list[str] = Field(default_factory=list)
-    card_quantities: dict[str, int] = Field(default_factory=dict)
-    card_prices: dict[str, float] = Field(default_factory=dict)
-    part_prices: dict[str, float] = Field(default_factory=dict)
-    bundle_items: list[BundleEntry] = Field(default_factory=list)
+    card_quantities: Copies = Field(default_factory=dict)
+    card_prices: Prices = Field(default_factory=dict)
+    part_prices: Prices = Field(default_factory=dict)
+    bundle_items: list[BundleEntryIn] = Field(default_factory=list)
     price: float = Field(default=0.0, ge=0)
     purchase_price: float | None = Field(default=None, ge=0)
-    image_url: str | None = None
+    image_url: ImageUrl
     quantity: int = Field(default=1, ge=1)
-    condition: str | None = None
-    notes: str | None = None
+    condition: ShortText
+    notes: LongText
 
 
 class ItemUpdate(ItemCreate):
@@ -144,10 +165,17 @@ class ItemUpdate(ItemCreate):
 
 class StatusUpdate(BaseModel):
     status: Status
-    buyer_name: str | None = None
-    deal_date: str | None = None
-    sale_price: float | None = None  # AUD, per unit
-    quantity_sold: int | None = Field(default=None, ge=1)  # partial sale: units in this deal
+    buyer_name: ShortText
+    deal_date: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
+    sale_price: float | None = Field(default=None, ge=0)  # AUD, per unit
+    quantity_sold: int | None = Field(default=None, ge=1)  # units in this deal (pending or sold); fewer than owned splits them off
+
+    @field_validator("deal_date")
+    @classmethod
+    def _real_date(cls, v: str | None) -> str | None:
+        if v is not None:
+            date.fromisoformat(v)  # 2026-13-45 matches the pattern but isn't a date → 422
+        return v
 
 
 def _resource_listing_image(doc: dict) -> str | None:
@@ -167,7 +195,7 @@ def _resource_listing_image(doc: dict) -> str | None:
     return f"/api/product-images/{product_id}-resources.svg?cards={','.join(cards)}"
 
 
-_TRAILING_CODE_RE = re.compile(r"^(?P<name>.*?)\s*\[(?P<code>[^\[\]]+)\]\s*$")
+_TRAILING_CODE_RE = re.compile(r"\s*\[(?P<code>[^\[\]]+)\]\s*$")  # search(), not a lazy .*? from the start
 
 
 def code_first(name: str) -> str:
@@ -177,19 +205,19 @@ def code_first(name: str) -> str:
     """
     if not name or name.lstrip().startswith("["):
         return name
-    m = _TRAILING_CODE_RE.match(name)
-    if not m or not m.group("name"):
+    m = _TRAILING_CODE_RE.search(name)
+    if not m or not name[: m.start()].strip():
         return name
-    return f"[{m.group('code').strip()}] {m.group('name').strip()}"
+    return f"[{m.group('code').strip()}] {name[: m.start()].strip()}"
 
 
-# PB01 / PB02 / PB03 parts that have their own photo (see PART_PHOTOS in lib/product_catalog.py).
+# Set parts that have their own photo (see PART_PHOTOS in lib/product_catalog.py).
 _PART_PHOTO_PRODUCTS = {"pb01", "pb02", "pb03", "pc01a", "pc02a", "limitedbox-beta"}
 # Bumped when the part photos change, so browsers that cached an older picture fetch the new one.
 PART_PHOTO_VERSION = "10"
 _PART_PHOTO_URL_RE = re.compile(r"^/api/product-images/([a-z0-9-]+)-part-[a-z0-9-]+\.svg(\?v=\w+)?$")
 _PART_PHOTO_PARTS = {
-    "Storage Box", "Sleeves", "Playmat", "Deck Box", "Divider",
+    "Storage Box", "Sleeves", "Playmat", "Deck Box", "Separator",
     "Sleeves (Blue)", "Sleeves (Green)", "Card Case", "Damage Counter Dice",  # PB03
     "Booster Pack",  # Edition Beta
     "ASSEMBLE: Gundam Barbatos 4th Form", "ASSEMBLE: Graze Custom", "ASSEMBLE: CGS Mobile Worker",  # PC01A
@@ -198,7 +226,7 @@ _PART_PHOTO_PARTS = {
 
 
 def _part_photo_image(doc: dict) -> str | None:
-    """A PB01/PB02 part listing gets the part's current photo (if it shows the whole set's box
+    """A set-part listing gets the part's current photo (if it shows the whole set's box
     art, or an older version of the part photo). A photo the user chose is kept."""
     product_id, part = doc.get("product_id"), doc.get("part")
     if product_id not in _PART_PHOTO_PRODUCTS or part not in _PART_PHOTO_PARTS:
@@ -216,6 +244,10 @@ def normalise_doc(doc: dict) -> dict:
     doc.pop("_id", None)
     if doc.get("category") in LEGACY_CATEGORY:
         doc["category"] = LEGACY_CATEGORY[doc["category"]]
+    if doc.get("rarity") in LEGACY_RARITY:
+        doc["rarity"] = LEGACY_RARITY[doc["rarity"]]
+    if doc.get("part") in LEGACY_PART:
+        doc["part"] = LEGACY_PART[doc["part"]]
     if doc.get("product_id") in PRODUCT_CATEGORY_OVERRIDES:
         doc["category"] = PRODUCT_CATEGORY_OVERRIDES[doc["product_id"]]
     # Items from the product database (starter decks, accessories, Premium Bandai, other)

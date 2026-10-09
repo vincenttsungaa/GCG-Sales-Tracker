@@ -152,7 +152,7 @@ def test_sleeve_set_svg_one_design_is_just_that_sleeve():
 def test_sleeve_set_svg_mosaic_matches_resource_layout():
     cell = (b"webp", (0.196, 0.09, 0.483, 0.484), True)
     two = pc.sleeve_set_svg([cell, cell])
-    assert 'viewBox="0 0 284 200"' in two and 'fill="#0B0F17"' in two  # 2 → 2×1, dark background
+    assert 'viewBox="0 0 284 200"' in two and "#0B0F17" not in two  # 2 → 2×1, transparent between cells
     assert two.count("<image ") == 1  # the shared photo is embedded once
     three = pc.sleeve_set_svg([cell, cell, cell])
     assert 'viewBox="0 0 284 384"' in three  # 3 → 2×2

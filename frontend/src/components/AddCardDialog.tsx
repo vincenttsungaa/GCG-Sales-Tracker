@@ -498,7 +498,7 @@ export default function AddCardDialog({
 
         {card ? (
           <CardDetailsForm
-            key={card.id + bundle.length}
+            key={card.id} // not the bundle size: removing a bundle entry must keep the form
             card={card}
             onBack={() => setCard(null)}
             onSubmit={onSubmit}

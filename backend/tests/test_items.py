@@ -10,10 +10,17 @@ Run from the backend folder, with the backend already running:
     pytest
 """
 
+import os
 import re
 from uuid import uuid4
 
+import httpx
 import pytest
+
+try:  # these hit the running backend; without one, skip instead of failing
+    httpx.get(os.environ.get("BACKEND_URL", "http://localhost:8001") + "/api/items", timeout=3)
+except httpx.HTTPError:
+    pytest.skip("backend not running on BACKEND_URL", allow_module_level=True)
 
 TEST_PREFIX = "__pytest__ "
 
@@ -87,14 +94,22 @@ class TestCrud:
         assert card["id"] in ids
 
     def test_update_keeps_deal_record(self, client, tag, card):
-        client.patch(f"/items/{card['id']}/status",
-                     json={"status": "pending", "buyer_name": "Test Buyer"})
+        res = client.patch(f"/items/{card['id']}/status",
+                           json={"status": "pending", "buyer_name": "Test Buyer"})
+        assert res.status_code == 200, res.text
         res = client.put(f"/items/{card['id']}", json=_payload(tag, price=20))
         assert res.status_code == 200, res.text
         body = res.json()
         assert body["price"] == 20
         assert body["status"] == "pending"
         assert body["buyer_name"] == "Test Buyer"
+
+    def test_update_keeps_fields_left_out(self, client, card):
+        res = client.put(f"/items/{card['id']}", json={"name": card["name"], "price": 20})
+        assert res.status_code == 200, res.text
+        body = res.json()
+        assert body["price"] == 20
+        assert body["quantity"] == 3 and body["rarity"] == "R" and body["purchase_price"] == 5.0
 
     def test_delete(self, client, card):
         assert client.delete(f"/items/{card['id']}").status_code == 204
@@ -113,6 +128,10 @@ class TestValidation:
         ("kind", "sticker"),
         ("quantity", 0),
         ("price", -1),
+        ("card_quantities", {"RP-025": 0}),
+        ("card_prices", {"RP-025": -1}),
+        ("image_url", "javascript:alert(1)"),
+        ("notes", "x" * 5001),
     ])
     def test_rejects_bad_values(self, client, tag, field, value):
         res = client.post("/items", json=_payload(tag, **{field: value}))
@@ -157,6 +176,73 @@ class TestSaleLifecycle:
         assert len(sold) == 1
         assert sold[0]["quantity"] == 2
         assert sold[0]["id"] != card["id"]
+
+    @pytest.mark.parametrize("body", [
+        {"deal_date": "26/01/2026"},
+        {"deal_date": "2026-13-45"},
+        {"sale_price": -1},
+        {"buyer_name": "   "},
+    ])
+    def test_sold_rejects_bad_deal(self, client, card, body):
+        deal = {"status": "sold", "buyer_name": "Test Buyer", "deal_date": "2026-01-02", **body}
+        assert client.patch(f"/items/{card['id']}/status", json=deal).status_code == 422
+        assert next(i for i in client.get("/items").json() if i["id"] == card["id"])["status"] == "for_sale"
+
+    def test_cannot_sell_twice(self, client, card):
+        deal = {"status": "sold", "buyer_name": "Test Buyer", "deal_date": "2026-01-02"}
+        assert client.patch(f"/items/{card['id']}/status", json=deal).status_code == 200
+        assert client.patch(f"/items/{card['id']}/status", json=deal).status_code == 422
+
+    def test_partial_sale_details_and_storage(self, client, tag, card):
+        client.patch(f"/items/{card['id']}/status", json={"status": "on_hold"})
+        res = client.patch(f"/items/{card['id']}/status",
+                           json={"status": "sold", "buyer_name": "Test Buyer",
+                                 "deal_date": "2026-01-02", "sale_price": 9, "quantity_sold": 1})
+        assert res.status_code == 200, res.text
+        assert res.json()["status"] == "on_hold"  # leftovers stay in Storage
+        assert res.json()["buyer_name"] is None
+        sold = next(i for i in _test_items(client, tag) if i["status"] == "sold")
+        assert (sold["buyer_name"], sold["deal_date"], sold["sale_price"]) == ("Test Buyer", "2026-01-02", 9)
+
+    def test_no_partial_sale_of_picked_cards(self, client, tag):
+        res = client.post("/items", json=_payload(tag, card_quantities={"RP-025": 2, "RP-027": 1}))
+        item = res.json()
+        res = client.patch(f"/items/{item['id']}/status",
+                           json={"status": "sold", "buyer_name": "Test Buyer",
+                                 "deal_date": "2026-01-02", "quantity_sold": 1})
+        assert res.status_code == 422
+        assert len(_test_items(client, tag)) == 1  # no sold record left behind
+
+    def test_restoring_a_partial_sale_merges_back(self, client, tag, card):
+        client.patch(f"/items/{card['id']}/status",
+                     json={"status": "sold", "buyer_name": "Test Buyer",
+                           "deal_date": "2026-01-02", "quantity_sold": 2})
+        sold = next(i for i in _test_items(client, tag) if i["status"] == "sold")
+        res = client.patch(f"/items/{sold['id']}/status", json={"status": "for_sale"})
+        assert res.status_code == 200, res.text
+        assert res.json()["id"] == card["id"] and res.json()["quantity"] == 3
+        assert [i["id"] for i in _test_items(client, tag)] == [card["id"]]  # no second copy
+
+    def test_pending_part_splits_and_merges_back(self, client, tag, card):
+        res = client.patch(f"/items/{card['id']}/status",
+                           json={"status": "pending", "buyer_name": "Test Buyer", "quantity_sold": 1})
+        assert res.status_code == 200, res.text
+        assert res.json()["quantity"] == 2 and res.json()["status"] == "for_sale"
+        pending = next(i for i in _test_items(client, tag) if i["status"] == "pending")
+        assert pending["quantity"] == 1 and pending["buyer_name"] == "Test Buyer"
+        res = client.patch(f"/items/{pending['id']}/status", json={"status": "for_sale"})
+        assert res.json()["id"] == card["id"] and res.json()["quantity"] == 3
+        assert len(_test_items(client, tag)) == 1
+
+    def test_storage_part_splits_and_merges_back(self, client, tag, card):
+        res = client.patch(f"/items/{card['id']}/status", json={"status": "on_hold", "quantity_sold": 2})
+        assert res.status_code == 200, res.text
+        assert res.json()["quantity"] == 1 and res.json()["status"] == "for_sale"
+        stored = next(i for i in _test_items(client, tag) if i["status"] == "on_hold")
+        assert stored["quantity"] == 2
+        res = client.patch(f"/items/{stored['id']}/status", json={"status": "for_sale"})
+        assert res.json()["id"] == card["id"] and res.json()["quantity"] == 3
+        assert len(_test_items(client, tag)) == 1
 
     def test_cannot_oversell(self, client, card):
         res = client.patch(f"/items/{card['id']}/status",

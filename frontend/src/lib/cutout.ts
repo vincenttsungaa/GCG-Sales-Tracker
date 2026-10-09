@@ -8,7 +8,10 @@
 //    outline, and a product whose white faces were still eaten through a gap is filled back in to
 //    its convex outline.
 // Results are cached for the session; if a photo can't be processed (or nothing would change)
-// the original photo is used.
+// the original photo is used. Cut-outs run one at a time, yielding between photos, so a page
+// full of tiles doesn't freeze the UI.
+// ponytail: still on the main thread (~tens of ms per photo); move makeCutout to a Worker with
+// OffscreenCanvas if a single photo ever stalls scrolling.
 
 const MAX_SIDE = 600;
 const EDGE_TOLERANCE = 34; // sum of |ΔR|+|ΔG|+|ΔB| from the edge colour that still counts as background
@@ -17,6 +20,7 @@ const WHITE_STEP = 9; // white backgrounds: largest colour step between neighbou
 const AQUA_STEP = 12;
 const HEX_TOLERANCE = 16;
 const cache = new Map<string, Promise<string | null>>();
+let queue: Promise<unknown> = Promise.resolve();
 
 // Photos the automatic cut-out can't separate cleanly — Premium Bandai / Edition Beta parts (white
 // products shot on white) and the official shots of flat sleeves and card collections (whose pale
@@ -334,7 +338,8 @@ async function makeCutout(src: string): Promise<string | null> {
   out.width = maxX - minX + 1;
   out.height = maxY - minY + 1;
   out.getContext("2d")?.drawImage(canvas, minX, minY, out.width, out.height, 0, 0, out.width, out.height);
-  return out.toDataURL("image/png");
+  const blob = await new Promise<Blob | null>((resolve) => out.toBlob(resolve, "image/png"));
+  return blob ? URL.createObjectURL(blob) : null; // kept for the session, like the cache entry
 }
 
 /**
@@ -348,7 +353,14 @@ export function cutoutPhoto(src: string): Promise<string | null> {
   if (name && PREMADE.has(name)) return Promise.resolve(`/cutouts/${name}.webp`);
   let job = cache.get(src);
   if (!job) {
-    job = makeCutout(src).catch(() => null);
+    job = queue
+      .then(() => new Promise((r) => setTimeout(r))) // let the page paint between photos
+      .then(() => makeCutout(src))
+      .catch(() => {
+        cache.delete(src); // a failed load (offline, 404) is retried next time
+        return null;
+      });
+    queue = job;
     cache.set(src, job);
   }
   return job;

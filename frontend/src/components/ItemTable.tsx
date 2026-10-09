@@ -47,7 +47,8 @@ function ProfitText({ item, className = "" }: { item: CollectionItem; className?
 
 // Optional photo thumbnail — silently disappears if the URL fails to load.
 function Thumb({ item, size }: { item: CollectionItem; size: "sm" | "md" }) {
-  const [failed, setFailed] = useState(false);
+  const [failedSrc, setFailedSrc] = useState<string | null>(null); // reset when the URL changes
+  const failed = failedSrc === item.image_url;
   if (!item.image_url || failed) return null;
   const dim = size === "sm" ? "size-10" : "size-14";
   // hovering the thumbnail shows the photo enlarged beside it
@@ -59,7 +60,7 @@ function Thumb({ item, size }: { item: CollectionItem; size: "sm" | "md" }) {
         alt={item.name}
         loading="lazy"
         className={`${dim} shrink-0 rounded-md border border-slate-800/80 object-cover`}
-        onError={() => setFailed(true)}
+        onError={() => setFailedSrc(item.image_url)}
       />
     </HoverZoom>
   );

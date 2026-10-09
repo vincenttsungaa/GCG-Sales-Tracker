@@ -24,3 +24,6 @@ backend/data/card_images/
 backend/data/product_images/*
 !backend/data/product_images/*.webp
 !backend/data/product_images/*.jpg
+
+# Design previews and mockups made while working on the app (not part of it)
+Claude outputs/

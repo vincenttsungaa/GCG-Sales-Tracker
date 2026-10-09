@@ -70,9 +70,6 @@ const PART_PHOTO_PARTS = new Set([
   "Booster Pack", // Edition Beta (ASSEMBLE kit photos are on black, so they keep the dark tile)
 ]);
 
-// Photos that the background cut-out gets wrong — these stay as they are, on a white frame.
-const NO_CUTOUT: RegExp[] = [];
-
 // An item's photo with its background removed, so it floats on the tile's graphite hex backdrop.
 // "pending" while it's being made; null when the original photo should be used.
 export function useCutout(src: string | null | undefined, enabled: boolean): string | null | "pending" {
@@ -137,11 +134,12 @@ export const CARD_CORNERS = { borderRadius: "4.6% / 3.3%" };
 function CardArt({ item }: { item: CollectionItem }) {
   // PB01/PB02 part photos that can't be cut out cleanly are shown on white instead.
   const whitePart = !!item.part && PART_PHOTO_PARTS.has(item.part);
-  const [failed, setFailed] = useState(false);
+  const [failedSrc, setFailedSrc] = useState<string | null>(null); // reset when the URL changes
+  const failed = failedSrc === item.image_url;
   const [wide, setWide] = useState(false); // a landscape picture (PB02 sleeves) fits instead of filling
   const flat = flatImage(item);
   const showImage = item.image_url && !failed;
-  const canCutout = item.kind === "item" && !flat && !!item.image_url && !NO_CUTOUT.some((re) => re.test(item.image_url ?? ""));
+  const canCutout = item.kind === "item" && !flat && !!item.image_url;
   const cutout = useCutout(item.image_url, canCutout && !failed);
   const onHex = item.kind === "item" && showImage && cutout !== null; // photo floats on the hex backdrop
   const whiteBackdrop = whitePart && !onHex && !flat;
@@ -194,7 +192,7 @@ function CardArt({ item }: { item: CollectionItem }) {
           ? `object-contain px-[7%] py-[11%] drop-shadow-[0_8px_12px_rgba(0,0,0,0.45)] ${cutout === "pending" ? "opacity-0" : ""}`
           : "object-contain p-1"
       }`}
-      onError={() => setFailed(true)}
+      onError={() => setFailedSrc(item.image_url)}
     />
   );
   // a card picture (from Add Card, or a single card from Add Item) stands on its own: no frame
@@ -221,7 +219,7 @@ function CardArt({ item }: { item: CollectionItem }) {
               className={`size-full ${wide ? "object-contain" : "object-cover"}`}
               style={cardImage ? CARD_CORNERS : undefined}
               onLoad={(e) => setWide(e.currentTarget.naturalWidth > e.currentTarget.naturalHeight)}
-              onError={() => setFailed(true)}
+              onError={() => setFailedSrc(item.image_url)}
             />
           </HoverZoom>
         ) : ZOOM_RE.test(`${item.part ?? ""} ${item.image_url ?? ""}`) ||
@@ -311,7 +309,6 @@ export default function ItemCard({ item, ...actions }: ItemCardProps) {
     <article
       data-testid={`item-card-${item.id}`}
       onClick={selectOnClick(item, actions)}
-      aria-selected={actions.selecting ? (actions.isSelected?.(item) ?? false) : undefined}
       className={`flex flex-col gap-2.5 rounded-xl border bg-[#10151F] p-2.5 transition-colors duration-200 hover:border-sky-500/40 ${
         actions.selecting ? "cursor-pointer select-none" : ""
       } ${

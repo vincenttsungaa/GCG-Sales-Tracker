@@ -220,11 +220,15 @@ def save_catalog(catalog: dict[str, Any]) -> None:
         _cache = catalog
 
 
+_by_id: tuple[list | None, dict[str, dict[str, Any]]] = (None, {})  # (cards list it was built from, id → card)
+
+
 def get_card(print_id: str) -> dict[str, Any] | None:
-    for card in load_catalog()["cards"]:
-        if card["id"] == print_id:
-            return card
-    return None
+    global _by_id
+    cards = load_catalog()["cards"]
+    if _by_id[0] is not cards:  # rebuilt after a sync replaces the catalog
+        _by_id = (cards, {c["id"]: c for c in reversed(cards)})  # reversed: first match wins, as before
+    return _by_id[1].get(print_id)
 
 
 def _norm(s: str) -> str:
@@ -329,7 +333,7 @@ def download_image(print_id: str, session: requests.Session | None = None, force
         if r.status_code != 200 or not r.content:
             return False
         IMAGE_DIR.mkdir(parents=True, exist_ok=True)
-        tmp = dest.with_suffix(".tmp")
+        tmp = dest.with_name(f"{dest.name}.{threading.get_ident()}.tmp")  # per thread: parallel fetches of one image
         tmp.write_bytes(r.content)
         tmp.replace(dest)
         return True
@@ -369,8 +373,9 @@ def sync_catalog(
     ids: list[str] = []
     packages_of: dict[str, list[str]] = {}
     for i, (code, label) in enumerate(packages):
-        page = session.get(LIST_URL.format(package=code), timeout=30).text
-        for pid in parse_list_ids(page):
+        resp = session.get(LIST_URL.format(package=code), timeout=30)
+        resp.raise_for_status()  # a failed list page aborts the sync; the old database stays
+        for pid in parse_list_ids(resp.text):
             if pid not in packages_of:
                 ids.append(pid)
                 packages_of[pid] = []
@@ -409,6 +414,10 @@ def sync_catalog(
                 cards_by_id[pid] = previous[pid]
 
     cards = [cards_by_id[pid] for pid in ids if pid in cards_by_id]
+    # An error or maintenance page parses as nothing: never let that replace a good database.
+    previous = len(load_catalog(force=True)["cards"])
+    if not cards or len(cards) < previous // 2:
+        raise RuntimeError(f"the card list returned {len(cards)} cards (had {previous}); kept the old database")
     catalog = {
         "source": CARDS_URL,
         "synced_at": datetime.now(timezone.utc).isoformat(),

@@ -18,8 +18,16 @@ export class ApiError extends Error {
 
 type JsonBody = unknown;
 
+// The backend's own message (e.g. "cannot sell 3 units — only 2 owned") when it sent one.
+// For a 422 field error: "image_url: String should match pattern …".
+export function errorText(e: unknown, fallback: string): string {
+  const detail = e instanceof ApiError ? (e.body as { detail?: unknown } | null)?.detail : undefined;
+  if (typeof detail === "string") return detail;
+  const first = Array.isArray(detail) ? (detail[0] as { loc?: unknown[]; msg?: string } | undefined) : undefined;
+  return first?.msg ? `${first.loc?.at(-1) ?? "input"}: ${first.msg}` : fallback;
+}
+
 async function request<T>(method: string, path: string, body?: JsonBody): Promise<T> {
-  // Auth rides the httpOnly session cookie automatically — never add auth headers here.
   const res = await fetch(`${BASE}${path}`, {
     method,
     headers: body === undefined ? undefined : { "Content-Type": "application/json" },

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { apiGet, apiPost } from "@/lib/api";
@@ -48,14 +48,6 @@ export function useCatalogSync(kind: CatalogKind) {
   });
 }
 
-function useWasRunning(running: boolean) {
-  const [was, setWas] = useState(false);
-  useEffect(() => {
-    if (running) setWas(true);
-  }, [running]);
-  return was;
-}
-
 /**
  * Download / update control for a scraped database.
  * `compact` = one-line "N items · updated … · Update" footer; otherwise the empty-state panel.
@@ -69,12 +61,17 @@ export function CatalogSyncPanel({ kind, compact = false }: { kind: CatalogKind;
     onSuccess: (data) => queryClient.setQueryData([kind, "sync"], data),
   });
   const s = status.data;
-  const wasRunning = useWasRunning(s?.running ?? false);
+  const running = s?.running ?? false;
+  const wasRunning = useRef(false);
 
-  // When a sync finishes, refresh any open search results.
+  // When a sync finishes (running → done), refresh everything read from that database —
+  // searches and the release list — once.
   useEffect(() => {
-    if (wasRunning && s && !s.running) queryClient.invalidateQueries({ queryKey: [kind, "search"] });
-  }, [wasRunning, s, queryClient, kind]);
+    if (wasRunning.current && !running) {
+      queryClient.invalidateQueries({ queryKey: [kind], predicate: (q) => q.queryKey[1] !== "sync" });
+    }
+    wasRunning.current = running;
+  }, [running, queryClient, kind]);
 
   if (s?.running) {
     const pct = s.total ? Math.round((s.done / s.total) * 100) : 0;
@@ -99,7 +96,7 @@ export function CatalogSyncPanel({ kind, compact = false }: { kind: CatalogKind;
       <p className="flex flex-wrap items-center gap-x-2 text-xs text-slate-500">
         <span>
           Database: {s?.catalog_count ?? 0} {copy.noun}
-          {s?.synced_at ? ` · updated ${formatDate(s.synced_at.slice(0, 10))}` : ""}
+          {s?.synced_at ? ` · updated ${formatDate(new Date(s.synced_at).toLocaleDateString("en-CA"))}` : ""}
         </span>
         <Button
           variant="link"
@@ -107,6 +104,7 @@ export function CatalogSyncPanel({ kind, compact = false }: { kind: CatalogKind;
           className="h-auto px-0 text-xs"
           data-testid={`${copy.testId}-button`}
           onClick={() => start.mutate()}
+          disabled={start.isPending}
         >
           <RefreshCw className="size-3" /> Update database
         </Button>

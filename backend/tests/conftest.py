@@ -1,8 +1,7 @@
-"""Pre-scaffolded pytest fixtures for the FastAPI backend.
+"""pytest fixtures for the FastAPI backend.
 
-Tests hit the live uvicorn process managed by supervisor (not an in-process ASGI app), so
-the app under test is the same one the frontend and Playwright see. Do NOT re-create this
-file — add app-specific fixtures below the marker at the bottom.
+API tests (test_items.py) hit the running backend at BACKEND_URL (default localhost:8001),
+not an in-process app; they skip when it isn't running. The catalog tests need no server.
 """
 
 import os
@@ -44,4 +43,3 @@ async def aclient():
         yield c
 
 
-# --- app-specific fixtures below this line ---

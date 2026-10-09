@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast, Toaster } from "sonner";
-import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from "@/lib/api";
+import { apiDelete, apiGet, apiPatch, apiPost, apiPut, errorText } from "@/lib/api";
 import FilterBar from "@/components/FilterBar";
 import { EMPTY_FILTERS, filtersActive, type InventoryFilters } from "@/lib/filters";
 import ItemCard from "@/components/ItemCard";
@@ -43,7 +43,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import type { BundleEntry, CollectionItem, ItemPayload, StatusPayload, TabId } from "@/lib/types";
+import { isBundle, type BundleEntry, type CollectionItem, type ItemPayload, type StatusPayload, type TabId } from "@/lib/types";
 
 const TABS: { id: TabId; label: string; testId: string }[] = [
   { id: "all", label: "All Items", testId: "tab-all" },
@@ -128,8 +128,8 @@ export default function Dashboard() {
   const todayQuery = useQuery({
     queryKey: ["today"],
     queryFn: () => apiGet<{ today: string }>("/today"),
-    staleTime: Infinity,
-    retry: false,
+    staleTime: 60 * 60_000, // a tab left open overnight picks up the new day
+    retry: 2,
   });
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["items"] });
@@ -147,7 +147,10 @@ export default function Dashboard() {
       if (tab === "archive") setTab("all");
       toast.success(`${item.name} added to your ${item.kind === "card" ? "cards" : "items"}`);
     },
-    onError: () => toast.error("Could not add the item — please try again"),
+    onError: (e) => {
+      invalidate(); // the list may be out of date (changed in another tab)
+      toast.error(errorText(e, "Could not add the item — please try again"));
+    },
   });
 
   const updateMut = useMutation({
@@ -158,7 +161,10 @@ export default function Dashboard() {
       setFormState(null);
       toast.success(`${item.name} updated`);
     },
-    onError: () => toast.error("Could not save changes — please try again"),
+    onError: (e) => {
+      invalidate(); // the list may be out of date (changed in another tab)
+      toast.error(errorText(e, "Could not save changes — please try again"));
+    },
   });
 
   const statusMut = useMutation({
@@ -168,7 +174,10 @@ export default function Dashboard() {
       invalidate();
       setDealState(null);
     },
-    onError: () => toast.error("Could not update the deal — please try again"),
+    onError: (e) => {
+      invalidate(); // the list may be out of date (changed in another tab)
+      toast.error(errorText(e, "Could not update the deal — please try again"));
+    },
   });
 
   const deleteMut = useMutation({
@@ -177,7 +186,10 @@ export default function Dashboard() {
       invalidate();
       toast.success("Item deleted");
     },
-    onError: () => toast.error("Could not delete the item — please try again"),
+    onError: (e) => {
+      invalidate(); // the list may be out of date (changed in another tab)
+      toast.error(errorText(e, "Could not delete the item — please try again"));
+    },
   });
 
   const bulkDeleteMut = useMutation({
@@ -188,7 +200,10 @@ export default function Dashboard() {
       setSelecting(false);
       toast.success(`${deleted} ${deleted === 1 ? "listing" : "listings"} deleted`);
     },
-    onError: () => toast.error("Could not delete the selected listings — please try again"),
+    onError: (e) => {
+      invalidate(); // the list may be out of date (changed in another tab)
+      toast.error(errorText(e, "Could not delete the selected listings — please try again"));
+    },
   });
 
   const items = itemsQuery.data ?? [];
@@ -196,7 +211,7 @@ export default function Dashboard() {
   const tabCounts = useMemo(() => {
     const counts: Record<TabId, number> = { all: 0, for_sale: 0, pending: 0, on_hold: 0, archive: 0 };
     for (const item of items) {
-      if (item.status !== "sold") counts.all += 1;
+      if (item.status === "for_sale" || item.status === "pending") counts.all += 1; // Storage has its own tab
       if (item.status === "for_sale") counts.for_sale += 1;
       else if (item.status === "pending") counts.pending += 1;
       else if (item.status === "on_hold") counts.on_hold += 1;
@@ -215,7 +230,7 @@ export default function Dashboard() {
             ? item.status === "pending"
             : tab === "on_hold"
               ? item.status === "on_hold"
-              : item.status !== "sold",
+              : item.status === "for_sale" || item.status === "pending", // All Items: not sold, not in storage
     );
     const q = filters.search.trim().toLowerCase();
     const buyer = filters.buyer.trim().toLowerCase();
@@ -246,6 +261,9 @@ export default function Dashboard() {
   }, [tab, filters, sort]);
   const pageCount = Math.max(1, Math.ceil(visible.length / PAGE_SIZE));
   const currentPage = Math.min(page, pageCount); // e.g. after deleting the last item on the last page
+  useEffect(() => {
+    if (page > pageCount) setPage(pageCount); // step back for real, so a later add doesn't jump forward
+  }, [page, pageCount]);
   const pageItems = visible.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
   // shared by the page controls above and below the list
   const paginationProps = {
@@ -309,11 +327,14 @@ export default function Dashboard() {
       { onSuccess: () => toast.success(`${item.name} is back in your inventory`) },
     );
 
+  // several units: ask how many go to storage (the rest stay listed); one unit or a bundle: all of it
   const hold = (item: CollectionItem) =>
-    statusMut.mutate(
-      { id: item.id, payload: { status: "on_hold" } },
-      { onSuccess: () => toast.success(`${item.name} moved to storage`) },
-    );
+    item.quantity > 1 && !isBundle(item)
+      ? setDealState({ item, target: "on_hold" })
+      : statusMut.mutate(
+          { id: item.id, payload: { status: "on_hold" } },
+          { onSuccess: () => toast.success(`${item.name} moved to storage`) },
+        );
 
   const deleteItem = (item: CollectionItem) => {
     if (window.confirm(`Delete "${item.name}" permanently? This cannot be undone.`)) {
@@ -639,7 +660,7 @@ export default function Dashboard() {
                 <li>Add cards and products from a database built from the official card list and product pages.</li>
                 <li>List sets part by part, bundle several products together, and price each part or card.</li>
                 <li>Add custom items for anything that isn't in the database.</li>
-                <li>Your listings are stored in your own database, on your own computer.</li>
+                <li>Your listings are stored in your own MongoDB database (the one set in backend/.env).</li>
               </ul>
               <p className="text-xs text-slate-500">{DISCLAIMER}</p>
             </div>
@@ -702,10 +723,6 @@ export default function Dashboard() {
               },
             });
           }}
-          onManual={() => {
-            setAddItemOpen(false);
-            setFormState({ type: "add", kind: "item" });
-          }}
           pending={createMut.isPending}
           bundle={bundle}
           setBundle={setBundle}
@@ -733,6 +750,12 @@ export default function Dashboard() {
                   if (partial)
                     toast.success(`${qtySold} of ${source.quantity} ${source.name} sold — moved to Sold`);
                   else if (target === "sold") toast.success(`${source.name} sold — moved to Sold`);
+                  else if (target === "on_hold")
+                    toast.success(
+                      qtySold < source.quantity
+                        ? `${qtySold} of ${source.quantity} ${source.name} moved to storage`
+                        : `${source.name} moved to storage`,
+                    );
                   else toast.success(`${source.name} marked as pending`);
                 },
               },
@@ -824,6 +847,7 @@ function ExportDialog({
   };
 
   const sendEmail = async () => {
+    if (busy !== null || count === 0) return; // Enter in the email box skips the button's disabled state
     const to = email.trim();
     if (!EMAIL_RE.test(to)) {
       setError("Enter a valid email address, e.g. name@example.com.");

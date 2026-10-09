@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -11,18 +11,18 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatAud } from "@/lib/format";
-import type { CollectionItem, StatusPayload } from "@/lib/types";
+import { isBundle, type CollectionItem, type StatusPayload } from "@/lib/types";
 
 export interface DealState {
   item: CollectionItem;
-  target: "pending" | "sold";
+  target: "pending" | "sold" | "on_hold"; // on_hold = Storage: only asks how many
 }
 
 interface DealDialogProps {
   state: DealState;
   today?: string;
   onClose: () => void;
-  onConfirm: (payload: StatusPayload, target: "pending" | "sold") => void;
+  onConfirm: (payload: StatusPayload, target: DealState["target"]) => void;
   pending: boolean;
 }
 
@@ -33,10 +33,19 @@ export default function DealDialog({ state, today, onClose, onConfirm, pending }
   const [salePrice, setSalePrice] = useState(String(item.sale_price ?? item.price));
   const [qty, setQty] = useState(String(item.quantity));
   const [error, setError] = useState<string | null>(null);
+  // "today" may arrive after the dialog opened: fill it in then, unless a date was typed
+  useEffect(() => {
+    if (today) setDealDate((d) => d || today);
+  }, [today]);
 
   const selling = target === "sold";
-  const priceNum = Number(salePrice || 0);
-  const qtyNum = Number(qty || 1);
+  const storing = target === "on_hold";
+  // Pending or sold for some of the units splits them off (back to For Sale merges them back).
+  // Bundles — several products, or picked cards (RP-025 ×2, …) — go as a whole.
+  const splittable = item.quantity > 1 && !isBundle(item);
+  // a blank field is "not entered", never 0 / 1
+  const priceNum = salePrice.trim() === "" ? Number.NaN : Number(salePrice);
+  const qtyNum = qty.trim() === "" ? Number.NaN : Number(qty);
   const expectedProfit =
     selling && item.purchase_price != null && !Number.isNaN(priceNum) && !Number.isNaN(qtyNum)
       ? (priceNum - item.purchase_price) * qtyNum
@@ -51,22 +60,26 @@ export default function DealDialog({ state, today, onClose, onConfirm, pending }
       setError("Deal date is required to mark as sold.");
       return;
     }
-    if (Number.isNaN(priceNum) || priceNum < 0) {
+    if (selling && salePrice.trim() === "") {
+      setError("Enter the sale price (0 if it was free).");
+      return;
+    }
+    if (salePrice.trim() !== "" && (Number.isNaN(priceNum) || priceNum < 0)) {
       setError("Sale price must be zero or more.");
       return;
     }
-    if (selling && (!Number.isInteger(qtyNum) || qtyNum < 1 || qtyNum > item.quantity)) {
-      setError(`Quantity to sell must be between 1 and ${item.quantity}.`);
+    if (splittable && (!Number.isInteger(qtyNum) || qtyNum < 1 || qtyNum > item.quantity)) {
+      setError(`Quantity must be between 1 and ${item.quantity}.`);
       return;
     }
     setError(null);
     onConfirm(
       {
         status: target,
-        buyer_name: buyer.trim() || null,
-        deal_date: dealDate || null,
-        sale_price: Number.isNaN(priceNum) ? null : priceNum,
-        quantity_sold: selling ? qtyNum : null,
+        buyer_name: storing ? null : buyer.trim() || null,
+        deal_date: storing ? null : dealDate || null,
+        sale_price: storing || Number.isNaN(priceNum) ? null : priceNum,
+        quantity_sold: splittable ? qtyNum : null, // null = the whole listing
       },
       target,
     );
@@ -77,12 +90,14 @@ export default function DealDialog({ state, today, onClose, onConfirm, pending }
       <DialogContent className="sm:max-w-md" data-testid="deal-dialog">
         <DialogHeader>
           <DialogTitle className="font-heading uppercase tracking-tight">
-            {selling ? "Close deal" : "Mark as pending"}
+            {selling ? "Close deal" : storing ? "Move to storage" : "Mark as pending"}
           </DialogTitle>
           <DialogDescription>
             {selling
               ? "Record the buyer and deal date — the item moves to the Sold tab automatically."
-              : "Log the interested buyer. You can close the deal later."}
+              : storing
+                ? "Keep some or all of these back from sale. Back to For Sale returns them to this listing."
+                : "Log the interested buyer. You can close the deal later."}
           </DialogDescription>
         </DialogHeader>
 
@@ -96,6 +111,7 @@ export default function DealDialog({ state, today, onClose, onConfirm, pending }
               <span className="text-slate-400">{" · "}bought {formatAud(item.purchase_price)}/unit</span>
             )}
           </p>
+          {!storing && (
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="deal-buyer">Buyer name{selling ? " (required)" : ""}</Label>
             <Input
@@ -106,7 +122,10 @@ export default function DealDialog({ state, today, onClose, onConfirm, pending }
               onChange={(e) => setBuyer(e.target.value)}
             />
           </div>
-          <div className={selling && item.quantity > 1 ? "grid grid-cols-3 gap-3" : "grid-cols-2 grid gap-4"}>
+          )}
+          <div className={splittable ? "grid grid-cols-3 gap-3" : "grid-cols-2 grid gap-4"}>
+            {!storing && (
+            <>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="deal-date">Deal date{selling ? " (required)" : ""}</Label>
               <Input
@@ -132,10 +151,12 @@ export default function DealDialog({ state, today, onClose, onConfirm, pending }
                 onChange={(e) => setSalePrice(e.target.value)}
               />
             </div>
-            {selling && item.quantity > 1 && (
+            </>
+            )}
+            {splittable && (
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="deal-qty" className="font-mono text-xs uppercase tracking-wider text-slate-400">
-                  Qty to sell
+                  {selling ? "Qty to sell" : storing ? "Qty to store" : "Qty"}
                 </Label>
                 <Input
                   id="deal-qty"
@@ -170,7 +191,7 @@ export default function DealDialog({ state, today, onClose, onConfirm, pending }
             Cancel
           </Button>
           <Button data-testid="deal-submit" onClick={handleConfirm} disabled={pending}>
-            {selling ? "Confirm sale" : "Mark pending"}
+            {selling ? "Confirm sale" : storing ? "Move to storage" : "Mark pending"}
           </Button>
         </DialogFooter>
       </DialogContent>

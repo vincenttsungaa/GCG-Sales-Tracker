@@ -5,7 +5,7 @@ BOOSTER PACK — and stored like the card catalog:
   data/products.json        the catalog
   data/product_images/      <product id>.webp (the list thumbnail)
 
-Used by the Add Item search. Refresh with `python scrape_cards.py --products` or the
+Used by the Add Item search. Refresh with `python scrape_cards.py --products-only` or the
 "Update" link in Add Item (POST /api/products/sync).
 """
 
@@ -64,7 +64,6 @@ ST02A_KITS = ["ASSEMBLE: Leo (A)", "ASSEMBLE: Leo (B)", "ASSEMBLE: Tallgeese"]
 ST03A_KITS = ["ASSEMBLE: Char's Zaku II", "ASSEMBLE: Zaku II (A)", "ASSEMBLE: Zaku II (B)"]
 ST04A_KITS = ["ASSEMBLE: Launcher Strike Gundam", "ASSEMBLE: Sword Strike Gundam", "ASSEMBLE: Skygrasper"]
 PC02A_KITS = ["ASSEMBLE: GQuuuuuuX (Omega Psycommu)", "ASSEMBLE: Red Gundam", "ASSEMBLE: GFreD"]
-RESOURCES_PART = "Resources"
 PRODUCT_OPTIONS: dict[str, dict[str, Any]] = {
     # ST04: the Special Edition can be listed sealed or kit by kit (Add Item shows these parts only
     # for that edition)
@@ -168,7 +167,6 @@ _PB01_STORAGE_BOX = "https://p-bandai.com/files/seller-products/NSP0373929001/YB
 _PB03_ITEMS = f"{SITE}/gcg/bccard/en/news/2026/07/23/RffcCgFyUvatJiym/thumbnail_en_03.webp"
 _PB03_PLAYMAT = f"{SITE}/gcg/bccard/en/news/2026/07/23/XPGR6sOaIhhFhyvQ/thumbnail_en_04.webp"
 # GUNDAM ASSEMBLE kit photos (each kit on its own, on black)
-_ASSEMBLE = f"{SITE}/gcg/bccard/en/news"
 _EDITION_BETA_PB = "https://p-bandai.com/files/seller-products/NSP0341576002"  # Premium Bandai USA listing
 
 Box = tuple[float, float, float, float]  # (left, top, right, bottom) as fractions of the photo
@@ -340,8 +338,7 @@ def source_photo(src: str) -> bytes | None:
             return None
         if r.status_code != 200 or not r.content:
             return None
-        IMAGE_DIR.mkdir(parents=True, exist_ok=True)
-        source_file.write_bytes(r.content)
+        _write_atomic(source_file, r.content)
     return source_file.read_bytes()
 
 
@@ -361,8 +358,8 @@ def ensure_part_photo(product_id: str, slug: str) -> Path | None:
     photo = source_photo(src)
     if photo is None:
         return None
-    IMAGE_DIR.mkdir(parents=True, exist_ok=True)
-    dest.write_text(
+    _write_atomic(
+        dest,
         part_photo_svg(
             photo,
             crop,
@@ -370,7 +367,6 @@ def ensure_part_photo(product_id: str, slug: str) -> Path | None:
             cover=extras.get("cover"),
             whiten=extras.get("whiten", 1.0),
         ),
-        encoding="utf-8",
     )
     return dest
 
@@ -386,6 +382,17 @@ _RESOURCE_SET_VERSION = "v3"  # bump to rebuild cached mosaics after a layout ch
 def resource_set_path(product_id: str, codes: list[str]) -> Path:
     key = "_".join(c.replace("-", "").replace("_", "") for c in codes)
     return IMAGE_DIR / f"{product_id}-resources-{_RESOURCE_SET_VERSION}-{key}.svg"
+
+
+def _write_atomic(dest: Path, data: str | bytes) -> None:
+    """Write via a per-thread temp file + rename, so a reader never sees a half-written image."""
+    IMAGE_DIR.mkdir(parents=True, exist_ok=True)
+    tmp = dest.with_name(f"{dest.name}.{threading.get_ident()}.tmp")
+    if isinstance(data, str):
+        tmp.write_text(data, encoding="utf-8")
+    else:
+        tmp.write_bytes(data)
+    tmp.replace(dest)
 
 
 def resource_set_svg(product_id: str, card_images: dict[str, bytes | None]) -> str:
@@ -445,13 +452,11 @@ def ensure_resource_set_image(product_id: str, selected: list[str] | None = None
         images[code] = card_catalog.image_path(code).read_bytes() if ok else None
     svg = resource_set_svg(product_id, images)
     if all(images.values()):  # only cache a complete mosaic
-        IMAGE_DIR.mkdir(parents=True, exist_ok=True)
-        dest.write_text(svg, encoding="utf-8")
+        _write_atomic(dest, svg)
         return dest
-    tmp = IMAGE_DIR / f"{product_id}-resources-partial.svg"  # not cached — retried next time
-    IMAGE_DIR.mkdir(parents=True, exist_ok=True)
-    tmp.write_text(svg, encoding="utf-8")
-    return tmp
+    partial = dest.with_name(f"{dest.stem}-partial.svg")  # per selection; rebuilt until complete
+    _write_atomic(partial, svg)
+    return partial
 
 
 # ---- sleeve designs / set contents ---------------------------------------------------------
@@ -463,17 +468,14 @@ def ensure_resource_set_image(product_id: str, selected: list[str] | None = None
 _GCG = f"{SITE}/gcg/bccard"
 _SLEEVE01_PHOTO = f"{_GCG}/en/news/2025/04/08/9MUseK8Aaletg48h/thumbnail_jp.webp"
 _SLEEVE02_PHOTO = f"{_GCG}/jp/news/2025/08/27/hiHD6DwZTicwA06W/products_thumbnail.webp"
-_SLEEVE03_PHOTO = f"{_GCG}/en/news/2026/03/25/SQxXZhkpL7eWm3ig/products_thumbnail_en.webp"
 _EV03_PHOTO = f"{_GCG}/en/news/2025/06/17/yANgXUSJVRHEao7s/products_thumbnail.webp"
 _EVX06_PHOTO = f"{_GCG}/jp/news/2026/03/17/OEnY3l8RgEwM3KGC/%E5%95%86%E5%93%811.webp"  # 商品1.webp
 _EVX12_PHOTO = f"{_GCG}/jp/news/2026/08/03/IwUgBnMyyFyRbtzx/products_thumbnail.webp"
 _GOODSSET01_PLAYMAT = f"{_GCG}/en/news/2025/06/18/CxrDV0bFDAmgciH4/thumbnail_playmat.webp"
 _GOODSSET01_BOX = f"{_GCG}/en/news/2025/06/18/S2zosRbEbqmp1rkQ/thumbnail_storage.webp"
-_EVX07_BOX = f"{_GCG}/jp/news/2026/03/17/aBmwXh65tZru7pW7/%E5%95%86%E5%93%811.webp"  # 商品1.webp
 # 商品詳細_アイテム.webp / 商品詳細_カード画像.webp — transparent backgrounds
 _EVX09_DECK_BOX = f"{_GCG}/jp/news/2026/09/08/XcSpJUrrbEwBlJzn/%E5%95%86%E5%93%81%E8%A9%B3%E7%B4%B0_%E3%82%A2%E3%82%A4%E3%83%86%E3%83%A0.webp"
 _EVX09_EX_BASE = f"{_GCG}/en/news/2026/09/10/15kKcfA6yiwr3Sf0/%E5%95%86%E5%93%81%E8%A9%B3%E7%B4%B0_%E3%82%AB%E3%83%BC%E3%83%89%E7%94%BB%E5%83%8F.webp"
-_SC01_BOXES = f"{_GCG}/en/news/2026/06/24/FvcWT4Sa65PTosqu/thumbnail_box-card_frame.webp"  # the 3 box designs
 _DECK_CASE01 = f"{_GCG}/en/news/2025/04/08/6QfDGplYPVqVbP36/thumbnail_en.webp"
 _DECK_CASE02 = f"{_GCG}/en/news/2026/03/25/fZumAcw3xApR9KbI/products_thumbnail_en.webp"
 _PLAYMAT01 = f"{_GCG}/en/news/2026/03/25/FexyOy90fSiGykB7/products_thumbnail_en.webp"
@@ -756,8 +758,7 @@ def ensure_sleeve_image(product_id: str, selected: list[str]) -> Path | None:
             if photo is None:
                 return None
             cells.append((photo, pick["box"], _card_shaped(pick)))
-    IMAGE_DIR.mkdir(parents=True, exist_ok=True)
-    dest.write_text(sleeve_set_svg(cells), encoding="utf-8")
+    _write_atomic(dest, sleeve_set_svg(cells))
     return dest
 
 
@@ -815,8 +816,7 @@ def ensure_bundle_image(product_id: str, part_slugs: list[str], cards: list[str]
         if not card_catalog.download_image(code):
             return None
         cells.append((card_catalog.image_path(code).read_bytes(), None, True))
-    IMAGE_DIR.mkdir(parents=True, exist_ok=True)
-    dest.write_text(sleeve_set_svg(cells), encoding="utf-8")
+    _write_atomic(dest, sleeve_set_svg(cells))
     return dest
 
 
@@ -974,10 +974,7 @@ def download_image(product: dict[str, Any], session: requests.Session | None = N
         r = (session or requests).get(safe, headers=HEADERS, timeout=30)
         if r.status_code != 200 or not r.content:
             return False
-        IMAGE_DIR.mkdir(parents=True, exist_ok=True)
-        tmp = dest.with_suffix(".tmp")
-        tmp.write_bytes(r.content)
-        tmp.replace(dest)
+        _write_atomic(dest, r.content)
         return True
     except requests.RequestException as exc:
         logger.warning("product image %s: %s", product["id"], exc)
@@ -998,8 +995,9 @@ def sync_catalog(images: bool = True, progress: Progress | None = None) -> dict[
     seen: set[str] = set()
     skipped = 0
     for page_no in range(1, MAX_PAGES + 1):
-        page = session.get(LIST_URL.format(page=page_no), timeout=30).text
-        found = parse_list_page(page)
+        resp = session.get(LIST_URL.format(page=page_no), timeout=30)
+        resp.raise_for_status()  # an error page must not read as "no more products"
+        found = parse_list_page(resp.text)
         report("pages", page_no, page_no)
         if not found:
             break
@@ -1011,6 +1009,11 @@ def sync_catalog(images: bool = True, progress: Progress | None = None) -> dict[
                 skipped += 1
                 continue
             products.append(p)
+
+    # An error or maintenance page parses as nothing: never let that replace a good database.
+    previous = len(load_catalog(force=True)["products"])
+    if not products or len(products) < previous // 2:
+        raise RuntimeError(f"the product list returned {len(products)} products (had {previous}); kept the old database")
 
     catalog = {
         "source": LIST_URL.format(page=1),

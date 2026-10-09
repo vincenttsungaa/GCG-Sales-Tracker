@@ -28,7 +28,7 @@ export default function Pagination({ page, pageCount, pageSize, total, onPageCha
 
   return (
     <nav
-      aria-label="Pagination"
+      aria-label={testId === "pagination" ? "Pagination" : `Pagination (${testId.replace("pagination-", "")})`}
       data-testid={testId}
       className="flex flex-wrap items-center justify-between gap-3"
     >
