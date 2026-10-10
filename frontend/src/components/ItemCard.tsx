@@ -19,7 +19,7 @@ import {
 import { PriceLines } from "@/components/PriceLines";
 import { HoverZoom, OverflowTip } from "@/components/InfoTip";
 import { cutoutPhoto } from "@/lib/cutout";
-import { CalendarDays, ChevronDown, DollarSign, Layers, Package, Lock, Pencil, Tag, Trash2, Undo2, User } from "lucide-react";
+import { CalendarDays, ChevronDown, DollarSign, FolderInput, FolderMinus, Layers, Package, Lock, Pencil, Tag, Trash2, Undo2, User } from "lucide-react";
 
 export interface ItemActionProps {
   onEdit: (item: CollectionItem) => void;
@@ -29,6 +29,9 @@ export interface ItemActionProps {
   onRestore: (item: CollectionItem) => void;
   onDelete: (item: CollectionItem) => void;
   onUnmark: (item: CollectionItem) => void;
+  onStack?: (item: CollectionItem) => void; // "Move to stack"
+  stackName?: (item: CollectionItem) => string | null; // the stack a listing is in, shown as a chip
+  onUnstack?: (item: CollectionItem) => void; // take it out of its stack
   // Select mode (delete several at once): a checkbox on each listing
   selecting?: boolean;
   isSelected?: (item: CollectionItem) => boolean;
@@ -118,13 +121,15 @@ function flatImage(item: CollectionItem): string | null {
 // (…-sleeves.svg?designs=playmat), ST09's damage counter dice or Official Damage Counter Dice (dice01).
 // EVX08 (Official Damage Counter Dice - Haro) previews at the 1st Anniversary Set dice size.
 const DICE_PREVIEW = { w: 292, h: 178 };
+// PB02 sleeves (a landscape photo of both sleeves): a smaller preview than the 520px-wide playmats
+const PB02_SLEEVES_PREVIEW = { w: 360, h: 263 };
 // Previews trimmed to the dice so they fill that frame (the tiles keep the full photo).
 const DICE_PREVIEW_IMAGE: [RegExp, string][] = [
   [/\/evx08\.webp$/, "/cutouts/evx08.webp"],
   [/\/st09-sleeves\.svg\?designs=damage-counter$/, "/cutouts/st09-damage-counter.webp"],
 ];
 const dicePreview = (url: string) => DICE_PREVIEW_IMAGE.find(([re]) => re.test(url))?.[1];
-const ZOOM_RE = /^(?:Playmat|Damage Counter Dice) |designs=(?:playmat|damage-counter)$|\/dice01-sleeves\.svg/;
+const ZOOM_RE = /^(?:Playmat|Damage Counter Dice) |designs=(?:playmat|damage-counter)$|\/dice01-sleeves\.svg|\/evx06-sleeves\.svg\?designs=/; // + EVX06 sleeves picked together
 
 // A card's own corner radius (≈3 mm on a 63 × 88 mm card). Card pictures get it themselves, with
 // no frame behind them: some printings come with square, filled-in corners.
@@ -210,7 +215,12 @@ function CardArt({ item }: { item: CollectionItem }) {
       {showImage ? (
         item.kind === "card" || flat ? (
           // a card (or a single card / sleeve design from Add Item): full-bleed, enlarged on hover
-          <HoverZoom src={flat ?? item.image_url ?? ""} alt={item.name} className="block size-full">
+          <HoverZoom
+            src={flat ?? item.image_url ?? ""}
+            alt={item.name}
+            className="block size-full"
+            maxSize={/pb02-part-sleeves/.test(flat ?? item.image_url ?? "") ? PB02_SLEEVES_PREVIEW : undefined}
+          >
             <img
               data-testid={`item-photo-${item.id}`}
               src={flat ?? item.image_url ?? undefined}
@@ -371,6 +381,11 @@ export default function ItemCard({ item, ...actions }: ItemCardProps) {
           {item.set_code && item.kind === "card" && (
             <span className="font-mono text-slate-500" title={item.set_name ?? undefined}>
               {item.set_code}
+            </span>
+          )}
+          {actions.stackName?.(item) && (
+            <span className="rounded-full border border-slate-600 bg-slate-800/80 px-1.5 text-slate-200" data-testid={`item-stack-${item.id}`}>
+              {actions.stackName(item)}
             </span>
           )}
           {partChip && (
@@ -589,6 +604,32 @@ export default function ItemCard({ item, ...actions }: ItemCardProps) {
             className="text-violet-300 hover:text-violet-200"
           >
             <Lock className="size-4" />
+          </Button>
+        )}
+        {/* in a stack: the button takes it out; otherwise it moves it into one */}
+        {actions.onUnstack && actions.stackName?.(item) ? (
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label={`Remove ${item.name} from the stack ${actions.stackName(item)}`}
+            title="Remove from stack"
+            data-testid={`item-unstack-${item.id}`}
+            onClick={() => actions.onUnstack?.(item)}
+            className="text-sky-300 hover:text-sky-200"
+          >
+            <FolderMinus className="size-4" />
+          </Button>
+        ) : actions.onStack && (item.status === "for_sale" || item.status === "pending") && (
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label={`Move ${item.name} to a stack`}
+            title="Move to stack"
+            data-testid={`item-stack-move-${item.id}`}
+            onClick={() => actions.onStack?.(item)}
+            className="text-sky-300 hover:text-sky-200"
+          >
+            <FolderInput className="size-4" />
           </Button>
         )}
         {(item.status === "pending" || item.status === "on_hold") && (

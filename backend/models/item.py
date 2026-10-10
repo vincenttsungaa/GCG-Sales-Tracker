@@ -112,6 +112,8 @@ class CollectionItem(BaseModel):
     sold_at: datetime | None = None
     # a sold record split off a listing by a partial sale: the listing's id (restoring merges it back)
     split_from: str | None = None
+    # the stack (named group, see routers/stacks.py) this listing is in, if any
+    stack_id: str | None = None
 
 
 # Input-only limits: the read models (CollectionItem, BundleEntry) stay lenient, so a listing

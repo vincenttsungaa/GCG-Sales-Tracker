@@ -954,6 +954,22 @@ def search_products(q: str = "", category: str | None = None, limit: int = 60) -
     return out[:limit]
 
 
+def match_text(text: str, codes: list[str] | None = None, limit: int = 6) -> list[dict[str, Any]]:
+    """Products whose name or code (codes: read from the photo) is printed on the box (Scan)."""
+    wanted = {c.upper() for c in codes or []}
+    words = set(re.findall(r"[a-z0-9]{3,}", text.lower()))
+    scored = []
+    for p in load_catalog()["products"]:
+        name_words = set(re.findall(r"[a-z0-9]{3,}", re.sub(r"\[[^\]]*\]", "", p["name"]).lower()))
+        name_words -= {"official", "the", "and", "set", "card", "game"}
+        share = len(name_words & words) / len(name_words) if name_words else 0.0
+        by_code = (p.get("code") or "").upper() in wanted
+        if share >= 0.6 or by_code:
+            scored.append((share + by_code, p))
+    scored.sort(key=lambda t: -t[0])
+    return [p for _, p in scored[:limit]]
+
+
 # ---- images --------------------------------------------------------------------------
 
 

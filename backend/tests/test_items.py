@@ -249,3 +249,24 @@ class TestSaleLifecycle:
                            json={"status": "sold", "buyer_name": "Test Buyer",
                                  "deal_date": "2026-01-02", "quantity_sold": 5})
         assert res.status_code == 422
+
+
+class TestStacks:
+    def test_one_stack_at_a_time_and_delete_keeps_listings(self, client, tag, card):
+        a = client.post("/stacks", json={"name": f"{tag}Sunday market"}).json()
+        b = client.post("/stacks", json={"name": f"{tag}For Jake"}).json()
+        try:
+            assert client.post("/stacks", json={"name": f"{tag}SUNDAY MARKET"}).status_code == 409
+            res = client.post("/stacks/assign", json={"ids": [card["id"]], "stack_id": a["id"]})
+            assert res.status_code == 200 and res.json()[0]["stack_id"] == a["id"]
+            client.post("/stacks/assign", json={"ids": [card["id"]], "stack_id": b["id"]})
+            listed = next(i for i in client.get("/items").json() if i["id"] == card["id"])
+            assert listed["stack_id"] == b["id"]  # moved, not in both
+            # editing the listing keeps its stack
+            assert client.put(f"/items/{card['id']}", json={"name": card["name"], "price": 9}).json()["stack_id"] == b["id"]
+            assert client.delete(f"/stacks/{b['id']}").status_code == 204
+            listed = next(i for i in client.get("/items").json() if i["id"] == card["id"])
+            assert listed["stack_id"] is None  # the listing stays, out of any stack
+        finally:
+            for s in (a, b):
+                client.delete(f"/stacks/{s['id']}")

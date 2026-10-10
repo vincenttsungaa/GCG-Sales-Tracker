@@ -17,6 +17,7 @@ from lib.dates import today_iso
 from routers.items import router as items_router
 from routers.cards import router as cards_router
 from routers.products import router as products_router
+from routers.stacks import router as stacks_router
 
 
 # Startup runs before the yield, shutdown after it. Add your own setup/teardown here.
@@ -50,6 +51,7 @@ async def get_today():
 api_router.include_router(items_router)
 api_router.include_router(cards_router)
 api_router.include_router(products_router)
+api_router.include_router(stacks_router)
 app.include_router(api_router)
 
 app.add_middleware(

@@ -63,6 +63,8 @@ async def update_item(item_id: str, input: ItemUpdate):
         sale_price=doc.get("sale_price"),
         created_at=doc["created_at"],
         sold_at=doc.get("sold_at"),
+        split_from=doc.get("split_from"),  # not part of the edit form — kept as they are
+        stack_id=doc.get("stack_id"),
     )
     obj = CollectionItem(**normalise_doc(payload))
     await db.items.replace_one({"id": item_id}, obj.model_dump())

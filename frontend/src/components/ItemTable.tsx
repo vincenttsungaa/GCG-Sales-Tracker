@@ -13,7 +13,7 @@ import { ColorBadge, KindBadge, RarityBadge, StatusBadge, bundleKind } from "@/c
 import { COLOR_TRIM_CLASS, formatAud, formatDate } from "@/lib/format";
 import { bundleLineTotal, cardCopies, saleProfit, saleTotal, type CollectionItem } from "@/lib/types";
 import { useMediaQuery } from "@/lib/useMediaQuery";
-import { CalendarDays, DollarSign, Lock, Pencil, Tag, Trash2, Undo2, User } from "lucide-react";
+import { CalendarDays, DollarSign, FolderInput, FolderMinus, Lock, Pencil, Tag, Trash2, Undo2, User } from "lucide-react";
 import { SelectBox, selectOnClick, type ItemActionProps } from "@/components/ItemCard";
 
 interface ItemTableProps extends ItemActionProps {
@@ -117,6 +117,32 @@ function IconActions({ item, actions }: { item: CollectionItem; actions: Actions
           <Lock className="size-4" />
         </Button>
       )}
+      {actions.onStack && !actions.stackName?.(item) && (item.status === "for_sale" || item.status === "pending") && (
+        <Button
+          variant="ghost"
+          size="icon-xs"
+          aria-label={`Move ${item.name} to a stack`}
+          title="Move to stack"
+          data-testid={`item-stack-move-${item.id}`}
+          onClick={() => actions.onStack?.(item)}
+          className="text-sky-300 hover:text-sky-200"
+        >
+          <FolderInput className="size-4" />
+        </Button>
+      )}
+      {actions.onUnstack && actions.stackName?.(item) && (
+        <Button
+          variant="ghost"
+          size="icon-xs"
+          aria-label={`Remove ${item.name} from the stack ${actions.stackName(item)}`}
+          title="Remove from stack"
+          data-testid={`item-unstack-${item.id}`}
+          onClick={() => actions.onUnstack?.(item)}
+          className="text-slate-400 hover:text-slate-200"
+        >
+          <FolderMinus className="size-4" />
+        </Button>
+      )}
       {(item.status === "pending" || item.status === "on_hold") && (
         <Button
           variant="ghost"
@@ -211,9 +237,9 @@ function DesktopTable({ items, actions }: { items: CollectionItem[]; actions: Ac
                       <p data-testid={`item-name-${item.id}`} className="font-medium break-words text-slate-100">
                         {item.name}
                       </p>
-                      {(item.card_no || item.part || item.edition || item.condition) && (
+                      {(item.card_no || item.part || item.edition || item.condition || actions.stackName?.(item)) && (
                         <p className="font-mono text-xs text-slate-500" title={item.set_name ?? undefined}>
-                          {[item.card_no, item.part, item.edition, item.condition].filter(Boolean).join(" · ")}
+                          {[actions.stackName?.(item), item.card_no, item.part, item.edition, item.condition].filter(Boolean).join(" · ")}
                         </p>
                       )}
                       {item.alt_art_cards.length > 0 && (
@@ -333,6 +359,30 @@ function TouchActions({ item, actions }: { item: CollectionItem; actions: Action
             <Lock className="size-4" /> Storage
           </Button>
         )}
+        {actions.onStack && !actions.stackName?.(item) && (item.status === "for_sale" || item.status === "pending") && (
+          <Button
+            size="sm"
+            variant="outline"
+            className={btn}
+            aria-label={`Move ${item.name} to a stack`}
+            data-testid={`item-stack-move-${item.id}`}
+            onClick={() => actions.onStack?.(item)}
+          >
+            <FolderInput className="size-4" /> Stack
+          </Button>
+        )}
+        {actions.onUnstack && actions.stackName?.(item) && (
+          <Button
+            size="sm"
+            variant="outline"
+            className={btn}
+            aria-label={`Remove ${item.name} from the stack ${actions.stackName(item)}`}
+            data-testid={`item-unstack-${item.id}`}
+            onClick={() => actions.onUnstack?.(item)}
+          >
+            <FolderMinus className="size-4" /> Remove from stack
+          </Button>
+        )}
         {(item.status === "pending" || item.status === "on_hold") && (
           <Button
             size="sm"
@@ -422,9 +472,9 @@ function MobileRow({ item, actions }: { item: CollectionItem; actions: Actions }
             </p>
             <StatusBadge status={item.status} />
           </div>
-          {(item.card_no || type || item.part || item.edition || item.condition) && (
+          {(item.card_no || type || item.part || item.edition || item.condition || actions.stackName?.(item)) && (
             <p className="mt-0.5 font-mono text-xs text-slate-500">
-              {[item.card_no, type, item.part, item.edition, item.condition].filter(Boolean).join(" · ")}
+              {[actions.stackName?.(item), item.card_no, type, item.part, item.edition, item.condition].filter(Boolean).join(" · ")}
             </p>
           )}
           <div className="mt-2 flex flex-wrap items-center gap-1.5">

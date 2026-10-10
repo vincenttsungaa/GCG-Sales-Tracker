@@ -4,7 +4,7 @@ import re
 
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from lib import card_catalog as cc
 from lib import product_catalog as pc
@@ -112,6 +112,17 @@ def search_products(
 ):
     """Search the scraped product list by name or code (e.g. "sleeves", "PB01")."""
     return [_out(p) for p in pc.search_products(q, category, limit)]
+
+
+class ScanText(BaseModel):
+    text: str = Field(max_length=5000)
+    codes: list[str] = Field(default_factory=list, max_length=40)  # codes read from the photo
+
+
+@router.post("/products/match", response_model=list[CatalogProduct])
+def match_products(body: ScanText):
+    """Products whose name appears in the text read from a photo of the box (Scan)."""
+    return [_out(p) for p in pc.match_text(body.text, body.codes)]
 
 
 @router.get("/product-images/{filename}")

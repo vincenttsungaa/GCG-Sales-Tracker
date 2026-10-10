@@ -12,6 +12,8 @@ import ItemFormDialog, { type FormState } from "@/components/ItemFormDialog";
 import DealDialog, { type DealState } from "@/components/DealDialog";
 import AddCardDialog from "@/components/AddCardDialog";
 import AddItemDialog from "@/components/AddItemDialog";
+import ScanDialog from "@/components/ScanDialog";
+import { NO_STACK, StackDialog, StacksPanel } from "@/components/Stacks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -29,6 +31,7 @@ import {
   Archive,
   ArrowDownUp,
   FileSpreadsheet,
+  FolderInput,
   Download,
   Mail,
   Share2,
@@ -38,12 +41,13 @@ import {
   Package,
   Plus,
   RefreshCw,
+  ScanLine,
   Table2,
   LayoutGrid,
   Trash2,
   X,
 } from "lucide-react";
-import { isBundle, type BundleEntry, type CollectionItem, type ItemPayload, type StatusPayload, type TabId } from "@/lib/types";
+import { isBundle, type BundleEntry, type CatalogCard, type CatalogProduct, type CollectionItem, type Stack, type ItemPayload, type StatusPayload, type TabId } from "@/lib/types";
 
 const TABS: { id: TabId; label: string; testId: string }[] = [
   { id: "all", label: "All Items", testId: "tab-all" },
@@ -111,6 +115,20 @@ export default function Dashboard() {
   const [formState, setFormState] = useState<FormState | null>(null);
   const [addCardOpen, setAddCardOpen] = useState(false);
   const [addItemOpen, setAddItemOpen] = useState(false);
+  const [scanOpen, setScanOpen] = useState(false);
+  // Stacks: named groups of For Sale / Pending listings; null = all, NO_STACK = not in a stack
+  const [stackFilter, setStackFilter] = useState<string | null>(null);
+  const [stackDialog, setStackDialog] = useState<CollectionItem[] | null>(null); // listings being moved
+  // what Scan found, opened in Add Card / Add Item with it already picked
+  const [scannedCard, setScannedCard] = useState<CatalogCard | null>(null);
+  const [scannedProduct, setScannedProduct] = useState<CatalogProduct | null>(null);
+  // forget it once that dialog closes (saved, cancelled or switched), so the next Add starts empty
+  useEffect(() => {
+    if (!addCardOpen) setScannedCard(null);
+  }, [addCardOpen]);
+  useEffect(() => {
+    if (!addItemOpen) setScannedProduct(null);
+  }, [addItemOpen]);
   // A bundle being built in Add Item / Add Card (products and cards), listed as one item.
   const [bundle, setBundle] = useState<BundleEntry[]>([]);
   const listBundle = (payload: ItemPayload) => createMut.mutate(payload, { onSuccess: () => setBundle([]) });
@@ -235,6 +253,7 @@ export default function Dashboard() {
     const q = filters.search.trim().toLowerCase();
     const buyer = filters.buyer.trim().toLowerCase();
     const filtered = base.filter((item) => {
+      if (stackFilter === NO_STACK ? !!item.stack_id : stackFilter !== null && item.stack_id !== stackFilter) return false;
       if (q && !item.name.toLowerCase().includes(q)) return false;
       if (filters.color !== "all" && item.color !== filters.color) return false;
       if (filters.cardType !== "all" && item.card_type !== filters.cardType) return false;
@@ -253,12 +272,12 @@ export default function Dashboard() {
       }
       return sort === "oldest" ? time(a) - time(b) : time(b) - time(a);
     });
-  }, [items, tab, filters, sort]);
+  }, [items, tab, filters, sort, stackFilter]);
 
   // Pagination — 10 per page. Back to page 1 whenever the tab or filters change.
   useEffect(() => {
     setPage(1);
-  }, [tab, filters, sort]);
+  }, [tab, filters, sort, stackFilter]);
   const pageCount = Math.max(1, Math.ceil(visible.length / PAGE_SIZE));
   const currentPage = Math.min(page, pageCount); // e.g. after deleting the last item on the last page
   useEffect(() => {
@@ -342,7 +361,70 @@ export default function Dashboard() {
     }
   };
 
+  // ---- stacks --------------------------------------------------------------------------
+  const stacksQuery = useQuery({ queryKey: ["stacks"], queryFn: () => apiGet<Stack[]>("/stacks") });
+  const stacks = stacksQuery.data ?? [];
+  const stackById = useMemo(() => new Map(stacks.map((s) => [s.id, s.name])), [stacks]);
+  const stackCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const item of items) {
+      if (item.status !== "for_sale" && item.status !== "pending") continue;
+      const key = item.stack_id && stackById.has(item.stack_id) ? item.stack_id : NO_STACK;
+      counts[key] = (counts[key] ?? 0) + 1;
+    }
+    return counts;
+  }, [items, stackById]);
+  const refreshStacks = () => {
+    queryClient.invalidateQueries({ queryKey: ["stacks"] });
+    invalidate();
+  };
+  const createStackMut = useMutation({
+    mutationFn: (name: string) => apiPost<Stack>("/stacks", { name }),
+    onSuccess: (s) => {
+      refreshStacks();
+      toast.success(`Stack “${s.name}” added`);
+    },
+    onError: (e) => toast.error(errorText(e, "Could not add the stack — please try again")),
+  });
+  const renameStackMut = useMutation({
+    mutationFn: ({ id, name }: { id: string; name: string }) => apiPatch<Stack>(`/stacks/${id}`, { name }),
+    onSuccess: refreshStacks,
+    onError: (e) => toast.error(errorText(e, "Could not rename the stack — please try again")),
+  });
+  const deleteStackMut = useMutation({
+    mutationFn: (id: string) => apiDelete<void>(`/stacks/${id}`),
+    onSuccess: (_, id) => {
+      if (stackFilter === id) setStackFilter(null);
+      refreshStacks();
+    },
+    onError: (e) => toast.error(errorText(e, "Could not delete the stack — please try again")),
+  });
+  const moveMut = useMutation({
+    mutationFn: ({ ids, stackId }: { ids: string[]; stackId: string | null }) =>
+      apiPost<CollectionItem[]>("/stacks/assign", { ids, stack_id: stackId }),
+    onSuccess: (_, { ids, stackId }) => {
+      invalidate();
+      setStackDialog(null);
+      const what = ids.length === 1 ? "1 listing" : `${ids.length} listings`;
+      toast.success(stackId ? `${what} moved to “${stackById.get(stackId) ?? "the stack"}”` : `${what} taken out of its stack`);
+    },
+    onError: (e) => toast.error(errorText(e, "Could not move to the stack — please try again")),
+  });
+  const moveToStack = (stackId: string | null) =>
+    stackDialog && moveMut.mutate({ ids: stackDialog.map((i) => i.id), stackId });
+  const createAndMove = (name: string) =>
+    createStackMut.mutate(name, { onSuccess: (s) => moveToStack(s.id) });
+  const deleteStack = (s: Stack) => {
+    const n = items.filter((i) => i.stack_id === s.id).length;
+    if (window.confirm(`Delete the stack “${s.name}”?${n ? ` Its ${n} listing${n === 1 ? "" : "s"} stay, just out of any stack.` : ""}`))
+      deleteStackMut.mutate(s.id);
+  };
+
   const actionProps = {
+    onStack: (item: CollectionItem) => setStackDialog([item]),
+    onUnstack: (item: CollectionItem) => moveMut.mutate({ ids: [item.id], stackId: null }),
+    stackName: (item: CollectionItem) =>
+      item.stack_id && (item.status === "for_sale" || item.status === "pending") ? (stackById.get(item.stack_id) ?? null) : null,
     onEdit: (item: CollectionItem) => setFormState({ type: "edit", item }),
     onMarkPending: (item: CollectionItem) => setDealState({ item, target: "pending" }),
     onHold: hold,
@@ -367,6 +449,9 @@ export default function Dashboard() {
               CardStakk
             </h1>
           </div>
+          <Button variant="outline" aria-label="Scan" data-testid="scan-button" onClick={() => setScanOpen(true)}>
+            <ScanLine className="size-4" /> <span className="hidden sm:inline">Scan</span>
+          </Button>
           <Button
             variant="outline"
             aria-label="Add Item"
@@ -402,6 +487,17 @@ export default function Dashboard() {
           </div>
           <div className="order-3 lg:order-none">
             <FilterBar filters={filters} onChange={setFilters} showBuyer={showBuyer} />
+          </div>
+          <div className="order-3 lg:order-none">
+            <StacksPanel
+              stacks={stacks}
+              counts={stackCounts}
+              selected={stackFilter}
+              onSelect={setStackFilter}
+              onCreate={(name) => createStackMut.mutate(name)}
+              onRename={(id, name) => renameStackMut.mutate({ id, name })}
+              onDelete={deleteStack}
+            />
           </div>
         </aside>
 
@@ -512,6 +608,15 @@ export default function Dashboard() {
               </Button>
             )}
             <span className="ml-auto flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                data-testid="stack-selected"
+                disabled={selectedIds.size === 0}
+                onClick={() => setStackDialog(visible.filter((i) => selectedIds.has(i.id) && (i.status === "for_sale" || i.status === "pending")))}
+              >
+                <FolderInput className="size-4" /> Move to stack
+              </Button>
               <Button
                 size="sm"
                 variant="destructive"
@@ -692,9 +797,29 @@ export default function Dashboard() {
         />
       )}
 
+      {scanOpen && (
+        <ScanDialog
+          onClose={() => setScanOpen(false)}
+          onPickCard={(card) => {
+            setScanOpen(false);
+            setScannedCard(card);
+            setAddCardOpen(true);
+          }}
+          onPickProduct={(product) => {
+            setScanOpen(false);
+            setScannedProduct(product);
+            setAddItemOpen(true);
+          }}
+        />
+      )}
+
       {addCardOpen && (
         <AddCardDialog
-          onClose={() => setAddCardOpen(false)}
+          initialCard={scannedCard}
+          onClose={() => {
+            setAddCardOpen(false);
+            setScannedCard(null);
+          }}
           onSubmit={(payload) => createMut.mutate(payload)}
           onManual={() => {
             setAddCardOpen(false);
@@ -713,7 +838,11 @@ export default function Dashboard() {
 
       {addItemOpen && (
         <AddItemDialog
-          onClose={() => setAddItemOpen(false)}
+          initialProduct={scannedProduct}
+          onClose={() => {
+            setAddItemOpen(false);
+            setScannedProduct(null);
+          }}
           onSubmit={(payload, options) => {
             keepAddItemOpen.current = !!options?.keepOpen;
             createMut.mutate(payload, {
@@ -731,6 +860,18 @@ export default function Dashboard() {
             setAddItemOpen(false);
             setAddCardOpen(true);
           }}
+        />
+      )}
+
+      {stackDialog && stackDialog.length > 0 && (
+        <StackDialog
+          title={stackDialog.length === 1 ? stackDialog[0].name : `${stackDialog.length} listings`}
+          stacks={stacks}
+          current={stackDialog.length === 1 ? stackDialog[0].stack_id : undefined}
+          onPick={moveToStack}
+          onCreateAndPick={createAndMove}
+          onClose={() => setStackDialog(null)}
+          pending={moveMut.isPending || createStackMut.isPending}
         />
       )}
 

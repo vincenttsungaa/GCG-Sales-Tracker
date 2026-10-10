@@ -119,6 +119,7 @@ export interface SubmitOptions {
 }
 
 interface AddItemDialogProps {
+  initialProduct?: CatalogProduct | null; // already picked (e.g. from Scan)
   onClose: () => void;
   onSubmit: (payload: ItemPayload, options?: SubmitOptions) => void;
   pending: boolean;
@@ -1035,7 +1036,8 @@ function ProductDetailsForm({
               </Button>
             </span>
           </div>
-          <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {/* same tile size as the resource / alt-art card grids */}
+          <ul className="grid grid-cols-3 gap-2 sm:grid-cols-5">
             {product.sleeve_designs.map((d) => {
               const selected = sleeves.includes(d.id);
               return (
@@ -1859,6 +1861,7 @@ export function BundleBar({
 /* ---------------- dialog ---------------- */
 
 export default function AddItemDialog({
+  initialProduct,
   onClose,
   onSubmit,
   pending,
@@ -1867,7 +1870,7 @@ export default function AddItemDialog({
   onListBundle,
   onAddCard,
 }: AddItemDialogProps) {
-  const [product, setProduct] = useState<CatalogProduct | null>(null);
+  const [product, setProduct] = useState<CatalogProduct | null>(initialProduct ?? null);
   // "Custom item": something not in the product database, entered by hand.
   const [custom, setCustom] = useState(false);
 

@@ -72,3 +72,26 @@ def test_search_type_keywords(monkeypatch):
     assert ids("resource") == ["RP-024"]  # not the EX Resource
     assert ids("unit token") == ["T-029"]
     assert ids("token") == ["EXB-001", "EXR-001", "T-029"]
+
+
+def test_match_text_finds_cards_by_name_and_stats():
+    cc._cache = {"synced_at": None, "packages": [], "cards": [
+        {"id": "GD01-001", "card_no": "GD01-001", "name": "Gundam", "level": "4", "cost": "3", "ap": "3", "hp": "3",
+         "trait": "(Earth Federation) (White Base Team)", "link": "[Amuro Ray]", "parallel": 0},
+        {"id": "ST01-001", "card_no": "ST01-001", "name": "Gundam", "level": "5", "cost": "4", "ap": "4", "hp": "4",
+         "trait": "(Earth Federation) (White Base Team)", "link": "[Amuro Ray]", "parallel": 0},
+        {"id": "GD01-024", "card_no": "GD01-024", "name": "Wing Gundam Zero", "level": "7", "cost": "6", "ap": "5", "hp": "5",
+         "trait": "(Operation Meteor)", "link": "[Heero Yuy]", "parallel": 0},
+    ]}
+    try:
+        # OCR text of a photo with no readable card number: the name, typo'd traits and the stats
+        found = cc.match_text("Lv.4 3\nGundarn\n(Earth Federation) (White Base Tearn)\nAP 3 HP 3\nAmuro Ray")
+        assert [c["id"] for c in found][:2] == ["GD01-001", "ST01-001"]
+        assert cc.match_text("Wing Gundam Zero")[0]["id"] == "GD01-024"
+        assert cc.match_text("nothing useful here") == []
+        # a misread number with its look-alike: the traits pick the right card
+        assert cc.match_text("(Operation Meteor) [Heero Yuy]", ["GD01-024", "GD07-024"])[0]["id"] == "GD01-024"
+        # stylised name not read, but traits + pilot are
+        assert cc.match_text("Repair 1\n(Earth Federation) (White Base Team)\n[Amuro Ray]")[0]["name"] == "Gundam"
+    finally:
+        cc._cache = None

@@ -81,6 +81,7 @@ export interface CollectionItem {
   created_at: string;
   sold_at: string | null;
   split_from?: string | null; // sold record split off a listing by a partial sale (restoring merges it back)
+  stack_id?: string | null; // the stack (named group of listings) it is in
 }
 
 // One product in a bundle listing, with its own price (mirror of models/item.py BundleEntry).
@@ -322,3 +323,9 @@ export function cardCopies(ids: string[], counts?: Record<string, number> | null
 // Sold, held or stored as a whole: several products listed together, or a set's picked cards.
 export const isBundle = (item: CollectionItem) =>
   (item.bundle_items?.length ?? 0) > 1 || Object.keys(item.card_quantities ?? {}).length > 0;
+
+// A named group of For Sale / Pending listings (routers/stacks.py); a listing is in at most one.
+export interface Stack {
+  id: string;
+  name: string;
+}

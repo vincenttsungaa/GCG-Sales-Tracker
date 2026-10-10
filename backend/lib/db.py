@@ -24,6 +24,7 @@ INDEXES: dict[str, list[IndexModel]] = {
         IndexModel([("buyer_name", ASCENDING)], name="buyer_name"),
         IndexModel([("deal_date", ASCENDING)], name="deal_date"),
     ],
+    "stacks": [IndexModel([("id", ASCENDING)], name="id", unique=True)],
 }
 
 

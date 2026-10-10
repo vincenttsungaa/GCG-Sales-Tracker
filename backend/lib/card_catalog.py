@@ -15,6 +15,7 @@ which calls POST /api/cards/sync).
 from __future__ import annotations
 
 import html
+import difflib
 import json
 import logging
 import re
@@ -308,6 +309,49 @@ def search_cards(
         score = 0 if not words else (0 if name.startswith(joined) or ids.startswith(joined) else 1)
         scored.append((score, idx, card))
     scored.sort(key=lambda t: (t[0], t[1]))
+    return [c for _, _, c in scored[:limit]]
+
+
+def match_text(text: str, codes: list[str] | None = None, limit: int = 12) -> list[dict[str, Any]]:
+    """Cards that fit the text read from a photo (Scan), when no card number was readable.
+
+    Scored on what's printed on a card: its name (closest line, so OCR typos still match), the
+    linked pilot, its traits and series, and its Lv / cost / AP / HP. codes: card numbers read from
+    the photo, with look-alike variants (OCR reads ST09 as "ST03") — the text decides between them.
+    A card is listed for its number, a close name, or most of its traits / pilot (stylised names
+    often aren't read); the rest ranks cards that share a name (there are many Gundams).
+    """
+    wanted = {c.upper() for c in codes or []}
+    # name lines: without [pilot links] and (traits), which are matched separately below
+    plain = re.sub(r"\[[^\]\n]*\]|\([^)\n]*\)", " ", text)
+    lines = [n for n in (_norm(line) for line in plain.splitlines()) if len(n) >= 3]
+    if not lines and not wanted:
+        return []
+    words = set(re.findall(r"[a-z]{3,}", text.lower()))
+    numbers = set(re.findall(r"\b\d{1,2}\b", text))
+    scored: list[tuple[float, int, dict[str, Any]]] = []
+    for idx, card in enumerate(load_catalog()["cards"]):
+        name = _norm(card["name"])
+        if len(name) < 3:
+            continue
+        name_score = 0.0
+        for line in lines:
+            if name in line:  # "Gundam" inside "Wing Gundam Zero" counts less than the whole line
+                name_score = max(name_score, 0.75 + 0.25 * len(name) / len(line))
+                continue
+            sm = difflib.SequenceMatcher(None, name, line)
+            if sm.real_quick_ratio() > name_score and sm.quick_ratio() > name_score:
+                name_score = max(name_score, sm.ratio())
+        extra = " ".join(filter(None, (card.get("trait"), card.get("link"), card.get("source_title"))))
+        extra_words = set(re.findall(r"[a-z]{3,}", extra.lower()))
+        overlap = len(extra_words & words) / len(extra_words) if extra_words else 0.0
+        by_code = card["card_no"].upper() in wanted
+        if name_score < 0.75 and not by_code and not (overlap >= 0.6 and len(extra_words) >= 4):
+            continue
+        name_score = name_score if name_score >= 0.75 else 0.0
+        stats = sum(1 for k in ("level", "cost", "ap", "hp") if card.get(k) and card[k] in numbers)
+        scored.append((7 * by_code + 6 * name_score + 2 * overlap + 0.4 * stats - 0.01 * card.get("parallel", 0), idx, card))
+    scored.sort(key=lambda t: (-t[0], t[1]))
     return [c for _, _, c in scored[:limit]]
 
 
