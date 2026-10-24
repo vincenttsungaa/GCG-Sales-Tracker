@@ -80,6 +80,7 @@ export interface CollectionItem {
   sale_price: number | null;
   created_at: string;
   sold_at: string | null;
+  position?: number | null; // "My order" (drag and drop); null = never arranged, shown first
   split_from?: string | null; // sold record split off a listing by a partial sale (restoring merges it back)
   stack_id?: string | null; // the stack (named group of listings) it is in
 }
@@ -212,6 +213,13 @@ export interface ItemPayload {
   quantity: number;
   condition: string | null;
   notes: string | null;
+  // sold listings only: the deal, which Edit can fix
+  sale_price?: number | null;
+  buyer_name?: string | null;
+  deal_date?: string | null;
+  // edits: what the form saw when it opened (the server refuses the save if the listing changed)
+  expected_status?: ItemStatus;
+  expected_quantity?: number;
 }
 
 // Mirror of routers/cards.py CatalogCard — one printing from the scraped card database.
@@ -231,6 +239,7 @@ export interface CatalogCard {
   ap: string | null;
   hp: string | null;
   trait: string | null;
+  art?: string | null; // Resources: the unit pictured, e.g. "Freedom Gundam"
   image_url: string;
 }
 

@@ -13,7 +13,8 @@ import DealDialog, { type DealState } from "@/components/DealDialog";
 import AddCardDialog from "@/components/AddCardDialog";
 import AddItemDialog from "@/components/AddItemDialog";
 import ScanDialog from "@/components/ScanDialog";
-import { NO_STACK, StackDialog, StacksPanel } from "@/components/Stacks";
+import ThemePreview from "@/components/ThemePreview";
+import { NO_STACK, StackDialog, StackFolder, StackSales, StacksPanel } from "@/components/Stacks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -44,10 +45,20 @@ import {
   ScanLine,
   Table2,
   LayoutGrid,
+  Undo2,
+  GripVertical,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  Lock,
   Trash2,
   X,
+  PackagePlus,
+  CopyPlus,
 } from "lucide-react";
-import { isBundle, type BundleEntry, type CatalogCard, type CatalogProduct, type CollectionItem, type Stack, type ItemPayload, type StatusPayload, type TabId } from "@/lib/types";
+import { formatAud } from "@/lib/format";
+import { useMediaQuery } from "@/lib/useMediaQuery";
+import { isBundle, saleTotal, type BundleEntry, type CatalogCard, type CatalogProduct, type CollectionItem, type Stack, type ItemPayload, type StatusPayload, type TabId } from "@/lib/types";
 
 const TABS: { id: TabId; label: string; testId: string }[] = [
   { id: "all", label: "All Items", testId: "tab-all" },
@@ -65,8 +76,9 @@ const DISCLAIMER =
 const FEEDBACK_URL = "https://github.com/vincenttsungaa/GCG-Sales-Tracker/issues/new";
 
 // Sort: newest / oldest first, or one category of item first (then newest).
-type SortId = "newest" | "oldest" | "cards" | "starter deck" | "accessories" | "premium bandai" | "other";
+type SortId = "custom" | "newest" | "oldest" | "cards" | "starter deck" | "accessories" | "premium bandai" | "other";
 const SORT_OPTIONS: { value: SortId; label: string }[] = [
+  { value: "custom", label: "Custom" },
   { value: "newest", label: "Newest" },
   { value: "oldest", label: "Oldest" },
   { value: "cards", label: "Cards" },
@@ -84,6 +96,12 @@ function savedSort(): SortId {
     return "newest";
   }
 }
+// "Custom": the order dragged into; listings never arranged (e.g. just added) come first, newest first.
+const created = (item: CollectionItem) => Date.parse(item.created_at) || 0;
+const byMyOrder = (a: CollectionItem, b: CollectionItem) =>
+  a.position == null
+    ? b.position == null ? created(b) - created(a) : -1
+    : b.position == null ? 1 : a.position - b.position;
 // "Cards": cards; "Others": items in the Other category (or none); the rest: items in that category.
 const inSortGroup = (item: CollectionItem, sort: SortId) =>
   sort === "cards"
@@ -118,6 +136,9 @@ export default function Dashboard() {
   const [scanOpen, setScanOpen] = useState(false);
   // Stacks: named groups of For Sale / Pending listings; null = all, NO_STACK = not in a stack
   const [stackFilter, setStackFilter] = useState<string | null>(null);
+  // the Stacks list opens in a window from a button instead of filling the sidebar
+  const [stacksOpen, setStacksOpen] = useState(false);
+  const [openFolder, setOpenFolder] = useState<string | null>(null); // Storage: the stack folder shown open
   const [stackDialog, setStackDialog] = useState<CollectionItem[] | null>(null); // listings being moved
   // what Scan found, opened in Add Card / Add Item with it already picked
   const [scannedCard, setScannedCard] = useState<CatalogCard | null>(null);
@@ -131,10 +152,88 @@ export default function Dashboard() {
   }, [addItemOpen]);
   // A bundle being built in Add Item / Add Card (products and cards), listed as one item.
   const [bundle, setBundle] = useState<BundleEntry[]>([]);
-  const listBundle = (payload: ItemPayload) => createMut.mutate(payload, { onSuccess: () => setBundle([]) });
+  // Edit → "Add cards / items": the listing that the bundle being built will be saved back into
+  const [bundleTarget, setBundleTarget] = useState<CollectionItem | null>(null);
+  const listBundle = (payload: ItemPayload) => {
+    if (!bundleTarget) {
+      createMut.mutate(payload, { onSuccess: () => setBundle([]) });
+      return;
+    }
+    const t = bundleTarget;
+    updateMut.mutate(
+      {
+        id: t.id,
+        payload: {
+          ...payload,
+          // a listing renamed by hand keeps its name; generated bundle names follow the contents
+          name: (t.bundle_items ?? []).length > 1 && !t.name.startsWith("Bundle:") ? t.name : payload.name,
+          // it's a bundle now: clear what belonged to a single card / product
+          card_id: null,
+          card_no: null,
+          edition: null,
+          part: null,
+          resource_cards: [],
+          alt_art_cards: [],
+          sleeve_designs: [],
+          card_quantities: {},
+          card_prices: {},
+          part_prices: {},
+          condition: t.condition,
+          notes: t.notes,
+          expected_status: t.status,
+          expected_quantity: t.quantity,
+        },
+      },
+      {
+        onSuccess: () => {
+          setBundle([]);
+          setBundleTarget(null);
+          setAddCardOpen(false);
+          setAddItemOpen(false);
+        },
+      },
+    );
+  };
+  // what's already in a listing, as bundle entries (a single card / product becomes one entry)
+  const asBundleEntries = (item: CollectionItem): BundleEntry[] =>
+    (item.bundle_items ?? []).length > 1
+      ? (item.bundle_items ?? [])
+      : [
+          {
+            name: item.name,
+            product_id: item.product_id ?? null,
+            category: item.category ?? null,
+            kind: item.kind,
+            code: item.card_no ?? item.set_code ?? null,
+            image_url: item.image_url ?? null,
+            detail: [item.part, item.edition].filter(Boolean).join(" · ") || null,
+            quantity: item.quantity,
+            price: item.price,
+            purchase_price: item.purchase_price ?? null,
+            card_quantities: item.card_quantities ?? {},
+            card_prices: item.card_prices ?? {},
+            parts: item.part ? item.part.split(" + ") : [],
+            part_prices: item.part_prices ?? {},
+          },
+        ];
+  const addMoreTo = (item: CollectionItem) => {
+    setFormState(null);
+    setBundle(asBundleEntries(item));
+    setBundleTarget(item);
+    setAddCardOpen(true);
+  };
+  // once both Add dialogs are closed (saved, listed on its own or cancelled), forget the listing
+  // being added to, so the next Add Card / Add Item starts a fresh bundle
+  useEffect(() => {
+    if (!addCardOpen && !addItemOpen && bundleTarget) {
+      setBundle([]);
+      setBundleTarget(null);
+    }
+  }, [addCardOpen, addItemOpen, bundleTarget]);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [dealState, setDealState] = useState<DealState | null>(null);
+  const [confirmState, setConfirmState] = useState<ConfirmState | null>(null); // the in-app "Are you sure?" box
   // Select mode: tick several listings and delete them together.
   const [selecting, setSelecting] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -199,10 +298,10 @@ export default function Dashboard() {
   });
 
   const deleteMut = useMutation({
-    mutationFn: (id: string) => apiDelete<void>(`/items/${id}`),
-    onSuccess: () => {
+    mutationFn: (item: CollectionItem) => apiDelete<void>(`/items/${item.id}`),
+    onSuccess: (_, item) => {
       invalidate();
-      toast.success("Item deleted");
+      toast.success(`${item.name} deleted`);
     },
     onError: (e) => {
       invalidate(); // the list may be out of date (changed in another tab)
@@ -211,12 +310,17 @@ export default function Dashboard() {
   });
 
   const bulkDeleteMut = useMutation({
-    mutationFn: (ids: string[]) => apiPost<{ deleted: number }>("/items/bulk-delete", { ids }),
-    onSuccess: ({ deleted }) => {
+    mutationFn: (chosen: CollectionItem[]) => apiPost<{ deleted: number }>("/items/bulk-delete", { ids: chosen.map((i) => i.id) }),
+    onSuccess: ({ deleted }, chosen) => {
       invalidate();
       setSelectedIds(new Set());
       setSelecting(false);
-      toast.success(`${deleted} ${deleted === 1 ? "listing" : "listings"} deleted`);
+      // one: its name; a few: their names; many: the count
+      toast.success(
+        deleted === chosen.length && deleted <= 3
+          ? `${chosen.map((i) => i.name).join(", ")} deleted`
+          : `${deleted} ${deleted === 1 ? "listing" : "listings"} deleted`,
+      );
     },
     onError: (e) => {
       invalidate(); // the list may be out of date (changed in another tab)
@@ -264,6 +368,7 @@ export default function Dashboard() {
       return true;
     });
     const time = (item: CollectionItem) => Date.parse(item.created_at) || 0;
+    if (sort === "custom") return filtered.sort(byMyOrder);
     return filtered.sort((a, b) => {
       if (sort !== "newest" && sort !== "oldest") {
         const ga = inSortGroup(a, sort) ? 0 : 1;
@@ -274,22 +379,61 @@ export default function Dashboard() {
     });
   }, [items, tab, filters, sort, stackFilter]);
 
-  // Pagination — 10 per page. Back to page 1 whenever the tab or filters change.
+  // Grid with no stack picked (every tab, Sold too): each stack's listings fold into one folder tile, iPhone-style.
+  const stacksQuery = useQuery({ queryKey: ["stacks"], queryFn: () => apiGet<Stack[]>("/stacks") });
+  const stacks = stacksQuery.data ?? [];
+  const stackById = useMemo(() => new Map(stacks.map((s) => [s.id, s.name])), [stacks]);
+  const folderMode = view === "grid" && stackFilter === null;
+  const entries = useMemo(() => {
+    if (!folderMode) return visible;
+        const folders = new Map<string, CollectionItem[]>();
+    const out: (CollectionItem | { folder: string; items: CollectionItem[] })[] = [];
+    for (const item of visible) {
+      const id = item.stack_id && stackById.has(item.stack_id) ? item.stack_id : null;
+      if (!id) {
+        out.push(item);
+        continue;
+      }
+      let f = folders.get(id);
+      if (!f) folders.set(id, (f = [])), out.push({ folder: id, items: f }); // folder sits where its newest listing would
+      f.push(item);
+    }
+    return out;
+  }, [folderMode, visible, stackById]);
+  const folderItems = folderMode && openFolder ? visible.filter((i) => i.stack_id === openFolder) : [];
+  const folderSold = openFolder ? items.filter((i) => i.status === "sold" && i.stack_id === openFolder) : [];
+  // a folder that emptied (all moved, sold or unstacked) closes for good, so it can't pop open again later
   useEffect(() => {
+    if (openFolder && folderItems.length === 0) setOpenFolder(null);
+  }, [openFolder, folderItems.length]);
+
+  // Pagination — 10 per page. Back to page 1 whenever the tab or filters change (not when a drag
+  // switched the sort to "Custom": you stay where you dropped).
+  const keepPage = useRef(false);
+  useEffect(() => {
+    if (keepPage.current) {
+      keepPage.current = false;
+      return;
+    }
     setPage(1);
   }, [tab, filters, sort, stackFilter]);
-  const pageCount = Math.max(1, Math.ceil(visible.length / PAGE_SIZE));
+  const pageCount = Math.max(1, Math.ceil(entries.length / PAGE_SIZE));
   const currentPage = Math.min(page, pageCount); // e.g. after deleting the last item on the last page
   useEffect(() => {
     if (page > pageCount) setPage(pageCount); // step back for real, so a later add doesn't jump forward
   }, [page, pageCount]);
-  const pageItems = visible.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const pageEntries = entries.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const pageItems = pageEntries.flatMap((e) => ("folder" in e ? e.items : [e]));
+  // "Select all" only takes listings you can see: never the ones tucked inside a closed stack folder,
+  // or a bulk Move / Delete would also hit cards you never ticked.
+  const pageLoose = pageEntries.filter((e): e is CollectionItem => !("folder" in e));
+  const visibleLoose = folderMode ? entries.filter((e): e is CollectionItem => !("folder" in e)) : visible;
   // shared by the page controls above and below the list
   const paginationProps = {
     page: currentPage,
     pageCount,
     pageSize: PAGE_SIZE,
-    total: visible.length,
+    total: entries.length,
     onPageChange: (p: number) => {
       // leave the clicked page button, so the browser doesn't keep it in view
       if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
@@ -332,12 +476,16 @@ export default function Dashboard() {
   const deleteSelected = () => {
     const chosen = visible.filter((i) => selectedIds.has(i.id));
     if (chosen.length === 0) return;
-    const names = chosen.slice(0, 8).map((i) => `• ${i.name}`).join("\n");
     const more = chosen.length > 8 ? `\n…and ${chosen.length - 8} more` : "";
     const what = `${chosen.length} ${chosen.length === 1 ? "listing" : "listings"}`;
-    if (window.confirm(`Delete ${what} permanently? This cannot be undone.\n\n${names}${more}`)) {
-      bulkDeleteMut.mutate(chosen.map((i) => i.id));
-    }
+    setConfirmState({
+      title: `Delete ${what}?`,
+      body: "This can't be undone.",
+      list: [...chosen.slice(0, 8).map((i) => i.name), ...(more ? [`…and ${chosen.length - 8} more`] : [])],
+      action: "Delete",
+      danger: true,
+      onConfirm: () => bulkDeleteMut.mutate(chosen),
+    });
   };
 
   const unmark = (item: CollectionItem) =>
@@ -356,23 +504,30 @@ export default function Dashboard() {
         );
 
   const deleteItem = (item: CollectionItem) => {
-    if (window.confirm(`Delete "${item.name}" permanently? This cannot be undone.`)) {
-      deleteMut.mutate(item.id);
-    }
+    setConfirmState({
+      title: "Delete this listing?",
+      body: "This can't be undone.",
+      list: [item.name],
+      action: "Delete",
+      danger: true,
+      onConfirm: () => deleteMut.mutate(item),
+    });
   };
 
   // ---- stacks --------------------------------------------------------------------------
-  const stacksQuery = useQuery({ queryKey: ["stacks"], queryFn: () => apiGet<Stack[]>("/stacks") });
-  const stacks = stacksQuery.data ?? [];
-  const stackById = useMemo(() => new Map(stacks.map((s) => [s.id, s.name])), [stacks]);
+  // per stack: all its listings (For Sale, Pending, Storage), and how many are For Sale / in Storage
   const stackCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
+    const total: Record<string, number> = {};
+    const forSale: Record<string, number> = {};
+    const stored: Record<string, number> = {};
     for (const item of items) {
-      if (item.status !== "for_sale" && item.status !== "pending") continue;
+      if (item.status === "sold") continue;
       const key = item.stack_id && stackById.has(item.stack_id) ? item.stack_id : NO_STACK;
-      counts[key] = (counts[key] ?? 0) + 1;
+      total[key] = (total[key] ?? 0) + 1;
+      if (item.status === "for_sale") forSale[key] = (forSale[key] ?? 0) + 1;
+      if (item.status === "on_hold") stored[key] = (stored[key] ?? 0) + 1;
     }
-    return counts;
+    return { total, forSale, stored };
   }, [items, stackById]);
   const refreshStacks = () => {
     queryClient.invalidateQueries({ queryKey: ["stacks"] });
@@ -384,12 +539,12 @@ export default function Dashboard() {
       refreshStacks();
       toast.success(`Stack “${s.name}” added`);
     },
-    onError: (e) => toast.error(errorText(e, "Could not add the stack — please try again")),
+    onError: (e) => toast.error(errorText(e, "Could not add the Stakk — please try again")),
   });
   const renameStackMut = useMutation({
     mutationFn: ({ id, name }: { id: string; name: string }) => apiPatch<Stack>(`/stacks/${id}`, { name }),
     onSuccess: refreshStacks,
-    onError: (e) => toast.error(errorText(e, "Could not rename the stack — please try again")),
+    onError: (e) => toast.error(errorText(e, "Could not rename the Stakk — please try again")),
   });
   const deleteStackMut = useMutation({
     mutationFn: (id: string) => apiDelete<void>(`/stacks/${id}`),
@@ -397,34 +552,221 @@ export default function Dashboard() {
       if (stackFilter === id) setStackFilter(null);
       refreshStacks();
     },
-    onError: (e) => toast.error(errorText(e, "Could not delete the stack — please try again")),
+    onError: (e) => toast.error(errorText(e, "Could not delete the Stakk — please try again")),
   });
+  const reorderStacksMut = useMutation({
+    mutationFn: (ids: string[]) => apiPost<Stack[]>("/stacks/order", { ids }),
+    onMutate: async (ids) => {
+      await queryClient.cancelQueries({ queryKey: ["stacks"] }); // a refetch in flight would undo the new order
+      // show the new order right away
+      const byId = new Map(stacks.map((s) => [s.id, s]));
+      queryClient.setQueryData(["stacks"], ids.map((id) => byId.get(id)).filter(Boolean));
+    },
+    onSuccess: (saved) => queryClient.setQueryData(["stacks"], saved),
+    onError: (e) => {
+      queryClient.invalidateQueries({ queryKey: ["stacks"] });
+      toast.error(errorText(e, "Could not save the order — please try again"));
+    },
+  });
+  // ---- Drag and drop in the grid: each card / stack folder has a grip handle (like the stacks sidebar).
+  // Drag it onto another card or folder to move it there; the arrangement is saved as "Custom".
+  type Drag = { ids: string[]; folder?: string };
+  type DropTarget = { id: string } | { folder: string; items: CollectionItem[] };
+  const [drag, setDrag] = useState<Drag | null>(null);
+  const [over, setOver] = useState<string | null>(null);
+  const reorderItemsMut = useMutation({
+    mutationFn: (ids: string[]) => apiPost<{ moved: number }>("/items/order", { ids }),
+    onMutate: async (ids) => {
+      await queryClient.cancelQueries({ queryKey: ["items"] }); // a refetch in flight would snap the order back
+      const pos = new Map(ids.map((id, i) => [id, i]));
+      queryClient.setQueryData<CollectionItem[]>(["items"], (cur) => cur?.map((i) => ({ ...i, position: pos.get(i.id) ?? i.position })));
+    },
+    onError: (e) => {
+      invalidate();
+      toast.error(errorText(e, "Could not save the order — please try again"));
+    },
+    onSettled: invalidate,
+  });
+  const reorderTo = (ids: string[], targetIds: string[]) => {
+    // Start from what's on screen when another sort is showing, so the drop lands where it looked.
+    const shown = new Set(visible.map((i) => i.id));
+    const order =
+      sort === "custom"
+        ? [...items].sort(byMyOrder).map((i) => i.id)
+        : [...visible.map((i) => i.id), ...[...items].sort(byMyOrder).map((i) => i.id).filter((id) => !shown.has(id))];
+    const down = order.indexOf(ids[0]) < order.indexOf(targetIds[0]);
+    const rest = order.filter((id) => !ids.includes(id));
+    // A folder sits where its first listing is, so that's the spot to land next to (its other listings
+    // may be spread further down the order).
+    const anchor = targetIds[0];
+    rest.splice(rest.indexOf(anchor) + (down ? 1 : 0), 0, ...ids); // moving down lands after the target, up before it
+    if (sort !== "custom") {
+      keepPage.current = true;
+      setSort("custom"); // the grid now shows the saved order
+    }
+    reorderItemsMut.mutate(rest);
+  };
+  const dropOn = (target: DropTarget) => {
+    const d = drag;
+    setDrag(null);
+    setOver(null);
+    if (!d) return;
+    const targetIds = "folder" in target ? target.items.map((i) => i.id) : [target.id];
+    if (targetIds.some((id) => d.ids.includes(id))) return; // dropped on itself
+    reorderTo(d.ids, targetIds);
+  };
+  // the tile accepts drops; only its grip starts a drag, so cards can't be moved by accident
+  const dropProps = (target: DropTarget, key: string) =>
+    view === "grid"
+      ? {
+          onDragOver: (e: React.DragEvent) => {
+            if (!drag) return;
+            e.preventDefault();
+            if (over !== key) setOver(key);
+          },
+          onDragLeave: (e: React.DragEvent) => {
+            if (over === key && !e.currentTarget.contains(e.relatedTarget as Node | null)) setOver(null);
+          },
+          onDrop: (e: React.DragEvent) => {
+            e.preventDefault();
+            dropOn(target);
+          },
+        }
+      : {};
+  // Touch screens can't drag: the grip becomes two arrow buttons that move the tile one place.
+  const touch = useMediaQuery("(pointer: coarse)");
+  // the pinned toolbar gets its background and a fade underneath only once it's stuck (you've scrolled)
+  const pinSentinel = useRef<HTMLDivElement>(null);
+  const [pinned, setPinned] = useState(false);
+  useEffect(() => {
+    const el = pinSentinel.current;
+    if (!el) return;
+    const io = new IntersectionObserver(([e]) => setPinned(!e.isIntersecting), { rootMargin: "-62px 0px 0px 0px" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+  const entryIds = (e: (typeof pageEntries)[number]) => ("folder" in e ? e.items.map((i) => i.id) : [e.id]);
+  // index on this page → place in the whole list, so the first / last tile can move onto the next page
+  const nudge = (index: number, dir: -1 | 1) => {
+    const at = (currentPage - 1) * PAGE_SIZE + index;
+    const target = entries[at + dir];
+    if (target) reorderTo(entryIds(entries[at]), entryIds(target));
+  };
+  const canNudge = (index: number, dir: -1 | 1) => !!entries[(currentPage - 1) * PAGE_SIZE + index + dir];
+  const grip = (start: Drag, label: string, index: number) =>
+    view === "grid" &&
+    (touch ? (
+      <span className="absolute top-1/2 left-0 z-10 flex -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded border border-slate-700 bg-slate-900">
+        {(
+          [
+            [-1, ChevronLeft, "earlier"],
+            [1, ChevronRight, "later"],
+          ] as const
+        ).map(([dir, Icon, word]) => (
+          <button
+            key={dir}
+            type="button"
+            disabled={!canNudge(index, dir) || reorderItemsMut.isPending}
+            onClick={() => nudge(index, dir)}
+            aria-label={`Move ${label} ${word}`}
+            data-testid={`move-${dir < 0 ? "earlier" : "later"}`}
+            className="flex h-7 w-6 items-center justify-center text-slate-400 disabled:opacity-30"
+          >
+            <Icon className="size-4" />
+          </button>
+        ))}
+      </span>
+    ) : (
+      <span
+        draggable
+        onDragStart={(e) => {
+          if (reorderItemsMut.isPending) {
+            e.preventDefault(); // wait for the last move to save, or the two orders can mix
+            return;
+          }
+          setDrag(start);
+          e.dataTransfer.effectAllowed = "move";
+          e.dataTransfer.setData("text/plain", label); // Firefox only starts a drag that carries data
+          const tile = e.currentTarget.parentElement; // drag the whole card's picture, not just the handle
+          if (tile) e.dataTransfer.setDragImage(tile, 24, 24);
+        }}
+        onDragEnd={() => {
+          setDrag(null);
+          setOver(null);
+        }}
+        title="Drag to move (or focus and use the arrow keys)"
+        aria-label={`Move ${label}: drag, or use the arrow keys`}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          const dir = e.key === "ArrowLeft" || e.key === "ArrowUp" ? -1 : e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 : 0;
+          if (!dir) return;
+          e.preventDefault();
+          if (!reorderItemsMut.isPending && canNudge(index, dir)) nudge(index, dir);
+        }}
+        data-testid="drag-handle"
+        className="absolute top-1/2 left-0 z-10 flex h-10 w-4 -translate-x-1/2 -translate-y-1/2 cursor-grab items-center justify-center rounded border border-slate-700 bg-slate-900 text-slate-500 hover:border-slate-500 hover:text-slate-200 active:cursor-grabbing focus-visible:outline-2 focus-visible:outline-sky-400"
+      >
+        <GripVertical className="size-3.5" />
+      </span>
+    ));
+  const dropRing = (key: string, ids: string[]) =>
+    over === key && drag && !ids.some((id) => drag.ids.includes(id)) ? "ring-2 ring-sky-400" : "";
+  const dragging = (ids: string[]) => !!drag && ids.every((id) => drag.ids.includes(id));
   const moveMut = useMutation({
     mutationFn: ({ ids, stackId }: { ids: string[]; stackId: string | null }) =>
       apiPost<CollectionItem[]>("/stacks/assign", { ids, stack_id: stackId }),
     onSuccess: (_, { ids, stackId }) => {
       invalidate();
       setStackDialog(null);
+      if (ids.some((id) => selectedIds.has(id))) stopSelecting(); // moved from the selection bar: done selecting
       const what = ids.length === 1 ? "1 listing" : `${ids.length} listings`;
-      toast.success(stackId ? `${what} moved to “${stackById.get(stackId) ?? "the stack"}”` : `${what} taken out of its stack`);
+      toast.success(stackId ? `${what} moved to “${stackById.get(stackId) ?? "the Stakk"}”` : `${what} taken out of its Stakk`);
     },
-    onError: (e) => toast.error(errorText(e, "Could not move to the stack — please try again")),
+    onError: (e) => toast.error(errorText(e, "Could not move to the Stakk — please try again")),
   });
   const moveToStack = (stackId: string | null) =>
     stackDialog && moveMut.mutate({ ids: stackDialog.map((i) => i.id), stackId });
   const createAndMove = (name: string) =>
     createStackMut.mutate(name, { onSuccess: (s) => moveToStack(s.id) });
+  const stackStatusMut = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: "on_hold" | "for_sale" }) =>
+      apiPost<{ moved: number }>(`/stacks/${id}/status`, { status }),
+    onSuccess: ({ moved }, { status }) => {
+      invalidate();
+      toast.success(`${moved} ${moved === 1 ? "listing" : "listings"} ${status === "on_hold" ? "moved to storage" : "back for sale"}`);
+    },
+    onError: (e) => {
+      invalidate();
+      toast.error(errorText(e, "Could not move the Stakk — please try again"));
+    },
+  });
+  const storeStack = (s: Stack) => {
+    const pending = items.filter((i) => i.stack_id === s.id && i.status === "pending").length;
+    const n = stackCounts.forSale[s.id] ?? 0;
+    setConfirmState({
+      title: `Move “${s.name}” to Storage?`,
+      body: `${n} For Sale listing${n === 1 ? "" : "s"} will move to storage.${pending ? ` ${pending} pending (with a buyer) stay as they are.` : ""}`,
+      action: "Move to Storage",
+      onConfirm: () => stackStatusMut.mutate({ id: s.id, status: "on_hold" }),
+    });
+  };
   const deleteStack = (s: Stack) => {
     const n = items.filter((i) => i.stack_id === s.id).length;
-    if (window.confirm(`Delete the stack “${s.name}”?${n ? ` Its ${n} listing${n === 1 ? "" : "s"} stay, just out of any stack.` : ""}`))
-      deleteStackMut.mutate(s.id);
+    setConfirmState({
+      title: `Delete the Stakk “${s.name}”?`,
+      body: n ? `Its ${n} listing${n === 1 ? "" : "s"} stay, just out of any stack.` : "It's empty.",
+      action: "Delete Stakk",
+      danger: true,
+      onConfirm: () => deleteStackMut.mutate(s.id),
+    });
   };
 
   const actionProps = {
     onStack: (item: CollectionItem) => setStackDialog([item]),
     onUnstack: (item: CollectionItem) => moveMut.mutate({ ids: [item.id], stackId: null }),
     stackName: (item: CollectionItem) =>
-      item.stack_id && (item.status === "for_sale" || item.status === "pending") ? (stackById.get(item.stack_id) ?? null) : null,
+      item.stack_id && item.status !== "sold" ? (stackById.get(item.stack_id) ?? null) : null,
     onEdit: (item: CollectionItem) => setFormState({ type: "edit", item }),
     onMarkPending: (item: CollectionItem) => setDealState({ item, target: "pending" }),
     onHold: hold,
@@ -439,81 +781,133 @@ export default function Dashboard() {
 
   return (
     <div data-testid="dashboard" className="min-h-svh bg-[#0B0F17] text-slate-200">
-      {/* HUD top bar */}
-      <header className="sticky top-0 z-40 border-b border-slate-800/80 bg-[#0B0F17]/90 backdrop-blur">
-        <div className="mx-auto flex max-w-[1600px] items-center gap-2 px-4 py-3 sm:gap-3 sm:px-6">
-          {/* app icon (same as the browser tab icon): two fanned cards with a star */}
-          <img src="/favicon.svg" alt="" aria-hidden className="size-9 shrink-0" data-testid="app-logo" />
-          <div className="mr-auto min-w-0">
-            <h1 className="truncate font-heading text-base font-bold tracking-tight text-slate-100 sm:text-lg">
-              CardStakk
-            </h1>
+      {/* HUD top bar: the name on an angled plate with an amber edge (like a cockpit display), and Scan / Add Item / Add Card joined into one control. Styles in index.css. */}
+      <header className="sticky top-0 z-40">
+        <div className="mx-auto flex min-h-[60px] max-w-[1600px] items-stretch gap-2 pr-3 sm:gap-4 sm:pr-6">
+          <div className="hud-plate flex shrink-0 items-center gap-2 pr-7 pl-3 sm:gap-2.5 sm:pr-10 sm:pl-6" data-testid="hud-plate">
+            {/* app icon (same as the browser tab icon): two fanned cards with a star */}
+            <img src="/favicon.svg" alt="" aria-hidden className="size-7 shrink-0 sm:size-8" data-testid="app-logo" />
+            <div>
+              {/* never cut short: the plate keeps its width and the buttons tighten on phones instead */}
+              <h1 className="font-heading text-base font-bold whitespace-nowrap sm:text-lg">CardStakk</h1>
+              {/* tagline: says what it's for; the name stays CardStakk */}
+              <p className="whitespace-nowrap" data-testid="app-tagline">GCG Sales Tracker</p>
+            </div>
           </div>
-          <Button variant="outline" aria-label="Scan" data-testid="scan-button" onClick={() => setScanOpen(true)}>
-            <ScanLine className="size-4" /> <span className="hidden sm:inline">Scan</span>
-          </Button>
-          <Button
-            variant="outline"
-            aria-label="Add Item"
-            data-testid="add-item-button"
-            onClick={() => setAddItemOpen(true)}
-          >
-            <Package className="size-4" /> <span className="hidden sm:inline">Add Item</span>
-            <span className="sm:hidden">Item</span>
-          </Button>
-          <Button
-            aria-label="Add Card"
-            data-testid="add-card-button"
-            onClick={() => setAddCardOpen(true)}
-          >
-            <Plus className="size-4" /> <span className="hidden sm:inline">Add Card</span>
-            <span className="sm:hidden">Card</span>
-          </Button>
+          <span className="flex-1" />
+          <div className="hud-seg flex shrink-0 self-center" role="group" aria-label="Scan or add">
+            <Button variant="outline" aria-label="Scan" data-testid="scan-button" onClick={() => setScanOpen(true)}>
+              <ScanLine className="size-4" /> <span className="hidden sm:inline">Scan</span>
+            </Button>
+            <Button
+              variant="outline"
+              aria-label="Add Item"
+              data-testid="add-item-button"
+              onClick={() => setAddItemOpen(true)}
+            >
+              <PackagePlus className="size-4" /> <span className="hidden sm:inline">Add Item</span>
+              <span className="sm:hidden">Item</span>
+            </Button>
+            <Button
+              aria-label="Add Card"
+              data-testid="add-card-button"
+              onClick={() => setAddCardOpen(true)}
+            >
+              <CopyPlus className="size-4" /> <span className="hidden sm:inline">Add Card</span>
+              <span className="sm:hidden">Card</span>
+            </Button>
+          </div>
         </div>
       </header>
 
       {/* Wide screens: stats and filters in a sidebar on the left, the listings on the right.
-          Narrower screens: one column (stats, tabs, filters, listings) — the sidebar and the
+          Narrower screens: one column (stats, filters + Stacks, toolbar + tabs, listings) — the sidebar and the
           right column use display:contents there, and `order` keeps that sequence. */}
       <main className="mx-auto flex max-w-[1600px] flex-col gap-4 px-4 py-4 sm:gap-5 sm:px-6 sm:py-6 lg:flex-row lg:items-start lg:gap-6">
         {/* Sidebar stays put while the listings scroll: it sticks at exactly where it starts
-            (header 69px + the page's 24px top padding), so it doesn't shift on scroll. */}
+            (header 61px + the page's 24px top padding), so it doesn't shift on scroll. */}
         <aside
           data-testid="sidebar"
-          className="contents lg:sticky lg:top-[93px] lg:flex lg:max-h-[calc(100svh-109px)] lg:w-72 lg:shrink-0 lg:flex-col lg:gap-3 lg:overflow-y-auto lg:[scrollbar-width:thin]"
+          className="contents lg:sticky lg:top-[85px] lg:flex lg:max-h-[calc(100svh-101px)] lg:w-72 lg:shrink-0 lg:flex-col lg:gap-3 lg:overflow-y-auto lg:[scrollbar-width:thin]"
         >
           <div className="order-1 lg:order-none">
             <StatsStrip items={items} />
           </div>
-          <div className="order-3 lg:order-none">
+          <div className="order-2 lg:order-none">
             <FilterBar filters={filters} onChange={setFilters} showBuyer={showBuyer} />
           </div>
-          <div className="order-3 lg:order-none">
-            <StacksPanel
-              stacks={stacks}
-              counts={stackCounts}
-              selected={stackFilter}
-              onSelect={setStackFilter}
-              onCreate={(name) => createStackMut.mutate(name)}
-              onRename={(id, name) => renameStackMut.mutate({ id, name })}
-              onDelete={deleteStack}
-            />
+          <div className="order-2 lg:order-none">
+              <>
+                <Button
+                  variant="outline"
+                  className="w-full justify-between"
+                  data-testid="stacks-open"
+                  onClick={() => setStacksOpen(true)}
+                >
+                  <span className="flex min-w-0 items-center gap-2">
+                    <Layers className="size-4 shrink-0" />
+                    <span className="truncate">
+                      Stakks
+                      {stackFilter && (
+                        <span className="normal-case text-slate-400"> · {stackFilter === NO_STACK ? "Not in a Stakk" : (stackById.get(stackFilter) ?? "")}</span>
+                      )}
+                    </span>
+                  </span>
+                  <span className="flex shrink-0 items-center gap-1 text-slate-400">
+                    {stacks.length}
+                    <ChevronDown className="size-4" />
+                  </span>
+                </Button>
+                <Dialog open={stacksOpen} onOpenChange={setStacksOpen}>
+                  <DialogContent className="max-h-[85svh] overflow-y-auto" data-testid="stacks-dialog">
+                    <DialogHeader>
+                      <DialogTitle>Stakks</DialogTitle>
+                      <DialogDescription>Tap a Stakk to show only its listings.</DialogDescription>
+                    </DialogHeader>
+                    <StacksPanel
+                      stacks={stacks}
+                      counts={stackCounts.total}
+                      forSale={stackCounts.forSale}
+                      stored={stackCounts.stored}
+                      onStore={storeStack}
+                      onUnstore={(s) => stackStatusMut.mutate({ id: s.id, status: "for_sale" })}
+                      selected={stackFilter}
+                      onSelect={(id) => {
+                        setStackFilter(id);
+                        setStacksOpen(false);
+                      }}
+                      onCreate={(name) => createStackMut.mutate(name)}
+                      onRename={(id, name) => renameStackMut.mutate({ id, name })}
+                      onDelete={deleteStack}
+                      onReorder={(ids) => reorderStacksMut.mutate(ids)}
+                    />
+                  </DialogContent>
+                </Dialog>
+              </>
           </div>
         </aside>
 
         <div className="contents lg:flex lg:min-w-0 lg:flex-1 lg:flex-col lg:gap-5">
-        <div className="order-2 flex items-center justify-between gap-3 lg:order-none">
-          {/* Tabs scroll sideways on narrow screens instead of overflowing the page. */}
-          <div className="-ml-4 min-w-0 flex-1 overflow-x-auto pl-4 [scrollbar-width:none] sm:ml-0 sm:pl-0">
+        {/* Computers: the tabs, toolbar, hint, top pagination (and the Select bar) stay pinned under the top
+            bar while the listings scroll. Phones / tablets: search filters and Stakks sit above this block. */}
+        <div ref={pinSentinel} className="order-3 -mb-4 h-0 sm:-mb-5 lg:order-none" aria-hidden /> {/* marker: cancels the column gap */}
+        <div
+          className="pin-bar order-3 space-y-3 lg:sticky lg:top-[61px] lg:z-30 lg:order-none lg:-mx-2 lg:px-2 lg:py-3"
+          data-pinned={pinned || undefined}
+        >
+        <div className="flex flex-wrap items-center justify-center gap-3 md:flex-nowrap md:justify-between">
+          {/* Phones / small tablets: the tabs on top as five equal columns (name over count) so they fit
+              without scrolling sideways, then the buttons centred below. */}
+          <div className="min-w-0 basis-full md:flex-1 md:basis-auto md:overflow-x-auto md:[scrollbar-width:none]">
           <Tabs value={tab} onValueChange={(value: string) => setTab(value as TabId)}>
-            <TabsList className="w-max">
+            <TabsList className="grid w-full grid-cols-5 max-md:h-auto! md:inline-flex md:w-max">
               {TABS.map(({ id, label, testId }) => (
-                <TabsTrigger key={id} value={id} data-testid={testId} className="gap-2">
-                  {id === "archive" && <Archive className="size-3.5" aria-hidden />}
+                <TabsTrigger key={id} value={id} data-testid={testId} className="flex-col gap-0.5 px-1 py-1 text-xs md:flex-row md:gap-2 md:px-1.5 md:py-0.5">
+                  {id === "archive" && <Archive className="size-3.5 max-md:hidden" aria-hidden />}
                   {label}
                   <span
                     data-testid={`${testId}-count`}
-                    className="rounded-sm bg-slate-800 px-1.5 font-mono text-xs tabular-nums text-slate-300"
+                    className="rounded-sm bg-slate-800 px-1.5 font-mono text-[10px] tabular-nums text-slate-300"
                   >
                     {tabCounts[id]}
                   </span>
@@ -583,27 +977,24 @@ export default function Dashboard() {
             </Button>
           </div>
         </div>
-
-        <div className="order-4 min-w-0 space-y-4 sm:space-y-5 lg:order-none">
-        {/* Select mode: tick listings, then delete them together */}
         {selecting && (
           <div
-            data-testid="selection-bar"
-            className="sticky top-16 z-30 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-sky-500/40 bg-[#0f1a2a]/95 px-3 py-2 backdrop-blur"
+            data-testid="selection-bar-pinned"
+            className="hidden lg:flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-slate-800/80 bg-[#181b22] px-3 py-2"
           >
-            <span className="font-mono text-sm text-slate-200" data-testid="selection-count">
+            <span className="font-mono text-xs text-slate-200" data-testid="selection-count-pinned">
               {selectedIds.size} selected
             </span>
-            <Button variant="link" size="xs" className="h-auto px-0" onClick={() => selectAll(pageItems)}>
+            <Button variant="link" size="xs" className="h-auto px-0 text-[10px]" onClick={() => selectAll(pageLoose)}>
               Select all on page
             </Button>
-            {visible.length > pageItems.length && (
-              <Button variant="link" size="xs" className="h-auto px-0" onClick={() => selectAll(visible)}>
-                Select all ({visible.length})
+            {visibleLoose.length > pageLoose.length && (
+              <Button variant="link" size="xs" className="h-auto px-0 text-[10px]" onClick={() => selectAll(visibleLoose)}>
+                Select all ({visibleLoose.length})
               </Button>
             )}
             {selectedIds.size > 0 && (
-              <Button variant="link" size="xs" className="h-auto px-0" onClick={() => setSelectedIds(new Set())}>
+              <Button variant="link" size="xs" className="h-auto px-0 text-[10px]" onClick={() => setSelectedIds(new Set())}>
                 Clear
               </Button>
             )}
@@ -611,22 +1002,102 @@ export default function Dashboard() {
               <Button
                 size="sm"
                 variant="outline"
-                data-testid="stack-selected"
-                disabled={selectedIds.size === 0}
-                onClick={() => setStackDialog(visible.filter((i) => selectedIds.has(i.id) && (i.status === "for_sale" || i.status === "pending")))}
+                className="text-[length:calc(0.8rem-2px)]"
+                data-testid="stack-selected-pinned"
+                disabled={!visible.some((i) => selectedIds.has(i.id) && i.status !== "sold")}
+                title="Sold listings stay where they are"
+                onClick={() => {
+                  const chosen = visible.filter((i) => selectedIds.has(i.id));
+                  const unsold = chosen.filter((i) => i.status !== "sold");
+                  if (unsold.length < chosen.length)
+                    toast.info(`${chosen.length - unsold.length} sold ${chosen.length - unsold.length === 1 ? "listing stays" : "listings stay"} where ${chosen.length - unsold.length === 1 ? "it is" : "they are"}`);
+                  setStackDialog(unsold);
+                }}
               >
-                <FolderInput className="size-4" /> Move to stack
+                <FolderInput className="size-4" /> Move to Stakk
               </Button>
               <Button
                 size="sm"
                 variant="destructive"
+                className="text-[length:calc(0.8rem-2px)]"
+                data-testid="delete-selected-pinned"
+                disabled={selectedIds.size === 0 || bulkDeleteMut.isPending}
+                onClick={deleteSelected}
+              >
+                <Trash2 className="size-4" /> Delete{selectedIds.size > 0 ? ` (${selectedIds.size})` : ""}
+              </Button>
+              <Button size="sm" variant="ghost" className="text-[length:calc(0.8rem-2px)]" onClick={stopSelecting} aria-label="Cancel selecting">
+                <X className="size-4" /> Cancel
+              </Button>
+            </span>
+          </div>
+        )}
+        {!itemsQuery.isError && !itemsQuery.isLoading && visible.length > 0 && (
+          <>
+          {view === "grid" && (
+            <p className="text-xs text-slate-500" data-testid="my-order-hint">
+              {touch
+                ? "Use the arrows on the left of a card or folder to move it — the order is saved (“Custom”)."
+                : "Drag the grip on the left of a card or folder to rearrange them — the order is saved (“Custom”)."}
+            </p>
+          )}
+          {entries.length > PAGE_SIZE && <Pagination {...paginationProps} testId="pagination-top" />}
+          </>
+        )}
+        </div>
+
+        <div className="order-4 min-w-0 space-y-4 sm:space-y-5 lg:order-none">
+        {/* Select mode: tick listings, then delete them together (same colour as the footer) */}
+        {selecting && (
+          <div
+            data-testid="selection-bar"
+            className="sticky top-16 z-30 flex lg:hidden flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-slate-800/80 bg-[#181b22] px-3 py-2"
+          >
+            <span className="font-mono text-xs text-slate-200" data-testid="selection-count">
+              {selectedIds.size} selected
+            </span>
+            <Button variant="link" size="xs" className="h-auto px-0 text-[10px]" onClick={() => selectAll(pageLoose)}>
+              Select all on page
+            </Button>
+            {visibleLoose.length > pageLoose.length && (
+              <Button variant="link" size="xs" className="h-auto px-0 text-[10px]" onClick={() => selectAll(visibleLoose)}>
+                Select all ({visibleLoose.length})
+              </Button>
+            )}
+            {selectedIds.size > 0 && (
+              <Button variant="link" size="xs" className="h-auto px-0 text-[10px]" onClick={() => setSelectedIds(new Set())}>
+                Clear
+              </Button>
+            )}
+            <span className="ml-auto flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-[length:calc(0.8rem-2px)]"
+                data-testid="stack-selected"
+                disabled={!visible.some((i) => selectedIds.has(i.id) && i.status !== "sold")}
+                title="Sold listings stay where they are"
+                onClick={() => {
+                  const chosen = visible.filter((i) => selectedIds.has(i.id));
+                  const unsold = chosen.filter((i) => i.status !== "sold");
+                  if (unsold.length < chosen.length)
+                    toast.info(`${chosen.length - unsold.length} sold ${chosen.length - unsold.length === 1 ? "listing stays" : "listings stay"} where ${chosen.length - unsold.length === 1 ? "it is" : "they are"}`);
+                  setStackDialog(unsold);
+                }}
+              >
+                <FolderInput className="size-4" /> Move to Stakk
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                className="text-[length:calc(0.8rem-2px)]"
                 data-testid="delete-selected"
                 disabled={selectedIds.size === 0 || bulkDeleteMut.isPending}
                 onClick={deleteSelected}
               >
                 <Trash2 className="size-4" /> Delete{selectedIds.size > 0 ? ` (${selectedIds.size})` : ""}
               </Button>
-              <Button size="sm" variant="ghost" onClick={stopSelecting} aria-label="Cancel selecting">
+              <Button size="sm" variant="ghost" className="text-[length:calc(0.8rem-2px)]" onClick={stopSelecting} aria-label="Cancel selecting">
                 <X className="size-4" /> Cancel
               </Button>
             </span>
@@ -691,29 +1162,102 @@ export default function Dashboard() {
           </div>
         ) : (
           <div className="space-y-4">
-            {visible.length > PAGE_SIZE && <Pagination {...paginationProps} testId="pagination-top" />}
             {view === "table" ? (
               <ItemTable items={pageItems} {...actionProps} />
             ) : (
               <div data-testid="item-grid" className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-                {pageItems.map((item) => (
-                  <ItemCard key={item.id} item={item} {...actionProps} />
-                ))}
+                {pageEntries.map((e, index) =>
+                  "folder" in e ? (
+                    <div
+                      key={e.folder}
+                      {...dropProps({ folder: e.folder, items: e.items }, `f:${e.folder}`)}
+                      className={`relative rounded-xl ${dropRing(`f:${e.folder}`, e.items.map((i) => i.id))} ${dragging(e.items.map((i) => i.id)) ? "opacity-40" : ""}`}
+                    >
+                      {grip({ ids: e.items.map((i) => i.id), folder: e.folder }, stackById.get(e.folder) ?? "Stakk", index)}
+                      <StackFolder name={stackById.get(e.folder) ?? "Stakk"} items={e.items} onOpen={() => setOpenFolder(e.folder)} />
+                    </div>
+                  ) : (
+                    <div
+                      key={e.id}
+                      {...dropProps({ id: e.id }, e.id)}
+                      className={`relative rounded-xl [&>article]:h-full ${dropRing(e.id, [e.id])} ${dragging([e.id]) ? "opacity-40" : ""}`}
+                    >
+                      {grip({ ids: [e.id] }, e.name, index)}
+                      <ItemCard item={e} {...actionProps} />
+                    </div>
+                  ),
+                )}
               </div>
             )}
-            {visible.length > PAGE_SIZE && <Pagination {...paginationProps} />}
+          </div>
+        )}
+        {/* phones and tablets: page numbers under the list too (desktop keeps them pinned at the top) */}
+        {!itemsQuery.isError && !itemsQuery.isLoading && entries.length > PAGE_SIZE && (
+          <div className="lg:hidden">
+            <Pagination {...paginationProps} testId="pagination-bottom" />
           </div>
         )}
         </div>
         </div>
       </main>
 
+      <ConfirmDialog state={confirmState} onClose={() => setConfirmState(null)} />
+
+      {/* An open stack folder: its listings in this tab, then what it has sold */}
+      <Dialog open={folderItems.length > 0} onOpenChange={(open) => !open && setOpenFolder(null)}>
+        {/* Phones: the folder opens full screen (more room for the cards), with its buttons pinned to the bottom */}
+        <DialogContent
+          className="max-h-[90svh] overflow-y-auto sm:max-w-4xl max-sm:top-0 max-sm:left-0 max-sm:h-[100svh] max-sm:max-h-none max-sm:max-w-none max-sm:translate-x-0 max-sm:translate-y-0 max-sm:content-start max-sm:rounded-none max-sm:p-3"
+          data-testid="stack-folder-dialog"
+        >
+          <DialogHeader>
+            <DialogTitle>{stackById.get(openFolder ?? "") ?? "Stakk"}</DialogTitle>
+            <DialogDescription>
+              {folderItems.length} {folderItems.length === 1 ? "listing" : "listings"}
+              {tab === "on_hold" ? " in storage" : tab === "for_sale" ? " for sale" : tab === "pending" ? " pending" : tab === "archive" ? " sold" : ""}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4">
+            {folderItems.map((item) => (
+              <ItemCard key={item.id} item={item} {...actionProps} />
+            ))}
+          </div>
+          <StackSales sold={tab === "archive" ? folderItems : folderSold} totalsOnly={tab === "archive"} />
+          <DialogFooter className="max-sm:sticky max-sm:-bottom-3 max-sm:-mx-3 max-sm:-mb-3 max-sm:bg-[#33373c] max-sm:p-3 max-sm:empty:hidden">
+            {tab === "archive" ? null : tab === "on_hold" ? (
+              <Button
+                variant="outline"
+                data-testid="folder-unstore"
+                disabled={stackStatusMut.isPending}
+                onClick={() => openFolder && stackStatusMut.mutate({ id: openFolder, status: "for_sale" })}
+              >
+                <Undo2 className="size-4" /> All back to For Sale
+              </Button>
+            ) : (
+              folderItems.some((i) => i.status === "for_sale") && (
+                <Button
+                  variant="outline"
+                  data-testid="folder-store"
+                  disabled={stackStatusMut.isPending}
+                  onClick={() => {
+                    const s = stacks.find((x) => x.id === openFolder);
+                    if (s) storeStack(s);
+                  }}
+                >
+                  <Lock className="size-4" /> Move all to Storage
+                </Button>
+              )
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Footer: disclaimer, About and feedback */}
       <footer data-testid="site-footer" className="mt-6 border-t border-slate-800/80 bg-[#0B0F17]/60">
         <div className="mx-auto flex max-w-[1600px] flex-col gap-3 px-4 py-5 sm:px-6 lg:flex-row lg:items-start lg:justify-between lg:gap-8">
           <div className="max-w-3xl space-y-1.5">
             <p className="font-mono text-xs uppercase tracking-wider text-slate-300">
-              CardStakk · Gundam Card Game sales tracker
+              CardStakk · GCG inventory &amp; sales tracker
             </p>
             <p className="text-xs leading-relaxed text-slate-500">{DISCLAIMER}</p>
           </div>
@@ -736,6 +1280,7 @@ export default function Dashboard() {
               Send feedback
             </a>
             <span className="font-mono text-slate-600">© {new Date().getFullYear()} CardStakk</span>
+            <ThemePreview />
           </nav>
         </div>
       </footer>
@@ -743,7 +1288,8 @@ export default function Dashboard() {
       {exportOpen && (
         <ExportDialog
           shown={visible}
-          total={items.length}
+          items={items}
+          stacks={stacks}
           tabLabel={TABS.find((t) => t.id === tab)?.label ?? "All Items"}
           onClose={() => setExportOpen(false)}
         />
@@ -794,6 +1340,7 @@ export default function Dashboard() {
             id ? updateMut.mutate({ id, payload }) : createMut.mutate(payload)
           }
           pending={createMut.isPending || updateMut.isPending}
+          onAddMore={addMoreTo}
         />
       )}
 
@@ -825,10 +1372,11 @@ export default function Dashboard() {
             setAddCardOpen(false);
             setFormState({ type: "add", kind: "card" });
           }}
-          pending={createMut.isPending}
+          pending={createMut.isPending || updateMut.isPending}
           bundle={bundle}
           setBundle={setBundle}
           onListBundle={listBundle}
+          bundleSaveLabel={bundleTarget ? "Save to listing" : undefined}
           onAddItem={() => {
             setAddCardOpen(false);
             setAddItemOpen(true);
@@ -852,10 +1400,11 @@ export default function Dashboard() {
               },
             });
           }}
-          pending={createMut.isPending}
+          pending={createMut.isPending || updateMut.isPending}
           bundle={bundle}
           setBundle={setBundle}
           onListBundle={listBundle}
+          bundleSaveLabel={bundleTarget ? "Save to listing" : undefined}
           onAddCard={() => {
             setAddItemOpen(false);
             setAddCardOpen(true);
@@ -906,53 +1455,145 @@ export default function Dashboard() {
         />
       )}
 
-      <Toaster richColors />
+      {/* messages: the footer's dark grey, no border; the icon keeps its green / red / amber */}
+      <Toaster
+        toastOptions={{
+          style: { background: "#181b22", border: "none", color: "#e2e8f0" },
+          classNames: {
+            success: "[&_[data-icon]]:text-emerald-400",
+            error: "[&_[data-icon]]:text-red-400",
+            warning: "[&_[data-icon]]:text-amber-400",
+            info: "[&_[data-icon]]:text-sky-400",
+          },
+        }}
+      />
     </div>
   );
 }
 
 /* ---------------- export to Excel ---------------- */
 
+// The in-app "Are you sure?" box (instead of the browser's own confirm pop-up), in the footer's colours.
+interface ConfirmState {
+  title: string;
+  body: string;
+  list?: string[]; // names of what's affected
+  action: string; // the confirm button's label
+  danger?: boolean;
+  onConfirm: () => void;
+}
+
+function ConfirmDialog({ state, onClose }: { state: ConfirmState | null; onClose: () => void }) {
+  // keep the last text while the box fades out
+  const last = useRef<ConfirmState | null>(null);
+  if (state) last.current = state;
+  const s = state ?? last.current;
+  return (
+    <Dialog open={!!state} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent showCloseButton={false} className="!bg-[#181b22] sm:max-w-md" data-testid="confirm-dialog">
+        <DialogHeader>
+          <DialogTitle>{s?.title}</DialogTitle>
+          <DialogDescription>{s?.body}</DialogDescription>
+        </DialogHeader>
+        {s?.list && s.list.length > 0 && (
+          <ul className="max-h-48 space-y-1 overflow-y-auto rounded-md border border-slate-800/80 px-3 py-2 text-sm text-slate-200">
+            {s.list.map((n, i) => (
+              <li key={i} className="truncate" title={n}>{n}</li>
+            ))}
+          </ul>
+        )}
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <Button variant="outline" onClick={onClose} data-testid="confirm-cancel" autoFocus>
+            Cancel
+          </Button>
+          <Button
+            variant={s?.danger ? "destructive" : "default"}
+            data-testid="confirm-ok"
+            onClick={() => {
+              state?.onConfirm();
+              onClose();
+            }}
+          >
+            {s?.action}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // Fetch the .xlsx for these listings (empty ids = every listing).
-async function fetchWorkbook(ids: string[]): Promise<{ blob: Blob; filename: string }> {
+async function fetchWorkbook(body: { ids: string[]; label: string; per_stack: boolean }): Promise<{ blob: Blob; filename: string }> {
   const res = await fetch("/api/items/export", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ids }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error("Could not create the Excel file — please try again.");
   const match = /filename="([^"]+)"/.exec(res.headers.get("Content-Disposition") ?? "");
   return { blob: await res.blob(), filename: match?.[1] ?? "cardstakk-listings.xlsx" };
 }
 
-// Export the listings as an editable Excel workbook: download it, share it (phones), or email it.
+// Same name the server gives the file: cardstakk-<what's in it>-<date>.xlsx
+const exportName = (label: string) => {
+  const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "listings";
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `cardstakk-${slug}-${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}.xlsx`;
+};
+
+type ExportScope = "shown" | "all" | "stack" | "sold";
+
+// Export the listings as an editable Excel workbook: 1) what to include, 2) download, share (phones) or email it.
 function ExportDialog({
   shown,
-  total,
+  items,
+  stacks,
   tabLabel,
   onClose,
 }: {
   shown: CollectionItem[];
-  total: number;
+  items: CollectionItem[];
+  stacks: Stack[];
   tabLabel: string;
   onClose: () => void;
 }) {
-  const [scope, setScope] = useState<"shown" | "all">("shown");
+  const [scope, setScope] = useState<ExportScope>("shown");
+  const [stackId, setStackId] = useState(stacks[0]?.id ?? "");
+  const [perStack, setPerStack] = useState(false);
+  const [via, setVia] = useState<"download" | "share" | "email">("download");
   const [email, setEmail] = useState("");
   const [note, setNote] = useState("");
-  const [busy, setBusy] = useState<"download" | "share" | "email" | null>(null);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const ids = scope === "all" ? [] : shown.map((i) => i.id);
-  const count = scope === "all" ? total : shown.length;
   const canShare = typeof navigator !== "undefined" && typeof navigator.canShare === "function";
+  const stackName = stacks.find((s) => s.id === stackId)?.name ?? "Stakk";
 
-  const download = async () => {
-    setBusy("download");
+  const chosen =
+    scope === "shown" ? shown : scope === "all" ? items : scope === "stack" ? items.filter((i) => i.stack_id === stackId) : items.filter((i) => i.status === "sold");
+  const label = scope === "shown" ? `${tabLabel}, with your filters` : scope === "all" ? "Everything" : scope === "stack" ? stackName : "Sales";
+  const body = { ids: scope === "all" ? [] : chosen.map((i) => i.id), label, per_stack: perStack };
+  const count = chosen.length;
+  const asking = chosen.filter((i) => i.status !== "sold").reduce((sum, i) => sum + i.price * i.quantity, 0);
+  const realized = chosen.filter((i) => i.status === "sold").reduce((sum, i) => sum + saleTotal(i), 0);
+
+  const run = async (fn: () => Promise<void>) => {
+    if (busy || count === 0) return;
+    setBusy(true);
     setError(null);
     try {
-      const { blob, filename } = await fetchWorkbook(ids);
+      await fn();
+    } catch (e) {
+      if (!(e instanceof DOMException && e.name === "AbortError")) setError(e instanceof Error ? e.message : "Something went wrong — please try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const download = () =>
+    run(async () => {
+      const { blob, filename } = await fetchWorkbook(body);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -962,150 +1603,174 @@ function ExportDialog({
       a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 10_000);
       toast.success(`Downloaded ${filename}`);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not create the Excel file.");
-    } finally {
-      setBusy(null);
-    }
-  };
-
+    });
   // Phones: hand the file to the share sheet (save to Files / Drive, open in Excel, send …).
-  const share = async () => {
-    setBusy("share");
-    setError(null);
-    try {
-      const { blob, filename } = await fetchWorkbook(ids);
-      const file = new File([blob], filename, { type: blob.type });
-      if (!navigator.canShare?.({ files: [file] })) throw new Error("This device can't share files — use Download instead.");
-      await navigator.share({ files: [file], title: filename });
-    } catch (e) {
-      if (!(e instanceof DOMException && e.name === "AbortError")) {
-        setError(e instanceof Error ? e.message : "Could not share the file.");
+  // iPhone only shares straight from a tap: when making the file took too long, the file is kept
+  // and the next tap on Share hands it over at once.
+  const [ready, setReady] = useState<{ key: string; file: File } | null>(null);
+  const shareKey = JSON.stringify(body);
+  const share = () =>
+    run(async () => {
+      let file = ready?.key === shareKey ? ready.file : null;
+      if (!file) {
+        const { blob, filename } = await fetchWorkbook(body);
+        file = new File([blob], filename, { type: blob.type });
+        setReady({ key: shareKey, file });
       }
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  const sendEmail = async () => {
-    if (busy !== null || count === 0) return; // Enter in the email box skips the button's disabled state
-    const to = email.trim();
-    if (!EMAIL_RE.test(to)) {
-      setError("Enter a valid email address, e.g. name@example.com.");
-      return;
-    }
-    setBusy("email");
-    setError(null);
-    try {
+      if (!navigator.canShare?.({ files: [file] })) throw new Error("This device can't share files — use Download instead.");
+      try {
+        await navigator.share({ files: [file], title: file.name });
+      } catch (e) {
+        if (e instanceof DOMException && e.name === "NotAllowedError") throw new Error("The file is ready — tap Share again.");
+        throw e;
+      }
+    });
+  const sendEmail = () =>
+    run(async () => {
+      const to = email.trim();
+      if (!EMAIL_RE.test(to)) throw new Error("Enter a valid email address, e.g. name@example.com.");
       const res = await fetch("/api/items/export/email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids, to, note: note.trim() || null }),
+        body: JSON.stringify({ ...body, to, note: note.trim() || null }),
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        const detail = typeof body?.detail === "string" ? body.detail : "Could not send the email — please try again.";
-        throw new Error(detail);
+        const b = await res.json().catch(() => null);
+        throw new Error(typeof b?.detail === "string" ? b.detail : "Could not send the email — please try again.");
       }
       toast.success(`Sent to ${to}`);
       onClose();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not send the email.");
-    } finally {
-      setBusy(null);
-    }
-  };
+    });
 
-  const LBL = "font-mono text-xs uppercase tracking-wider text-slate-400";
+  const LBL = "flex items-center gap-2 font-mono text-xs uppercase tracking-wider text-slate-400";
+  const STEP = "inline-flex size-5 items-center justify-center rounded-full border border-sky-500/50 bg-sky-950/60 text-[10px] text-sky-300";
+  const soldCount = items.filter((i) => i.status === "sold").length;
+  const scopes: [ExportScope, string, string][] = [
+    ["shown", `Shown now (${shown.length})`, `${tabLabel}, with your filters`],
+    ["all", `Everything (${items.length})`, "All listings, sold too"],
+    ["stack", "One Stakk", stacks.length ? "Pick a Stakk below" : "No Stakks yet"],
+    ["sold", `Sales only (${soldCount})`, "Sold, for your records"],
+  ];
+  const vias = [
+    ["download", "Download", Download],
+    ...(canShare ? [["share", "Share", Share2] as const] : []),
+    ["email", "Email", Mail],
+  ] as const;
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-lg" data-testid="export-dialog">
+      <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-lg" data-testid="export-dialog">
         <DialogHeader>
           <DialogTitle className="font-heading uppercase tracking-tight">Export to Excel</DialogTitle>
-          <DialogDescription>
-            An editable .xlsx spreadsheet — opens in Excel, Google Sheets, LibreOffice, Numbers and the Excel / Sheets
-            phone apps.
-          </DialogDescription>
+          <DialogDescription>An editable spreadsheet for Excel, Google Sheets, Numbers and the phone apps.</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="flex flex-col gap-1.5">
-            <span className={LBL} id="export-scope-label">
-              Listings
-            </span>
+        <div className="space-y-5">
+          <section className="space-y-2">
+            <p className={LBL} id="export-scope-label">
+              <span className={STEP}>1</span> What to include
+            </p>
             <div role="radiogroup" aria-labelledby="export-scope-label" className="grid grid-cols-2 gap-2">
-              {(
-                [
-                  ["shown", `Shown now (${shown.length})`, `${tabLabel}, with your filters and sort`],
-                  ["all", `Everything (${total})`, "All listings, including sold"],
-                ] as const
-              ).map(([value, label, hint]) => (
+              {scopes.map(([value, title, hint]) => (
                 <button
                   key={value}
                   type="button"
                   role="radio"
                   aria-checked={scope === value}
+                  disabled={value === "stack" && stacks.length === 0}
                   data-testid={`export-scope-${value}`}
                   onClick={() => setScope(value)}
-                  className={`rounded-md border px-3 py-2 text-left text-sm transition-colors ${
-                    scope === value
-                      ? "border-sky-500 bg-sky-950/50 text-slate-100"
-                      : "border-slate-700 bg-slate-950/40 text-slate-300 hover:border-slate-500"
+                  className={`rounded-md border px-3 py-2 text-left text-sm transition-colors disabled:opacity-50 ${
+                    scope === value ? "border-sky-500 bg-sky-950/50 text-slate-100" : "border-slate-700 bg-slate-950/40 text-slate-300 hover:border-slate-500"
                   }`}
                 >
-                  <span className="block font-medium">{label}</span>
+                  <span className="block font-medium">{title}</span>
                   <span className="block text-xs text-slate-500">{hint}</span>
                 </button>
               ))}
             </div>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            <Button onClick={download} disabled={busy !== null || count === 0} data-testid="export-download">
-              {busy === "download" ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />} Download
-              .xlsx
-            </Button>
-            {canShare && (
-              <Button variant="outline" onClick={share} disabled={busy !== null || count === 0} data-testid="export-share">
-                {busy === "share" ? <Loader2 className="size-4 animate-spin" /> : <Share2 className="size-4" />} Share…
-              </Button>
+            {scope === "stack" && stacks.length > 0 && (
+              <Select value={stackId} onValueChange={setStackId} items={stacks.map((s) => ({ value: s.id, label: s.name }))}>
+                <SelectTrigger className="h-9 w-full" aria-label="Stakk to export" data-testid="export-stack">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {stacks.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             )}
-          </div>
-
-          <div className="space-y-2 border-t border-slate-800/80 pt-4">
-            <label htmlFor="export-email" className={LBL}>
-              Send by email
+            <label className="flex items-center gap-2 text-sm text-slate-300">
+              <input type="checkbox" checked={perStack} onChange={(e) => setPerStack(e.target.checked)} className="size-4 accent-sky-500" data-testid="export-per-stack" />
+              Add a sheet for each Stakk
             </label>
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <Input
-                id="export-email"
-                type="email"
-                inputMode="email"
-                autoComplete="email"
-                placeholder="name@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && void sendEmail()}
-                data-testid="export-email"
-              />
-              <Button
-                variant="outline"
-                onClick={sendEmail}
-                disabled={busy !== null || count === 0}
-                data-testid="export-send"
-                className="shrink-0"
-              >
-                {busy === "email" ? <Loader2 className="size-4 animate-spin" /> : <Mail className="size-4" />} Send
-              </Button>
+            <div className="grid grid-cols-3 gap-2 pt-1" data-testid="export-summary">
+              {(
+                [
+                  ["Listings", String(count), "text-slate-100"],
+                  ["Asking value", formatAud(asking), "text-amber-300"],
+                  ["Realized", formatAud(realized), "text-emerald-300"],
+                ] as const
+              ).map(([t, v, c]) => (
+                <div key={t} className="rounded-md border border-slate-800 bg-slate-950/40 px-2.5 py-2">
+                  <p className="font-mono text-[10px] uppercase tracking-wider text-slate-500">{t}</p>
+                  <p className={`truncate font-mono text-sm font-semibold tabular-nums ${c}`}>{v}</p>
+                </div>
+              ))}
             </div>
-            <Textarea
-              rows={2}
-              placeholder="Message (optional)"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              data-testid="export-note"
-            />
-          </div>
+            <p className="text-xs text-slate-500">Opens on a Summary sheet (totals by status and Stakk), then Listings and Sales.</p>
+          </section>
+
+          <section className="space-y-2.5">
+            <p className={LBL}>
+              <span className={STEP}>2</span> Get the file
+            </p>
+            <div role="tablist" className="flex gap-1 rounded-lg border border-slate-800 bg-slate-950/40 p-1">
+              {vias.map(([value, title, Icon]) => (
+                <button
+                  key={value}
+                  type="button"
+                  role="tab"
+                  aria-selected={via === value}
+                  onClick={() => setVia(value)}
+                  data-testid={`export-via-${value}`}
+                  className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-sm ${via === value ? "bg-slate-800 text-slate-100" : "text-slate-400 hover:text-slate-200"}`}
+                >
+                  <Icon className="size-4" /> {title}
+                </button>
+              ))}
+            </div>
+            {via === "email" && (
+              <div className="space-y-2">
+                <Input
+                  type="email"
+                  inputMode="email"
+                  autoComplete="email"
+                  placeholder="name@example.com"
+                  aria-label="Email address"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && void sendEmail()}
+                  data-testid="export-email"
+                />
+                <Textarea rows={2} placeholder="Message (optional)" value={note} onChange={(e) => setNote(e.target.value)} data-testid="export-note" />
+              </div>
+            )}
+            <Button
+              className="w-full"
+              disabled={busy || count === 0}
+              onClick={via === "download" ? download : via === "share" ? share : sendEmail}
+              data-testid={via === "download" ? "export-download" : via === "share" ? "export-share" : "export-send"}
+            >
+              {busy && <Loader2 className="size-4 animate-spin" />}
+              {via === "download" ? "Download .xlsx" : via === "share" ? "Share…" : "Send email"}
+            </Button>
+            <p className="text-center font-mono text-xs text-slate-500" data-testid="export-filename">
+              {count === 0 ? "Nothing to export here" : exportName(label)}
+            </p>
+          </section>
 
           {error && (
             <p className="text-sm text-red-400" role="alert" data-testid="export-error">

@@ -74,6 +74,37 @@ def test_search_type_keywords(monkeypatch):
     assert ids("token") == ["EXB-001", "EXR-001", "T-029"]
 
 
+def test_search_roman_numerals(monkeypatch):
+    fake = {"cards": [
+        {"id": "GD01-010", "card_no": "GD01-010", "name": "Zaku Ⅱ", "set_code": "GD01"},
+        {"id": "GD02-011", "card_no": "GD02-011", "name": "Zaku Ⅲ (Sleeves)", "set_code": "GD02"},
+    ]}
+    monkeypatch.setattr(cc, "load_catalog", lambda force=False: fake)
+    assert [c["id"] for c in cc.search_cards("zaku II")] == ["GD01-010", "GD02-011"]  # "ii" is inside "iii" too
+    assert [c["id"] for c in cc.search_cards("Zaku Ⅲ")] == ["GD02-011"]
+    assert [c["id"] for c in cc.search_cards("zaku iii")] == ["GD02-011"]
+
+
+def test_search_resource_by_art(monkeypatch):
+    fake = {"cards": [
+        {"id": "R-008", "card_no": "R-008", "name": "Resource", "card_type": "resource", "set_code": "GD01"},
+        {"id": "R-008_p1", "card_no": "R-008", "name": "Resource", "card_type": "resource", "set_code": "GD01"},
+        {"id": "R-005", "card_no": "R-005", "name": "Resource", "card_type": "resource", "set_code": "GD01"},
+        {"id": "GD01-001", "card_no": "GD01-001", "name": "Freedom Gundam", "card_type": "unit", "set_code": "GD01"},
+    ]}
+    monkeypatch.setattr(cc, "load_catalog", lambda force=False: fake)
+    ids = lambda q: [c["id"] for c in cc.search_cards(q)]  # noqa: E731
+    assert ids("freedom resource") == ["R-008", "R-008_p1"]
+    assert ids("zaku ii resource") == ["R-005"]
+    assert "R-008" in ids("freedom") and "GD01-001" in ids("freedom")
+
+
+def test_normaliser_folds_accents_and_numerals():
+    assert cc._norm("Kämpfer") == "kampfer"
+    assert cc._norm("Zaku Ⅱ") == "zakuii"
+    assert cc._norm("Ξ Gundam") == "xigundam" and cc._norm("∀ Gundam") == "turnagundam"
+
+
 def test_match_text_finds_cards_by_name_and_stats():
     cc._cache = {"synced_at": None, "packages": [], "cards": [
         {"id": "GD01-001", "card_no": "GD01-001", "name": "Gundam", "level": "4", "cost": "3", "ap": "3", "hp": "3",

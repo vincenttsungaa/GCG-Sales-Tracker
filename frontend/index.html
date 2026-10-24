@@ -8,11 +8,29 @@
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- the app's font: Instrument Sans (SIL Open Font License), from Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400..700;1,400..700&display=swap"
+    />
     <meta
       name="description"
-      content="CardStakk — Gundam Card Game sales tracker: inventory, sale lifecycle and archive in one place."
+      content="CardStakk — GCG inventory &amp; sales tracker. Track your Gundam Card Game cards, sealed products and sales in one place. Unofficial fan-made tool."
     />
-    <title>CardStakk — Gundam Card Game Sales Tracker</title>
+    <!-- apply the saved colour theme (Pearl by default) before the app draws, so there's no flash -->
+    <script>
+      try {
+        var t = localStorage.getItem("cardstakk:theme") || "pearl";
+        // a theme that was removed falls back to Pearl (keep this list in step with ThemePreview.tsx)
+        if (["pearl", "pearl-dark", "ash", "ash-dark", "frost", "frost-dark", "overdrive-light", "overdrive", "graphite", "gunmetal", "crimson"].indexOf(t) < 0) t = "pearl";
+        if (t !== "graphite") document.documentElement.dataset.themePreview = t;
+      } catch (e) {
+        document.documentElement.dataset.themePreview = "pearl";
+      }
+    </script>
+    <title>CardStakk · GCG Inventory &amp; Sales Tracker</title>
   </head>
   <body>
     <div id="root"></div>

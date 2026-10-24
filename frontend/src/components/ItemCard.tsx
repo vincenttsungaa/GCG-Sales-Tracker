@@ -19,7 +19,11 @@ import {
 import { PriceLines } from "@/components/PriceLines";
 import { HoverZoom, OverflowTip } from "@/components/InfoTip";
 import { cutoutPhoto } from "@/lib/cutout";
-import { CalendarDays, ChevronDown, DollarSign, FolderInput, FolderMinus, Layers, Package, Lock, Pencil, Tag, Trash2, Undo2, User } from "lucide-react";
+import { Menu } from "@base-ui/react/menu";
+import { CalendarDays, ChevronDown, Ellipsis, FolderInput, FolderMinus, Layers, Package, Lock, Pencil, Tag, Trash2, Undo2, User } from "lucide-react";
+
+// rows in the card's ⋯ menu (same look as the Stacks menu)
+const menuItem = "flex cursor-default items-center gap-2 rounded px-2 py-1.5 text-sm outline-none select-none data-[highlighted]:bg-slate-800";
 
 export interface ItemActionProps {
   onEdit: (item: CollectionItem) => void;
@@ -29,7 +33,7 @@ export interface ItemActionProps {
   onRestore: (item: CollectionItem) => void;
   onDelete: (item: CollectionItem) => void;
   onUnmark: (item: CollectionItem) => void;
-  onStack?: (item: CollectionItem) => void; // "Move to stack"
+  onStack?: (item: CollectionItem) => void; // "Move to Stakk"
   stackName?: (item: CollectionItem) => string | null; // the stack a listing is in, shown as a chip
   onUnstack?: (item: CollectionItem) => void; // take it out of its stack
   // Select mode (delete several at once): a checkbox on each listing
@@ -110,11 +114,34 @@ const CARD_DESIGN_RE = /-sleeves\.svg\?designs=(?:ex[a-z]*-\d|rp-\d|gd\d|st\d)[a
 function flatImage(item: CollectionItem): string | null {
   const url = item.image_url;
   if (item.kind !== "item" || !url || (item.bundle_items ?? []).length > 1) return null;
-  if (url.startsWith("/api/card-images/") || CARD_DESIGN_RE.test(url)) return url;
+  // card images, a card picked from a set, or a sleeve design picture from Add Item (already cut out)
+  if (url.startsWith("/api/card-images/") || url.startsWith("/cutouts/") || CARD_DESIGN_RE.test(url)) return url;
   const sleeve = SLEEVE_DESIGN_RE.exec(url);
   if (sleeve) return `/cutouts/${sleeve[1]}-${sleeve[2]}.webp`;
   const part = PART_SLEEVES_RE.exec(url);
   return part ? `/cutouts/${part[1]}.webp` : null;
+}
+
+// A listing's small picture inside a stack folder icon: the same picture as its listing card —
+// cards and flat designs full-bleed, products cut out on the hex backdrop (a bundle: its first product).
+export function FolderThumb({ item }: { item: CollectionItem }) {
+  const flat = flatImage(item);
+  const bundle = item.bundle_items ?? [];
+  const src = flat ?? (bundle.length > 1 ? bundle[0].image_url : null) ?? item.image_url;
+  const product = item.kind === "item" && !flat;
+  const cutout = useCutout(src, product && !!src);
+  if (!src) return null;
+  if (!product) return <img src={src} alt="" loading="lazy" className="size-full object-cover object-top" />;
+  return (
+    <span className="item-photo-backdrop flex size-full items-center justify-center">
+      <img
+        src={cutout && cutout !== "pending" ? cutout : src}
+        alt=""
+        loading="lazy"
+        className={`size-full object-contain p-[10%] drop-shadow-[0_3px_4px_rgba(0,0,0,0.45)] ${cutout === "pending" ? "opacity-0" : ""}`}
+      />
+    </span>
+  );
 }
 
 // Listings enlarged on hover: a playmat or damage counter part, a set's playmat design
@@ -134,6 +161,13 @@ const ZOOM_RE = /^(?:Playmat|Damage Counter Dice) |designs=(?:playmat|damage-cou
 // A card's own corner radius (≈3 mm on a 63 × 88 mm card). Card pictures get it themselves, with
 // no frame behind them: some printings come with square, filled-in corners.
 export const CARD_CORNERS = { borderRadius: "4.6% / 3.3%" };
+
+// The dark fade behind a listing's name: eased (many stops) so it melts into the picture with no visible
+// top edge, and in fixed colours so it stays dark in the light themes.
+const NAME_FADE = {
+  background:
+    "linear-gradient(to top, rgba(11,15,23,0.95) 0%, rgba(11,15,23,0.9) 22%, rgba(11,15,23,0.78) 40%, rgba(11,15,23,0.58) 56%, rgba(11,15,23,0.36) 70%, rgba(11,15,23,0.18) 82%, rgba(11,15,23,0.06) 92%, rgba(11,15,23,0) 100%)",
+};
 
 // Card art in the real card ratio (63 × 88 mm). Falls back to an icon if there is no image.
 function CardArt({ item }: { item: CollectionItem }) {
@@ -236,7 +270,7 @@ function CardArt({ item }: { item: CollectionItem }) {
           (item.part === "Storage Box" && item.category === "premium bandai") ||
           item.product_id === "evx08" ? (
           // playmats, damage counters (incl. EVX08) and Premium Bandai storage boxes are enlarged on hover too
-          <HoverZoom src={dicePreview(item.image_url ?? "") ?? (onHex && cutout !== "pending" ? cutout : null) ?? item.image_url ?? ""} alt={item.name} className="block size-full" backdrop={onHex} maxSize={item.product_id === "evx08" || /designs=damage-counter$/.test(item.image_url ?? "") ? DICE_PREVIEW : undefined}>
+          <HoverZoom src={dicePreview(item.image_url ?? "") ?? (onHex && cutout !== "pending" ? cutout : null) ?? item.image_url ?? ""} alt={item.name} className="block size-full" backdrop={!!onHex} maxSize={item.product_id === "evx08" || /designs=damage-counter$/.test(item.image_url ?? "") ? DICE_PREVIEW : undefined}>
             {photo}
           </HoverZoom>
         ) : (
@@ -250,11 +284,6 @@ function CardArt({ item }: { item: CollectionItem }) {
           </span>
         </div>
       )}
-      {item.quantity > 1 && (
-        <span className="absolute right-1.5 bottom-1.5 rounded-md border border-slate-700 bg-slate-950/90 px-1.5 py-0.5 font-mono text-xs font-semibold tabular-nums text-slate-100">
-          ×{item.quantity}
-        </span>
-      )}
     </div>
   );
 }
@@ -262,7 +291,8 @@ function CardArt({ item }: { item: CollectionItem }) {
 function Detail({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex items-baseline justify-between gap-2 text-xs">
-      <span className="shrink-0 font-mono text-[0.65rem] uppercase tracking-wider text-slate-500">{label}</span>
+      {/* labels in normal case; only the bundle "Total" stays in capitals */}
+      <span className={`shrink-0 text-xs text-slate-500 ${label === "Total" ? "font-mono text-[0.65rem] uppercase tracking-wider" : ""}`}>{label}</span>
       <span className="min-w-0 truncate text-right">{children}</span>
     </div>
   );
@@ -314,6 +344,23 @@ export default function ItemCard({ item, ...actions }: ItemCardProps) {
       : isBundle
         ? `${qtyLabel} · ${pickedCopies} ${pickNoun} per bundle`
         : `${pickedCards.length} ${pickNoun}${pickedCopies > pickedCards.length ? ` · ${pickedCopies} copies` : ""}`;
+  // the copies line ("GD01-001 (3x)", "PB01 · GD02-110 (2x)") — shown once, in the header
+  const copiesText = hasCopies
+    ? isBundle
+      ? `${qtyLabel} · each: ${cardCopies(pickedCards, item.card_quantities)}`
+      : cardCopies(pickedCards, item.card_quantities)
+    : qtyLabel;
+  // header: the code plus the picked card / design, without the listing's own count (the ×N badge
+  // on the picture shows that) and without "(1x)"
+  const headerLabel =
+    headerText ??
+    ((hasCopies && !foldList
+      ? [qtyCode, isBundle ? `each: ${cardCopies(pickedCards, item.card_quantities)}` : cardCopies(pickedCards, item.card_quantities)]
+          .filter(Boolean)
+          .join(" · ")
+          .replace(/ \(1x\)/g, "")
+      : qtyCode) ||
+      (item.kind === "card" ? "Card" : "Item"));
 
   return (
     <article
@@ -346,60 +393,84 @@ export default function ItemCard({ item, ...actions }: ItemCardProps) {
             {item.kind === "card" ? <Layers className="size-3.5" aria-hidden /> : <Package className="size-3.5" aria-hidden />}
           </span>
         )}
-        <span className="min-w-0 flex-1 truncate font-mono text-xs font-semibold tracking-wide text-slate-300">
-          {headerText ?? item.card_no ?? item.set_code ?? (item.kind === "card" ? "Card" : "Item")}
-        </span>
+        <div className="min-w-0 flex-1">
+          <OverflowTip text={headerLabel}>
+            <span className="block truncate font-mono text-xs font-semibold tracking-wide text-slate-300" data-testid={`item-header-${item.id}`}>
+              {headerLabel}
+            </span>
+          </OverflowTip>
+        </div>
         <SelectBox item={item} actions={actions} />
       </div>
 
       <div className="relative">
         <CardArt item={item} />
+        {/* name + colour / type / stack / part / edition on a dark fade along the bottom of the picture (doesn't block the hover zoom) */}
+        <div
+          className={`pointer-events-none absolute inset-0 overflow-hidden ${item.kind === "card" ? "" : "rounded-md"}`}
+          style={item.kind === "card" ? CARD_CORNERS : undefined}
+        >
+          <div className="absolute inset-x-0 bottom-0 px-2 pt-12 pb-1.5" style={NAME_FADE}>
+            {/* room for the name and two rows of tags, so names sit at the same height on every card
+                (a card with one row of tags no longer has its name lower) */}
+            <div className="min-h-[62px]">
+            {/* name: one line, then "…"; hovering a cut-off name shows all of it */}
+            <div className="pointer-events-auto">
+              <OverflowTip text={item.name}>
+                <h3
+                  data-testid={`item-name-${item.id}`}
+                  className="line-clamp-1 font-heading text-base leading-tight font-bold text-white [text-shadow:0_1px_2px_rgb(0_0_0/0.8)]"
+                >
+                  {item.name}
+                </h3>
+              </OverflowTip>
+            </div>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1 text-xs text-[#e2e8f0]">
+              {item.color && (
+                <span className="flex items-center gap-1" data-testid={`color-badge-${item.color}`}>
+                  <span className={`size-2 rounded-full ${COLOR_DOT_CLASS[item.color]}`} aria-hidden />
+                  {labelize(item.color)}
+                </span>
+              )}
+              {typeText && <span className="capitalize">{typeText}</span>}
+              {item.set_code && item.kind === "card" && (
+                <span className="font-mono text-[#cbd5e1]" title={item.set_name ?? undefined}>
+                  {item.set_code}
+                </span>
+              )}
+              {actions.stackName?.(item) && (
+                <span className="rounded-full border border-[#4b5563] bg-[#1e222a]/80 px-1.5 text-[#f1f5f9]" data-testid={`item-stack-${item.id}`}>
+                  {actions.stackName(item)}
+                </span>
+              )}
+              {/* parts: one line, then "…"; hovering shows the whole list */}
+              {partChip && (
+                <div className="pointer-events-auto max-w-full min-w-0">
+                  <OverflowTip text={partChip}>
+                    <span className="block max-w-full truncate rounded border border-sky-400/60 bg-[#0b0f17]/60 px-1 text-sky-200" data-testid={`item-part-${item.id}`}>
+                      {partChip}
+                    </span>
+                  </OverflowTip>
+                </div>
+              )}
+              {item.edition && (
+                <span className="rounded border border-amber-400/60 bg-[#0b0f17]/60 px-1 text-amber-200" data-testid={`item-edition-${item.id}`}>
+                  {item.edition}
+                </span>
+              )}
+              {item.condition && <span className="text-[#cbd5e1]">{item.condition}</span>}
+            </div>
+            </div>
+          </div>
+        </div>
         <div className="absolute top-1.5 left-1.5 drop-shadow">
           <StatusBadge status={item.status} />
         </div>
-      </div>
-
-      {/* Name + identity */}
-      <div className="min-w-0 space-y-1">
-        {/* long names are cut to two lines; hovering shows the full name */}
-        <OverflowTip text={item.name}>
-          <h3
-            data-testid={`item-name-${item.id}`}
-            className="line-clamp-2 font-heading text-base leading-tight font-bold text-slate-100"
-          >
-            {item.name}
-          </h3>
-        </OverflowTip>
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-slate-400">
-          {item.color && (
-            <span className="flex items-center gap-1" data-testid={`color-badge-${item.color}`}>
-              <span className={`size-2 rounded-full ${COLOR_DOT_CLASS[item.color]}`} aria-hidden />
-              {labelize(item.color)}
-            </span>
-          )}
-          {typeText && <span className="capitalize">{typeText}</span>}
-          {item.set_code && item.kind === "card" && (
-            <span className="font-mono text-slate-500" title={item.set_name ?? undefined}>
-              {item.set_code}
-            </span>
-          )}
-          {actions.stackName?.(item) && (
-            <span className="rounded-full border border-slate-600 bg-slate-800/80 px-1.5 text-slate-200" data-testid={`item-stack-${item.id}`}>
-              {actions.stackName(item)}
-            </span>
-          )}
-          {partChip && (
-            <span className="rounded border border-sky-500/40 px-1 text-sky-300" data-testid={`item-part-${item.id}`}>
-              {partChip}
-            </span>
-          )}
-          {item.edition && (
-            <span className="rounded border border-amber-500/40 px-1 text-amber-300" data-testid={`item-edition-${item.id}`}>
-              {item.edition}
-            </span>
-          )}
-          {item.condition && <span className="text-slate-500">{item.condition}</span>}
-        </div>
+        {item.quantity > 0 && (
+          <span className="absolute top-1.5 right-1.5 rounded-md border border-slate-700 bg-slate-950/90 px-1.5 py-0.5 font-mono text-xs font-semibold tabular-nums text-slate-100 drop-shadow">
+            ×{item.quantity}
+          </span>
+        )}
       </div>
 
       {/* Qty for the grid view (no Qty row in the price box): "GD01-001 (3x)", or each picked
@@ -430,13 +501,10 @@ export default function ItemCard({ item, ...actions }: ItemCardProps) {
         </div>
       )}
 
-      {bundleItems.length <= 1 && (!foldList || showItems) && (
+      {/* the unfolded list of picked cards / designs (a single one sits in the header instead) */}
+      {bundleItems.length <= 1 && foldList && showItems && (
       <p className="font-mono text-[0.65rem] leading-relaxed text-slate-300" data-testid={`item-copies-${item.id}`}>
-        {hasCopies
-          ? isBundle
-            ? `${qtyLabel} · each: ${cardCopies(pickedCards, item.card_quantities)}`
-            : cardCopies(pickedCards, item.card_quantities)
-          : qtyLabel}
+        {copiesText}
       </p>
       )}
 
@@ -461,7 +529,7 @@ export default function ItemCard({ item, ...actions }: ItemCardProps) {
             aria-expanded={showPrices}
             data-testid={`item-price-toggle-${item.id}`}
             onClick={() => setShowPrices((v) => !v)}
-            className="flex w-full items-center justify-between gap-2 font-mono text-[0.65rem] uppercase tracking-wider text-slate-500 hover:text-slate-300"
+            className="flex w-full items-center justify-between gap-2 text-xs text-slate-500 hover:text-slate-300"
           >
             Price breakdown
             <ChevronDown className={`size-3.5 transition-transform ${showPrices ? "rotate-180" : ""}`} aria-hidden />
@@ -579,108 +647,85 @@ export default function ItemCard({ item, ...actions }: ItemCardProps) {
         </p>
       )}
 
-      {/* Actions — pinned to the bottom so tiles in a row line up */}
-      <div className="mt-auto flex items-center gap-1 border-t border-slate-800/60 pt-2">
-        {item.status === "for_sale" && (
+      {/* Actions: one main button, everything else under ⋯, Delete kept on its own. Pinned to the bottom so tiles in a row line up */}
+      <div className="mt-auto flex items-center gap-1.5 border-t border-slate-800/60 pt-2">
+        {isSold ? (
           <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label={`Mark ${item.name} as pending`}
-            title="Mark Pending"
-            data-testid={`item-pending-${item.id}`}
-            onClick={() => actions.onMarkPending(item)}
-          >
-            <Tag className="size-4" />
-          </Button>
-        )}
-        {item.status === "for_sale" && (
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label={`Move ${item.name} to storage`}
-            title="Move to storage"
-            data-testid={`item-hold-${item.id}`}
-            onClick={() => actions.onHold(item)}
-            className="text-violet-300 hover:text-violet-200"
-          >
-            <Lock className="size-4" />
-          </Button>
-        )}
-        {/* in a stack: the button takes it out; otherwise it moves it into one */}
-        {actions.onUnstack && actions.stackName?.(item) ? (
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label={`Remove ${item.name} from the stack ${actions.stackName(item)}`}
-            title="Remove from stack"
-            data-testid={`item-unstack-${item.id}`}
-            onClick={() => actions.onUnstack?.(item)}
-            className="text-sky-300 hover:text-sky-200"
-          >
-            <FolderMinus className="size-4" />
-          </Button>
-        ) : actions.onStack && (item.status === "for_sale" || item.status === "pending") && (
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label={`Move ${item.name} to a stack`}
-            title="Move to stack"
-            data-testid={`item-stack-move-${item.id}`}
-            onClick={() => actions.onStack?.(item)}
-            className="text-sky-300 hover:text-sky-200"
-          >
-            <FolderInput className="size-4" />
-          </Button>
-        )}
-        {(item.status === "pending" || item.status === "on_hold") && (
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label={`Move ${item.name} back to for sale`}
-            title="Back to For Sale"
-            data-testid={`item-unmark-${item.id}`}
-            onClick={() => actions.onUnmark(item)}
-          >
-            <Undo2 className="size-4" />
-          </Button>
-        )}
-        {/* in storage: only Back to For Sale, Edit and Delete */}
-        {!isSold && item.status !== "on_hold" && (
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label={`Mark ${item.name} as sold`}
-            title="Mark Sold"
-            data-testid={`item-sell-${item.id}`}
-            onClick={() => actions.onSell(item)}
-            className="text-emerald-400 hover:text-emerald-300"
-          >
-            <DollarSign className="size-4" />
-          </Button>
-        )}
-        {isSold && (
-          <Button
-            variant="ghost"
-            size="icon-sm"
+            variant="outline"
+            size="sm"
+            className="h-8 flex-1"
             aria-label={`Restore ${item.name} to inventory`}
-            title="Restore to inventory"
             data-testid={`item-restore-${item.id}`}
             onClick={() => actions.onRestore(item)}
           >
-            <Undo2 className="size-4" />
+            <Undo2 className="size-4" /> Restore
+          </Button>
+        ) : item.status === "on_hold" ? (
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 flex-1"
+            aria-label={`Move ${item.name} back to for sale`}
+            data-testid={`item-unmark-${item.id}`}
+            onClick={() => actions.onUnmark(item)}
+          >
+            <Undo2 className="size-4" /> For Sale
+          </Button>
+        ) : (
+          <Button
+            size="sm"
+            className="h-8 flex-1 bg-emerald-600 font-semibold tracking-wide text-white hover:bg-emerald-500"
+            aria-label={`Mark ${item.name} as sold`}
+            data-testid={`item-sell-${item.id}`}
+            onClick={() => actions.onSell(item)}
+          >
+            SOLD
           </Button>
         )}
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          aria-label={`Edit ${item.name}`}
-          title="Edit"
-          data-testid={`item-edit-${item.id}`}
-          onClick={() => actions.onEdit(item)}
-          className="ml-auto"
-        >
-          <Pencil className="size-4" />
-        </Button>
+        <Menu.Root>
+          <Menu.Trigger
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-slate-700 text-slate-400 hover:bg-slate-800 hover:text-slate-200 data-[popup-open]:bg-slate-800 data-[popup-open]:text-slate-200"
+            aria-label={`More options for ${item.name}`}
+            title="More options"
+            data-testid={`item-menu-${item.id}`}
+          >
+            <Ellipsis className="size-4" />
+          </Menu.Trigger>
+          <Menu.Portal>
+            <Menu.Positioner className="z-50 outline-none" align="end" sideOffset={4}>
+              <Menu.Popup className="min-w-48 rounded-md border border-slate-700 bg-[#1a2130] p-1 text-slate-200 shadow-lg outline-none">
+                {item.status === "for_sale" && (
+                  <Menu.Item className={`${menuItem} text-amber-200`} onClick={() => actions.onMarkPending(item)} data-testid={`item-pending-${item.id}`}>
+                    <Tag className="size-3.5" /> Mark as Pending
+                  </Menu.Item>
+                )}
+                {item.status === "for_sale" && (
+                  <Menu.Item className={`${menuItem} text-violet-300`} onClick={() => actions.onHold(item)} data-testid={`item-hold-${item.id}`}>
+                    <Lock className="size-3.5" /> Move to Storage
+                  </Menu.Item>
+                )}
+                {item.status === "pending" && (
+                  <Menu.Item className={menuItem} onClick={() => actions.onUnmark(item)} data-testid={`item-unmark-${item.id}`}>
+                    <Undo2 className="size-3.5" /> Back to For Sale
+                  </Menu.Item>
+                )}
+                {/* in a stack: take it out; otherwise move it into one */}
+                {actions.onUnstack && actions.stackName?.(item) ? (
+                  <Menu.Item className={`${menuItem} text-sky-300`} onClick={() => actions.onUnstack?.(item)} data-testid={`item-unstack-${item.id}`}>
+                    <FolderMinus className="size-3.5" /> Remove from Stakk
+                  </Menu.Item>
+                ) : actions.onStack && !isSold && (
+                  <Menu.Item className={`${menuItem} text-sky-300`} onClick={() => actions.onStack?.(item)} data-testid={`item-stack-move-${item.id}`}>
+                    <FolderInput className="size-3.5" /> Move to Stakk
+                  </Menu.Item>
+                )}
+                <Menu.Item className={menuItem} onClick={() => actions.onEdit(item)} data-testid={`item-edit-${item.id}`}>
+                  <Pencil className="size-3.5" /> {isSold ? "Edit sale" : "Edit"}
+                </Menu.Item>
+              </Menu.Popup>
+            </Menu.Positioner>
+          </Menu.Portal>
+        </Menu.Root>
         <Button
           variant="ghost"
           size="icon-sm"

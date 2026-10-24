@@ -113,7 +113,7 @@ export default function DealDialog({ state, today, onClose, onConfirm, pending }
           </p>
           {!storing && (
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="deal-buyer">Buyer name{selling ? " (required)" : ""}</Label>
+            <Label htmlFor="deal-buyer" className="font-mono text-xs uppercase tracking-wider text-slate-400">Buyer name{selling ? " (required)" : ""}</Label>
             <Input
               id="deal-buyer"
               data-testid="deal-buyer"
@@ -123,21 +123,22 @@ export default function DealDialog({ state, today, onClose, onConfirm, pending }
             />
           </div>
           )}
-          <div className={splittable ? "grid grid-cols-3 gap-3" : "grid-cols-2 grid gap-4"}>
+          {/* phones: the date gets its own row (iOS date boxes are wide and spilled into the price box) */}
+          <div className={splittable ? "grid grid-cols-2 gap-3 sm:grid-cols-3" : "grid grid-cols-2 gap-3 sm:gap-4"}>
             {!storing && (
             <>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="deal-date">Deal date{selling ? " (required)" : ""}</Label>
+            <div className="col-span-full flex min-w-0 flex-col gap-1.5 sm:col-span-1">
+              <Label htmlFor="deal-date" className="font-mono text-xs uppercase tracking-wider text-slate-400">Deal date{selling ? " (required)" : ""}</Label>
               <Input
                 id="deal-date"
                 data-testid="deal-date"
                 type="date"
                 value={dealDate}
                 onChange={(e) => setDealDate(e.target.value)}
-                className="[color-scheme:dark]"
+                className="w-full min-w-0 appearance-none [color-scheme:dark]"
               />
             </div>
-            <div className="flex flex-col gap-1.5">
+            <div className="flex min-w-0 flex-col gap-1.5">
               <Label htmlFor="deal-price" className="font-mono text-xs uppercase tracking-wider text-slate-400">
                 Deal price/unit (AUD)
               </Label>
@@ -154,7 +155,7 @@ export default function DealDialog({ state, today, onClose, onConfirm, pending }
             </>
             )}
             {splittable && (
-              <div className="flex flex-col gap-1.5">
+              <div className="flex min-w-0 flex-col gap-1.5">
                 <Label htmlFor="deal-qty" className="font-mono text-xs uppercase tracking-wider text-slate-400">
                   {selling ? "Qty to sell" : storing ? "Qty to store" : "Qty"}
                 </Label>

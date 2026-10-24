@@ -150,17 +150,9 @@ export default function FilterBar({ filters, onChange, showBuyer = false }: Filt
         )}
       </div>
 
-      {/* Color pills */}
+      {/* Color pills: none picked = every colour; tap the picked one again to clear it */}
       <div className="flex flex-wrap items-center gap-2" data-testid="filter-colors">
-        <span className="font-mono text-xs uppercase tracking-wider text-slate-400 lg:w-full">Color</span>
-        <Button
-          size="xs"
-          variant={filters.color === "all" ? "secondary" : "outline"}
-          data-testid="filter-color-all"
-          onClick={() => set({ color: "all" })}
-        >
-          All
-        </Button>
+        <span className="w-full font-mono text-xs uppercase tracking-wider text-slate-400 md:w-auto lg:w-full">Color</span>
         {GUNDAM_COLORS.map((color) => (
           <Button
             key={color}

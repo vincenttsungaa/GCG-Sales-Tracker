@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ListPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -46,6 +47,7 @@ interface ItemFormDialogProps {
   onClose: () => void;
   onSubmit: (payload: ItemPayload, id?: string) => void;
   pending: boolean;
+  onAddMore?: (item: CollectionItem) => void; // edit only: add more cards / items, making it a bundle
 }
 
 const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -58,7 +60,7 @@ const TYPE_ITEMS = [...CARD_TYPES.map((t) => ({ value: t, label: labelize(t) }))
 const RARITY_ITEMS = [...RARITIES.map((r) => ({ value: r, label: r })), NONE];
 const CATEGORY_ITEMS = ITEM_CATEGORIES.map((c) => ({ value: c, label: labelize(c) }));
 
-export default function ItemFormDialog({ state, onClose, onSubmit, pending }: ItemFormDialogProps) {
+export default function ItemFormDialog({ state, onClose, onSubmit, pending, onAddMore }: ItemFormDialogProps) {
   const editing = state.type === "edit";
   // Cards / items picked from the card or product database keep their name / color / type / rarity from the catalog.
   const copiesLocked = state.type === "edit" && Object.keys(state.item.card_quantities ?? {}).length > 0;
@@ -73,11 +75,19 @@ export default function ItemFormDialog({ state, onClose, onSubmit, pending }: It
   const [purchase, setPurchase] = useState(
     editing && state.item.purchase_price != null ? String(state.item.purchase_price) : "",
   );
-  const [imageUrl, setImageUrl] = useState(editing ? (state.item.image_url ?? "") : "");
+  // The app's own picture (catalog image, uploaded photo) isn't a link to show — only a pasted web link is.
+  const ownImage = editing && !!state.item.image_url && !/^https?:\/\//.test(state.item.image_url) ? state.item.image_url : null;
+  const [imageUrl, setImageUrl] = useState(editing && !ownImage ? (state.item.image_url ?? "") : "");
   const [quantity, setQuantity] = useState(String(editing ? state.item.quantity : 1));
-  const [condition, setCondition] = useState(editing ? (state.item.condition ?? "") : "");
+  // no Condition field any more: an existing value is kept as it is when saving
+  const condition = editing ? (state.item.condition ?? "") : "";
   const [notes, setNotes] = useState(editing ? (state.item.notes ?? "") : "");
   const [error, setError] = useState<string | null>(null);
+  // A sold listing: its asking price and units are history; the deal (sold price, buyer, date) can be fixed.
+  const sold = editing && state.item.status === "sold";
+  const [salePrice, setSalePrice] = useState(sold && state.item.sale_price != null ? String(state.item.sale_price) : "");
+  const [buyer, setBuyer] = useState(sold ? (state.item.buyer_name ?? "") : "");
+  const [dealDate, setDealDate] = useState(sold ? (state.item.deal_date ?? "") : "");
 
   // What's inside, each with its own optional price: the products / cards of a bundle, or the
   // picked cards of a priced lot. Blank = no price of its own (shares the rest of the listing price).
@@ -163,6 +173,15 @@ export default function ItemFormDialog({ state, onClose, onSubmit, pending }: It
       setError("Quantity must be a whole number of 1 or more.");
       return;
     }
+    const saleNum = salePrice.trim() === "" ? null : Number(salePrice);
+    if (sold && (saleNum != null && (Number.isNaN(saleNum) || saleNum < 0))) {
+      setError("Sold price must be zero or more.");
+      return;
+    }
+    if (sold && (!buyer.trim() || !dealDate)) {
+      setError("A sale needs a buyer name and a deal date.");
+      return;
+    }
     onSubmit(
       {
         kind,
@@ -196,10 +215,13 @@ export default function ItemFormDialog({ state, onClose, onSubmit, pending }: It
         card_quantities: editing ? state.item.card_quantities : {},
         price: priceNum,
         purchase_price: bundled ? bundleCost : purchaseNum,
-        image_url: imageUrl.trim() || null,
+        image_url: imageUrl.trim() || ownImage, // blank keeps the app's own picture
         quantity: bundled ? 1 : qtyNum, // a bundle is one listing; its counts are per item inside
         condition: condition.trim() || null,
         notes: notes.trim() || null,
+        ...(sold ? { sale_price: saleNum, buyer_name: buyer.trim(), deal_date: dealDate } : {}),
+        // what this form saw when it opened — the server refuses the save if the listing changed since
+        ...(editing ? { expected_status: state.item.status, expected_quantity: state.item.quantity } : {}),
       },
       editing ? state.item.id : undefined,
     );
@@ -330,6 +352,8 @@ export default function ItemFormDialog({ state, onClose, onSubmit, pending }: It
                 placeholder="0.00"
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
+                disabled={sold}
+                title={sold ? "Locked once sold — the sold price below is what counts" : undefined}
               />
             </div>
             {/* a bundle's cost comes from what was paid for each product / card (below) */}
@@ -363,11 +387,54 @@ export default function ItemFormDialog({ state, onClose, onSubmit, pending }: It
                 step="1"
                 value={quantity}
                 onChange={(e) => setQuantity(e.target.value)}
-                // Card listings with copies per card: the total comes from those copies.
-                disabled={copiesLocked}
-                title={copiesLocked ? "Total of the copies per card" : undefined}
+                // Card listings with copies per card: the total comes from those copies. Sold: units sold are history.
+                disabled={copiesLocked || sold}
+                title={sold ? "Units sold can't change — restore it to change the quantity" : copiesLocked ? "Total of the copies per card" : undefined}
               />
             </div>
+            )}
+            {sold && (
+              <div className="col-span-2 grid grid-cols-2 gap-4 rounded-md border border-emerald-900/60 bg-emerald-950/20 p-3" data-testid="item-form-sale">
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="item-form-sale-price" className="font-mono text-xs uppercase tracking-wider text-slate-400">
+                    Sold price (AUD, each)
+                  </Label>
+                  <Input
+                    id="item-form-sale-price"
+                    data-testid="item-form-sale-price"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder={formatAud(Number(price) || 0)}
+                    value={salePrice}
+                    onChange={(e) => setSalePrice(e.target.value)}
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="item-form-deal-date" className="font-mono text-xs uppercase tracking-wider text-slate-400">
+                    Deal date
+                  </Label>
+                  <Input
+                    id="item-form-deal-date"
+                    data-testid="item-form-deal-date"
+                    type="date"
+                    value={dealDate}
+                    onChange={(e) => setDealDate(e.target.value)}
+                  />
+                </div>
+                <div className="col-span-2 flex flex-col gap-1.5">
+                  <Label htmlFor="item-form-buyer" className="font-mono text-xs uppercase tracking-wider text-slate-400">
+                    Buyer
+                  </Label>
+                  <Input
+                    id="item-form-buyer"
+                    data-testid="item-form-buyer"
+                    maxLength={200}
+                    value={buyer}
+                    onChange={(e) => setBuyer(e.target.value)}
+                  />
+                </div>
+              </div>
             )}
             {insideKeys.length > 0 && (
               <div className="col-span-2 space-y-2 rounded-md border border-slate-800 bg-slate-950/40 p-3" data-testid="item-form-inside">
@@ -401,8 +468,8 @@ export default function ItemFormDialog({ state, onClose, onSubmit, pending }: It
                         step="1"
                         value={qtyLocked(i) ? String(entries[i].quantity) : (qtys[k] ?? "")}
                         onChange={(e) => setQtys((cur) => ({ ...cur, [k]: e.target.value }))}
-                        disabled={qtyLocked(i)}
-                        title={qtyLocked(i) ? "Set by the cards picked in it" : undefined}
+                        disabled={qtyLocked(i) || sold}
+                        title={qtyLocked(i) ? "Set by the cards picked in it" : sold ? "Sold — can't change" : undefined}
                         className="w-16"
                       />
                     )}
@@ -415,6 +482,7 @@ export default function ItemFormDialog({ state, onClose, onSubmit, pending }: It
                       placeholder="no price"
                       value={inside[k] ?? ""}
                       onChange={(e) => setInside((cur) => ({ ...cur, [k]: e.target.value }))}
+                      disabled={sold} // asking prices: locked once sold
                       className="w-24"
                     />
                     {bundled && (
@@ -433,7 +501,7 @@ export default function ItemFormDialog({ state, onClose, onSubmit, pending }: It
                   </div>
                 ))}
                 <PriceLines lines={insideLines} />
-                {allInsidePriced && pricedTotal(insideParts) !== priceNow && (
+                {!sold && allInsidePriced && pricedTotal(insideParts) !== priceNow && (
                   <Button
                     type="button"
                     size="xs"
@@ -447,21 +515,6 @@ export default function ItemFormDialog({ state, onClose, onSubmit, pending }: It
                 )}
               </div>
             )}
-            {/* Condition isn't asked when adding — only shown to edit an existing entry's value. */}
-            {editing && !bundled && (
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="item-form-condition" className="font-mono text-xs uppercase tracking-wider text-slate-400">
-                  Condition
-                </Label>
-                <Input
-                  id="item-form-condition"
-                  data-testid="item-form-condition"
-                  placeholder="e.g. Mint"
-                  value={condition}
-                  onChange={(e) => setCondition(e.target.value)}
-                />
-              </div>
-            )}
           </div>
 
           {!bundled && (
@@ -472,7 +525,7 @@ export default function ItemFormDialog({ state, onClose, onSubmit, pending }: It
             <Input
               id="item-form-image-url"
               data-testid="item-form-image-url"
-              placeholder="https://…"
+              placeholder={ownImage ? "Using the current picture — paste a link to replace it" : "https://…"}
               value={imageUrl}
               onChange={(e) => setImageUrl(e.target.value)}
             />
@@ -501,6 +554,17 @@ export default function ItemFormDialog({ state, onClose, onSubmit, pending }: It
         </div>
 
         <DialogFooter>
+          {/* add more cards / items to this listing: it becomes (or grows as) a bundle */}
+          {editing && !sold && onAddMore && (
+            <Button
+              variant="ghost"
+              className="sm:mr-auto"
+              data-testid="item-form-add-more"
+              onClick={() => onAddMore(state.item)}
+            >
+              <ListPlus className="size-4" /> Add cards / items
+            </Button>
+          )}
           <Button variant="outline" data-testid="item-form-cancel" onClick={onClose}>
             Cancel
           </Button>

@@ -1,18 +1,14 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "@fontsource-variable/outfit";
-@import "@fontsource-variable/jetbrains-mono";
-@import "@fontsource/ibm-plex-sans/400.css";
-@import "@fontsource/ibm-plex-sans/500.css";
-@import "@fontsource/ibm-plex-sans/600.css";
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-    --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
-    --font-heading: 'Outfit Variable', var(--font-sans);
-    --font-mono: 'JetBrains Mono Variable', ui-monospace, monospace;
+    /* Instrument Sans everywhere: text, headings, and codes / prices / counts (even-width digits below) */
+    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+    --font-heading: var(--font-sans);
+    --font-mono: var(--font-sans);
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -132,6 +128,7 @@
     }
   html {
     @apply font-sans;
+    font-variant-numeric: tabular-nums; /* digits line up in prices, counts and codes */
     }
 }
 
@@ -164,7 +161,7 @@
     --popover: var(--rt-panel-2);
     --popover-foreground: #f0f1f3;
     --primary: var(--rt-silver);
-    --primary-foreground: #2a2d31;
+    --primary-foreground: var(--rt-cta-ink, #2a2d31);
     --secondary: #474c53;
     --secondary-foreground: #f0f1f3;
     --muted: #474c53;
@@ -177,48 +174,97 @@
     --ring: var(--rt-amber);
 }
 
-/* page + faint armour panel lines */
+/* page + contour map: faint topographic rings, like a battlefield survey. They sit on a fixed layer
+   behind everything (isolation keeps the -1 layer above the page colour), so they stay put while
+   the listings scroll. */
 [data-testid="dashboard"] {
   background-color: var(--rt-bg) !important;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='160'%3E%3Cg fill='none' stroke='%23c9ccd1' stroke-opacity='.12' stroke-width='1'%3E%3Cpath d='M0 40H90L110 60H240M60 0V40M170 60V160M0 120H120L140 100H170M200 60L240 20'/%3E%3Ccircle cx='96' cy='50' r='2'/%3E%3Ccircle cx='176' cy='70' r='2'/%3E%3C/g%3E%3C/svg%3E");
-  background-size: 240px 160px;
   color: var(--rt-text);
+  isolation: isolate;
+}
+[data-testid="dashboard"]::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(900px 600px at 50% 40%, transparent 30%, color-mix(in srgb, var(--rt-bg) 90%, transparent) 85%),
+    repeating-radial-gradient(circle at 18% 22%, transparent 0 26px, var(--rt-ring, rgba(255, 255, 255, 0.05)) 26px 27px),
+    repeating-radial-gradient(circle at 85% 80%, transparent 0 34px, var(--rt-ring-2, rgba(255, 255, 255, 0.04)) 34px 35px);
 }
 
-/* header: grey bar with a silver / slate / red stripe underneath */
+/* header: HUD bar — grey band, the name on an angled darker plate with an amber edge, and the three buttons joined into one control */
 [data-testid="dashboard"] > header {
   background: var(--rt-panel-2) !important;
   border-bottom: 1px solid var(--rt-line) !important;
 }
-[data-testid="dashboard"] > header::after {
+.hud-plate {
+  position: relative;
+  background: var(--rt-plate, #26292d);
+  clip-path: polygon(0 0, 100% 0, calc(100% - 22px) 100%, 0 100%);
+}
+.hud-plate::after {
   content: "";
   position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -5px;
-  height: 4px;
-  background: linear-gradient(90deg, var(--rt-silver) 0 60%, var(--rt-slate) 60% 85%, var(--rt-red) 85%);
+  top: 0;
+  bottom: 0;
+  right: 9px;
+  width: 4px;
+  background: var(--rt-amber);
+  transform: skewX(-20deg);
 }
 [data-testid="dashboard"] > header h1 {
+  font-style: italic; /* Instrument Sans italic, loaded in index.html */
   text-transform: uppercase;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.16em;
+  line-height: 1.15;
   color: #f0f1f3 !important;
 }
-[data-testid="dashboard"] > header p { color: var(--rt-label) !important; }
+/* tagline: small amber caps under CARDSTAKK */
+[data-testid="dashboard"] > header [data-testid="app-tagline"] {
+  font-size: 8.5px;
+  line-height: 1.3;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--rt-amber) !important;
+}
+.hud-seg {
+  border: 1px solid var(--rt-line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.hud-seg [data-slot="button"] {
+  height: 36px;
+  border-radius: 0 !important;
+  border-width: 0 1px 0 0 !important;
+  border-color: var(--rt-line) !important;
+}
+.hud-seg [data-slot="button"]:last-child { border-right-width: 0 !important; }
+/* phones: narrower letter spacing on the name and tighter buttons, so CARDSTAKK fits without "…" */
+@media (max-width: 639px) {
+  [data-testid="dashboard"] > header h1 { letter-spacing: 0.1em; }
+  .hud-seg [data-slot="button"] { padding-inline: 7px; gap: 4px; letter-spacing: 0.04em; }
+}
 [data-testid="add-card-button"] {
   background: var(--rt-silver) !important;
-  color: #2a2d31 !important;
+  color: var(--rt-cta-ink, #2a2d31) !important;
   border-color: var(--rt-silver) !important;
   box-shadow: inset 0 -3px 0 var(--rt-amber);
 }
-[data-testid="add-item-button"] {
-  border-color: #f0f1f3 !important;
-  color: #f0f1f3 !important;
-}
+[data-testid="add-item-button"] { color: #f0f1f3 !important; }
 [data-testid="dashboard"] [data-slot="button"] {
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
+/* top bar and toolbar buttons: 2px smaller than their default size */
+[data-testid="sort-select"] { font-size: 12px !important; }
+/* top bar Scan / Add Item / Add Card: another 2px smaller */
+[data-testid="scan-button"],
+[data-testid="add-item-button"],
+[data-testid="add-card-button"] { font-size: 10px !important; }
+[data-testid="export-open"],
+[data-testid="select-mode"] { font-size: calc(0.8rem - 2px) !important; }
 
 /* panels: stat boxes, filters and tiles, with cut corners like armour plates */
 [data-testid="dashboard"] [data-slot="card"],
@@ -234,18 +280,6 @@
 }
 [data-testid="dashboard"] article:hover { box-shadow: inset 0 3px 0 var(--rt-amber); }
 [data-testid="dashboard"] article[aria-selected="true"] { box-shadow: inset 0 3px 0 var(--rt-amber), inset 0 0 0 2px var(--rt-amber); }
-/* small lot marking on each tile, like a model-kit decal */
-[data-testid="dashboard"] article::after {
-  content: "LOT-079";
-  position: absolute;
-  right: 26px;
-  top: 12px;
-  font-family: var(--font-mono);
-  font-size: 8px;
-  letter-spacing: 0.18em;
-  color: var(--rt-amber);
-  pointer-events: none;
-}
 
 /* stat boxes: coloured side bars */
 [data-testid="sidebar"] [data-slot="card"] { box-shadow: inset 4px 0 0 var(--rt-silver); }
@@ -281,15 +315,13 @@
 [data-testid="dashboard"] [data-slot="tabs-trigger"][data-active],
 [data-testid="dashboard"] [data-slot="tabs-trigger"][aria-selected="true"] {
   background: var(--rt-silver) !important;
-  color: #2a2d31 !important;
+  color: var(--rt-cta-ink, #2a2d31) !important;
 }
 
 /* prices and highlights in amber */
 [data-testid="dashboard"] .text-sky-300,
 [data-testid="dashboard"] .text-sky-400 { color: var(--rt-amber) !important; }
 [data-testid="dashboard"] .text-red-400 { color: var(--rt-red) !important; }
-/* no decal in Select mode, where the tick box sits in that corner */
-[data-testid="dashboard"] article.select-none::after { display: none; }
 /* dark navy wells (photo frames, price boxes) → grey */
 [data-testid="dashboard"] [class*="bg-slate-950"] { background-color: var(--rt-panel-2) !important; }
 [data-testid="dashboard"] [class*="border-slate-800"] { border-color: var(--rt-line) !important; }
@@ -348,12 +380,299 @@ html {
   scrollbar-gutter: stable;
 }
 
-/* Item tiles: product photos float on a graphite hexagon backdrop (photos are cut out of their
+/* Item tiles: product photos stand on a launch-deck backdrop (photos are cut out of their
    own backgrounds in the browser — see lib/cutout.ts). */
 .item-photo-backdrop {
-  background-color: #2e3136 !important;
-  background-image:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='49' viewBox='0 0 84 146'%3E%3Cg fill='none' stroke='%23c9ccd1' stroke-opacity='.2' stroke-width='2'%3E%3Cpath d='M42 1 L83 25 L83 72 L42 96 L1 72 L1 25 Z'/%3E%3Cpath d='M42 96 L42 146'/%3E%3C/g%3E%3C/svg%3E"),
-    radial-gradient(circle at 50% 42%, #4a4f57 0%, #2e3136 72%) !important;
-  background-size: 28px 49px, 100% 100% !important;
+  /* launch deck: the same wall gradient and grid floor as the Launch Deck background */
+  background: linear-gradient(180deg, #2f3338 0%, #26292d 55%, #222428 100%) !important;
+  isolation: isolate;
+}
+.item-photo-backdrop:not(img) { position: relative; }
+/* the floor: a grid running back to the horizon over the lower 55%, fading out as it recedes */
+.item-photo-backdrop::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 55%;
+  pointer-events: none;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0 100.0H100M0 75.0H100M0 60.0H100M0 50.0H100M0 42.9H100M0 37.5H100M0 33.3H100M0 30.0H100M0 27.3H100M0 25.0H100M-32.5 0L-170.0 100M-28.4 0L-159.0 100M-24.2 0L-148.0 100M-20.1 0L-137.0 100M-16.0 0L-126.0 100M-11.9 0L-115.0 100M-7.8 0L-104.0 100M-3.6 0L-93.0 100M0.5 0L-82.0 100M4.6 0L-71.0 100M8.8 0L-60.0 100M12.9 0L-49.0 100M17.0 0L-38.0 100M21.1 0L-27.0 100M25.2 0L-16.0 100M29.4 0L-5.0 100M33.5 0L6.0 100M37.6 0L17.0 100M41.8 0L28.0 100M45.9 0L39.0 100M50.0 0L50.0 100M54.1 0L61.0 100M58.2 0L72.0 100M62.4 0L83.0 100M66.5 0L94.0 100M70.6 0L105.0 100M74.8 0L116.0 100M78.9 0L127.0 100M83.0 0L138.0 100M87.1 0L149.0 100M91.2 0L160.0 100M95.4 0L171.0 100M99.5 0L182.0 100M103.6 0L193.0 100M107.8 0L204.0 100M111.9 0L215.0 100M116.0 0L226.0 100M120.1 0L237.0 100M124.2 0L248.0 100M128.4 0L259.0 100M132.5 0L270.0 100' fill='none' stroke='%23c9ccd1' stroke-opacity='.12' stroke-width='1' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E") 0 0 / 100% 100% no-repeat;
+  -webkit-mask-image: linear-gradient(to top, #000 10%, transparent 90%);
+  mask-image: linear-gradient(to top, #000 10%, transparent 90%);
+}
+
+/* computer sidebar (stats, filters, stacks): every text size 2px smaller. Later rules win when an
+   element carries several sizes (e.g. "text-base md:text-sm" on inputs, "lg:text-xs" on dates). */
+@media (min-width: 1024px) {
+  [data-testid="sidebar"] [class*="text-base"] { font-size: 14px !important; }
+  [data-testid="sidebar"] [class*="text-sm"] { font-size: 12px !important; }
+  [data-testid="sidebar"] [class*="text-lg"] { font-size: 16px !important; }
+  [data-testid="sidebar"] [class*="text-xs"] { font-size: 10px !important; }
+}
+
+/* pagination (top and bottom of the listings): text 2px smaller */
+nav[data-testid^="pagination"] [class*="text-sm"] { font-size: 12px !important; }
+nav[data-testid^="pagination"] [class*="text-xs"] { font-size: 10px !important; }
+
+/* ---- colour themes, picked from the "Theme" box at the bottom-left (Pearl is the default) ---- */
+:root[data-theme-preview="gunmetal"] {
+  --rt-bg: #1b1d21; --rt-panel: #262a2f; --rt-panel-2: #212429; --rt-plate: #16181b; --rt-line: #3d424a;
+  --rt-text: #dfe2e6; --rt-label: #9aa1aa; --rt-amber: #e8a93a; --rt-silver: #c9ccd1; --rt-cta-ink: #1b1d21; --rt-slate: #5c6a8a;
+  --secondary: #3d424a; --muted: #3d424a; --accent: #3d424a;
+  --color-slate-800: #3d424a; --color-slate-900: #262a2f; --color-slate-950: #212429;
+}
+:root[data-theme-preview="crimson"] {
+  --rt-bg: #161112; --rt-panel: #231a1b; --rt-panel-2: #1d1617; --rt-plate: #110c0d; --rt-line: #43302f;
+  --rt-text: #efe3e1; --rt-label: #ad9895; --rt-amber: #e0b14d; --rt-silver: #e6d8d4; --rt-cta-ink: #1d1314; --rt-slate: #c8453b;
+  --secondary: #43302f; --muted: #43302f; --accent: #43302f;
+  --color-slate-800: #43302f; --color-slate-900: #231a1b; --color-slate-950: #1d1617;
+}
+
+/* pinned listings toolbar (computers): see-through at the top of the page; once stuck while scrolling it
+   turns frosted, with a soft eased fade and a gently blurred edge below it */
+@media (min-width: 1024px) {
+  .pin-bar {
+    transition: background-color 0.25s ease, box-shadow 0.25s ease, backdrop-filter 0.25s ease;
+  }
+  .pin-bar::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    height: 56px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+    background: linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--rt-bg) 88%, transparent) 0%,
+      color-mix(in srgb, var(--rt-bg) 70%, transparent) 19%,
+      color-mix(in srgb, var(--rt-bg) 54%, transparent) 34%,
+      color-mix(in srgb, var(--rt-bg) 40%, transparent) 47%,
+      color-mix(in srgb, var(--rt-bg) 28%, transparent) 59%,
+      color-mix(in srgb, var(--rt-bg) 18%, transparent) 70%,
+      color-mix(in srgb, var(--rt-bg) 10%, transparent) 80%,
+      color-mix(in srgb, var(--rt-bg) 4%, transparent) 90%,
+      transparent 100%
+    );
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+    -webkit-mask-image: linear-gradient(to bottom, #000 0%, transparent 100%);
+    mask-image: linear-gradient(to bottom, #000 0%, transparent 100%);
+  }
+  .pin-bar[data-pinned] {
+    background-color: color-mix(in srgb, var(--rt-bg) 88%, transparent);
+    -webkit-backdrop-filter: blur(12px) saturate(1.15);
+    backdrop-filter: blur(12px) saturate(1.15);
+    box-shadow: 0 1px 0 color-mix(in srgb, var(--rt-line) 45%, transparent);
+  }
+  .pin-bar[data-pinned]::after { opacity: 1; }
+}
+
+/* Pearl (the default): a light theme — white surfaces, cool pale greys, soft blue-grey hexagons and a
+   muted steel-blue accent. The slate scale is flipped (light surfaces, dark text); the picture fades on
+   cards stay dark so names stay readable. */
+:root[data-theme-preview="pearl"] {
+  color-scheme: light;
+  --rt-bg: #eef1f5; --rt-panel: #ffffff; --rt-panel-2: #f7f8fa; --rt-plate: #ffffff; --rt-line: #d5dbe3;
+  --rt-text: #1f2630; --rt-label: #6b7480; --rt-amber: #4a6a94; --rt-silver: #dfe5ee; --rt-cta-ink: #1f2630; --rt-slate: #c3ccd8;
+  --foreground: #1f2630; --card-foreground: #1f2630; --popover-foreground: #1f2630; --secondary-foreground: #1f2630; --accent-foreground: #1f2630;
+  --secondary: #eceff3; --muted: #eceff3; --accent: #eceff3;
+  --border: rgba(31, 38, 48, 0.14); --input: rgba(31, 38, 48, 0.2);
+  --color-slate-50: #111317; --color-slate-100: #1b1f25; --color-slate-200: #2a2f37; --color-slate-300: #3d434c;
+  --color-slate-400: #5b626c; --color-slate-500: #707782; --color-slate-600: #8b929c; --color-slate-700: #b4bac3;
+  --color-slate-800: #d5dae1; --color-slate-900: #edf0f4; --color-slate-950: #f7f8fa;
+}
+/* soft hexagons instead of the contour rings */
+:root[data-theme-preview="pearl"] [data-testid="dashboard"]::before {
+  background:
+    radial-gradient(1100px 700px at 50% 35%, transparent 40%, color-mix(in srgb, var(--rt-bg) 70%, transparent) 95%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='640' height='420'%3E%3Cpolygon points='92.9,89.0 60.0,108.0 27.1,89.0 27.1,51.0 60.0,32.0 92.9,51.0' fill='%23c9d4e3' fill-opacity='0' stroke='%23cfd7e2' stroke-opacity='0.9' stroke-width='1.5'/%3E%3Cpolygon points='160.9,129.0 128.0,148.0 95.1,129.0 95.1,91.0 128.0,72.0 160.9,91.0' fill='%23c9d4e3' fill-opacity='0.55' stroke='%23cfd7e2' stroke-opacity='0' stroke-width='1.5'/%3E%3Cpolygon points='92.9,169.0 60.0,188.0 27.1,169.0 27.1,131.0 60.0,112.0 92.9,131.0' fill='%23c9d4e3' fill-opacity='0' stroke='%23cfd7e2' stroke-opacity='0.7' stroke-width='1.5'/%3E%3Cpolygon points='598.1,82.0 560.0,104.0 521.9,82.0 521.9,38.0 560.0,16.0 598.1,38.0' fill='%23c9d4e3' fill-opacity='0' stroke='%23cfd7e2' stroke-opacity='0.8' stroke-width='1.5'/%3E%3Cpolygon points='638.0,155.0 612.0,170.0 586.0,155.0 586.0,125.0 612.0,110.0 638.0,125.0' fill='%23c9d4e3' fill-opacity='0.5' stroke='%23cfd7e2' stroke-opacity='0' stroke-width='1.5'/%3E%3Cpolygon points='504.6,350.0 470.0,370.0 435.4,350.0 435.4,310.0 470.0,290.0 504.6,310.0' fill='%23c9d4e3' fill-opacity='0.45' stroke='%23cfd7e2' stroke-opacity='0.0' stroke-width='1.5'/%3E%3Cpolygon points='574.6,392.0 540.0,412.0 505.4,392.0 505.4,352.0 540.0,332.0 574.6,352.0' fill='%23c9d4e3' fill-opacity='0' stroke='%23cfd7e2' stroke-opacity='0.6' stroke-width='1.5'/%3E%3Cpolygon points='322.5,263.0 300.0,276.0 277.5,263.0 277.5,237.0 300.0,224.0 322.5,237.0' fill='%23c9d4e3' fill-opacity='0' stroke='%23cfd7e2' stroke-opacity='0.5' stroke-width='1.5'/%3E%3Cpolygon points='279.4,397.0 250.0,414.0 220.6,397.0 220.6,363.0 250.0,346.0 279.4,363.0' fill='%23c9d4e3' fill-opacity='0.35' stroke='%23cfd7e2' stroke-opacity='0' stroke-width='1.5'/%3E%3C/svg%3E") 0 0 / 640px 420px;
+}
+:root[data-theme-preview="pearl"] [data-testid="add-item-button"],
+:root[data-theme-preview="pearl"] [data-testid="stat-kind-counts"],
+:root[data-theme-preview="pearl"] [data-testid="dashboard"] > header h1,
+:root[data-theme-preview="pearl"] [role="dialog"] [data-slot="dialog-title"] { color: var(--rt-text) !important; }
+:root[data-theme-preview="pearl"] [role="menu"] { background: #ffffff !important; color: var(--rt-text) !important; }
+/* the name plate: white with a soft shadow line instead of the dark plate */
+:root[data-theme-preview="pearl"] .hud-plate { box-shadow: inset -1px 0 0 var(--rt-line); }
+/* item photos: a pale stage with the grid floor drawn in grey */
+:root[data-theme-preview="pearl"] .item-photo-backdrop { background: linear-gradient(180deg, #ffffff 0%, #f1f4f8 55%, #e6ebf1 100%) !important; }
+:root[data-theme-preview="pearl"] .item-photo-backdrop::before { filter: invert(1) opacity(0.8); }
+/* footer: a light band so its (now dark) text reads clearly */
+:root[data-theme-preview="pearl"] [data-testid="site-footer"] { background: var(--rt-panel-2) !important; border-top-color: var(--rt-line) !important; }
+
+/* Overdrive: taken from a magenta-glow card — deep plum night, lavender frame lines (like the card's
+   purple border), hot magenta for prices, mint for the glowing eye-lens accents, a pale moon glow and
+   drifting pink sparks. */
+:root[data-theme-preview="overdrive"] {
+  --rt-bg: #171021; --rt-panel: #241933; --rt-panel-2: #1e142b; --rt-plate: #120c1a; --rt-line: #4b3b66;
+  --rt-text: #f4eefb; --rt-label: #b8a7d4; --rt-amber: #ff5fa2; --rt-silver: #d7c8f2; --rt-cta-ink: #1d1229; --rt-slate: #9b7fd1;
+  --secondary: #3a2d50; --muted: #3a2d50; --accent: #3a2d50;
+  --color-slate-800: #3a2d50; --color-slate-900: #241933; --color-slate-950: #1e142b;
+}
+:root[data-theme-preview="overdrive"] [data-testid="dashboard"]::before {
+  background:
+    radial-gradient(2px 2px at 40px 60px, #ff8fc0cc, transparent),
+    radial-gradient(1.5px 1.5px at 180px 30px, #fff0f8b3, transparent),
+    radial-gradient(2.5px 2.5px at 260px 170px, #ff5fa299, transparent),
+    radial-gradient(1.5px 1.5px at 110px 210px, #9ff5dd99, transparent),
+    radial-gradient(2px 2px at 330px 100px, #ff8fc099, transparent),
+    radial-gradient(420px 420px at 88% 6%, #e9e1f52e, #e9e1f50f 45%, transparent 70%),
+    radial-gradient(900px 560px at 70% 0%, #d6338a33, transparent 70%),
+    radial-gradient(900px 640px at 0% 110%, #7b5bc23d, transparent 70%);
+  background-size: 380px 260px, 380px 260px, 380px 260px, 380px 260px, 380px 260px, 100% 100%, 100% 100%, 100% 100%;
+}
+/* cards: lavender top edge with a faint magenta glow inside; mint glow on the name plate edge */
+:root[data-theme-preview="overdrive"] [data-testid="dashboard"] article { box-shadow: inset 0 3px 0 var(--rt-slate), inset 0 0 22px #d6338a17; }
+:root[data-theme-preview="overdrive"] [data-testid="dashboard"] article:hover { box-shadow: inset 0 3px 0 var(--rt-amber), inset 0 0 26px #d6338a2b; }
+:root[data-theme-preview="overdrive"] .hud-plate::after { background: #ff5fa2; box-shadow: 0 0 12px #ff5fa2; }
+:root[data-theme-preview="overdrive"] [data-testid="dashboard"] > header [data-testid="app-tagline"] { color: #ff8fc0 !important; }
+
+/* Ash Crimson: a light theme of ash grey and deep crimson with near-black text — plain grey
+   surfaces, a crimson name plate and crimson accents. Light like Pearl, so the slate scale is flipped. */
+:root[data-theme-preview="ash"] {
+  color-scheme: light;
+  --rt-bg: #dcdfe0; --rt-panel: #f3f4f4; --rt-panel-2: #e8eaeb; --rt-plate: #8f1a20; --rt-line: #c3c7ca;
+  --rt-text: #1b1c1e; --rt-label: #5c6064; --rt-amber: #9b1b21; --rt-silver: #9b1b21; --rt-cta-ink: #ffffff; --rt-slate: #9b1b21;
+  --rt-ring: rgba(0, 0, 0, 0.075); --rt-ring-2: rgba(155, 27, 33, 0.07); /* contour map: grey and faint crimson rings */
+  --foreground: #1b1c1e; --card-foreground: #1b1c1e; --popover-foreground: #1b1c1e; --secondary-foreground: #1b1c1e; --accent-foreground: #1b1c1e;
+  --secondary: #e3e5e6; --muted: #e3e5e6; --accent: #e3e5e6;
+  --border: rgba(27, 28, 30, 0.15); --input: rgba(27, 28, 30, 0.22);
+  --color-slate-50: #101113; --color-slate-100: #1b1c1e; --color-slate-200: #2b2d30; --color-slate-300: #3e4145;
+  --color-slate-400: #5c6064; --color-slate-500: #71757a; --color-slate-600: #8c9095; --color-slate-700: #b5b9bd;
+  --color-slate-800: #d0d3d6; --color-slate-900: #eceeef; --color-slate-950: #f5f6f6;
+}
+:root[data-theme-preview="ash"] [data-testid="add-item-button"],
+:root[data-theme-preview="ash"] [data-testid="stat-kind-counts"],
+:root[data-theme-preview="ash"] [role="dialog"] [data-slot="dialog-title"] { color: var(--rt-text) !important; }
+:root[data-theme-preview="ash"] [role="menu"] { background: #ffffff !important; color: var(--rt-text) !important; }
+/* crimson name plate: white name, pale tagline, a light edge stripe */
+:root[data-theme-preview="ash"] [data-testid="dashboard"] > header h1 { color: #ffffff !important; }
+:root[data-theme-preview="ash"] [data-testid="dashboard"] > header [data-testid="app-tagline"] { color: #f3c9cb !important; }
+:root[data-theme-preview="ash"] .hud-plate::after { background: #f3f4f4; }
+:root[data-theme-preview="ash"] [data-testid="site-footer"] { background: var(--rt-panel-2) !important; border-top-color: var(--rt-line) !important; }
+/* item photos: a pale grey stage with the grid floor in grey */
+:root[data-theme-preview="ash"] .item-photo-backdrop { background: linear-gradient(180deg, #ffffff 0%, #eef0f1 55%, #e1e4e6 100%) !important; }
+:root[data-theme-preview="ash"] .item-photo-backdrop::before { filter: invert(1) opacity(0.8); }
+/* Select bar in the light themes: a light panel instead of the dark footer colour, so its text reads */
+:root[data-theme-preview="ash"] [data-testid^="selection-bar"],
+:root[data-theme-preview="pearl"] [data-testid^="selection-bar"] {
+  background: var(--rt-panel) !important;
+  border-color: var(--rt-line) !important;
+  box-shadow: 0 6px 16px -10px rgba(0, 0, 0, 0.35);
+}
+
+/* ---- more themes ---- */
+/* shared by the newer light themes (Frost, Overdrive light): light surfaces with a flipped slate scale */
+:root:is([data-theme-preview="frost"], [data-theme-preview="overdrive-light"]) {
+  color-scheme: light;
+  --foreground: var(--rt-text); --card-foreground: var(--rt-text); --popover-foreground: var(--rt-text); --secondary-foreground: var(--rt-text); --accent-foreground: var(--rt-text);
+  --border: rgba(20, 28, 40, 0.15); --input: rgba(20, 28, 40, 0.22);
+  --color-slate-50: #0f1218; --color-slate-100: #1a1f27; --color-slate-200: #29303a; --color-slate-300: #3c444f;
+  --color-slate-400: #59616d; --color-slate-500: #6e7682; --color-slate-600: #89919c; --color-slate-700: #b2b9c2;
+  --color-slate-800: #d2d8df; --color-slate-900: #ebeff3; --color-slate-950: #f5f7f9;
+}
+:root:is([data-theme-preview="frost"], [data-theme-preview="overdrive-light"]) [data-testid="add-item-button"],
+:root:is([data-theme-preview="frost"], [data-theme-preview="overdrive-light"]) [data-testid="stat-kind-counts"],
+:root:is([data-theme-preview="frost"], [data-theme-preview="overdrive-light"]) [role="dialog"] [data-slot="dialog-title"] { color: var(--rt-text) !important; }
+:root:is([data-theme-preview="frost"], [data-theme-preview="overdrive-light"]) [role="menu"] { background: #ffffff !important; color: var(--rt-text) !important; }
+:root:is([data-theme-preview="frost"], [data-theme-preview="overdrive-light"]) [data-testid="site-footer"] { background: var(--rt-panel-2) !important; border-top-color: var(--rt-line) !important; }
+:root:is([data-theme-preview="frost"], [data-theme-preview="overdrive-light"]) [data-testid^="selection-bar"] { background: var(--rt-panel) !important; border-color: var(--rt-line) !important; box-shadow: 0 6px 16px -10px rgba(0, 0, 0, 0.35); }
+:root:is([data-theme-preview="frost"], [data-theme-preview="overdrive-light"]) .item-photo-backdrop { background: linear-gradient(180deg, #ffffff 0%, #eef1f5 55%, #e2e7ee 100%) !important; }
+:root:is([data-theme-preview="frost"], [data-theme-preview="overdrive-light"]) .item-photo-backdrop::before { filter: invert(1) opacity(0.8); }
+
+/* Frost (light): icy white and pale blue with a cool cyan accent and a white name plate */
+:root[data-theme-preview="frost"] {
+  --rt-bg: #e8f1f7; --rt-panel: #ffffff; --rt-panel-2: #f2f8fb; --rt-plate: #ffffff; --rt-line: #cadbe6;
+  --rt-text: #14232e; --rt-label: #5a6e7c; --rt-amber: #0e8fb3; --rt-silver: #d4ecf6; --rt-cta-ink: #0f2a36; --rt-slate: #7cc6de;
+  --secondary: #e3eef5; --muted: #e3eef5; --accent: #e3eef5;
+}
+:root[data-theme-preview="frost"] [data-testid="dashboard"]::before {
+  background: radial-gradient(900px 600px at 80% -10%, #ffffffb3, transparent 70%), radial-gradient(700px 500px at 0% 100%, #9fd6ea33, transparent 70%), #e8f1f7;
+}
+:root[data-theme-preview="frost"] [data-testid="dashboard"] > header h1 { color: var(--rt-text) !important; }
+:root[data-theme-preview="frost"] .hud-plate { box-shadow: inset -1px 0 0 var(--rt-line); }
+
+/* Pearl Dark: Pearl after nightfall — cool blue-grey surfaces, the same soft hexagons in deep slate,
+   a light steel-blue accent and a dark name plate */
+:root[data-theme-preview="pearl-dark"] {
+  --rt-bg: #151a22; --rt-panel: #1e2530; --rt-panel-2: #1a2029; --rt-plate: #10141b; --rt-line: #344052;
+  --rt-text: #e6ebf2; --rt-label: #9aa6b6; --rt-amber: #8fb3e3; --rt-silver: #dfe5ee; --rt-cta-ink: #151a22; --rt-slate: #5d7598;
+  --secondary: #344052; --muted: #344052; --accent: #344052;
+  --color-slate-800: #344052; --color-slate-900: #1e2530; --color-slate-950: #1a2029;
+}
+:root[data-theme-preview="pearl-dark"] [data-testid="dashboard"]::before {
+  background:
+    radial-gradient(1100px 700px at 50% 35%, transparent 40%, color-mix(in srgb, var(--rt-bg) 75%, transparent) 95%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='640' height='420'%3E%3Cpolygon points='92.9,89.0 60.0,108.0 27.1,89.0 27.1,51.0 60.0,32.0 92.9,51.0' fill='%233a4a63' fill-opacity='0' stroke='%234b5d79' stroke-opacity='0.9' stroke-width='1.5'/%3E%3Cpolygon points='160.9,129.0 128.0,148.0 95.1,129.0 95.1,91.0 128.0,72.0 160.9,91.0' fill='%233a4a63' fill-opacity='0.55' stroke='%234b5d79' stroke-opacity='0' stroke-width='1.5'/%3E%3Cpolygon points='92.9,169.0 60.0,188.0 27.1,169.0 27.1,131.0 60.0,112.0 92.9,131.0' fill='%233a4a63' fill-opacity='0' stroke='%234b5d79' stroke-opacity='0.7' stroke-width='1.5'/%3E%3Cpolygon points='598.1,82.0 560.0,104.0 521.9,82.0 521.9,38.0 560.0,16.0 598.1,38.0' fill='%233a4a63' fill-opacity='0' stroke='%234b5d79' stroke-opacity='0.8' stroke-width='1.5'/%3E%3Cpolygon points='638.0,155.0 612.0,170.0 586.0,155.0 586.0,125.0 612.0,110.0 638.0,125.0' fill='%233a4a63' fill-opacity='0.5' stroke='%234b5d79' stroke-opacity='0' stroke-width='1.5'/%3E%3Cpolygon points='504.6,350.0 470.0,370.0 435.4,350.0 435.4,310.0 470.0,290.0 504.6,310.0' fill='%233a4a63' fill-opacity='0.45' stroke='%234b5d79' stroke-opacity='0.0' stroke-width='1.5'/%3E%3Cpolygon points='574.6,392.0 540.0,412.0 505.4,392.0 505.4,352.0 540.0,332.0 574.6,352.0' fill='%233a4a63' fill-opacity='0' stroke='%234b5d79' stroke-opacity='0.6' stroke-width='1.5'/%3E%3Cpolygon points='322.5,263.0 300.0,276.0 277.5,263.0 277.5,237.0 300.0,224.0 322.5,237.0' fill='%233a4a63' fill-opacity='0' stroke='%234b5d79' stroke-opacity='0.5' stroke-width='1.5'/%3E%3Cpolygon points='279.4,397.0 250.0,414.0 220.6,397.0 220.6,363.0 250.0,346.0 279.4,363.0' fill='%233a4a63' fill-opacity='0.35' stroke='%234b5d79' stroke-opacity='0' stroke-width='1.5'/%3E%3C/svg%3E") 0 0 / 640px 420px;
+}
+
+/* Ash Crimson (dark): Ash Crimson at night — charcoal greys with the same crimson name plate, crimson
+   buttons and card edges, brighter crimson prices, and grey and crimson contour rings */
+:root[data-theme-preview="ash-dark"] {
+  --rt-bg: #1a1b1d; --rt-panel: #25272a; --rt-panel-2: #1f2124; --rt-plate: #8f1a20; --rt-line: #3e4146;
+  --rt-text: #ececed; --rt-label: #a4a7ab; --rt-amber: #e5484f; --rt-silver: #b3232a; --rt-cta-ink: #ffffff; --rt-slate: #b3232a;
+  --secondary: #3e4146; --muted: #3e4146; --accent: #3e4146;
+  --color-slate-800: #3e4146; --color-slate-900: #25272a; --color-slate-950: #1f2124;
+  --rt-ring: rgba(255, 255, 255, 0.045); --rt-ring-2: rgba(229, 72, 79, 0.07);
+}
+:root[data-theme-preview="ash-dark"] [data-testid="dashboard"] > header h1 { color: #ffffff !important; }
+:root[data-theme-preview="ash-dark"] [data-testid="dashboard"] > header [data-testid="app-tagline"] { color: #f3c9cb !important; }
+:root[data-theme-preview="ash-dark"] .hud-plate::after { background: #e6e7e8; }
+
+/* Overdrive (light): the magenta-glow theme by moonlight — pale lavender-white surfaces, a deep plum
+   name plate with a mint edge, magenta prices, lavender card edges, soft pink and violet glows and sparks */
+:root[data-theme-preview="overdrive-light"] {
+  --rt-bg: #f3eff9; --rt-panel: #ffffff; --rt-panel-2: #f8f5fc; --rt-plate: #2a1838; --rt-line: #ddd2ee;
+  --rt-text: #23162f; --rt-label: #6e5f80; --rt-amber: #c2185b; --rt-silver: #e4d8f6; --rt-cta-ink: #23162f; --rt-slate: #9b7fd1;
+  --secondary: #ece5f6; --muted: #ece5f6; --accent: #ece5f6;
+}
+:root[data-theme-preview="overdrive-light"] [data-testid="dashboard"]::before {
+  background:
+    radial-gradient(2px 2px at 40px 60px, #d6338a8c, transparent),
+    radial-gradient(1.5px 1.5px at 180px 30px, #9b7fd18c, transparent),
+    radial-gradient(2.5px 2.5px at 260px 170px, #d6338a66, transparent),
+    radial-gradient(1.5px 1.5px at 110px 210px, #2bb39380, transparent),
+    radial-gradient(2px 2px at 330px 100px, #d6338a66, transparent),
+    radial-gradient(420px 420px at 88% 6%, #ffffffcc, #ffffff40 45%, transparent 70%),
+    radial-gradient(900px 560px at 70% 0%, #d6338a1f, transparent 70%),
+    radial-gradient(900px 640px at 0% 110%, #9b7fd12e, transparent 70%),
+    #f3eff9;
+  background-size: 380px 260px, 380px 260px, 380px 260px, 380px 260px, 380px 260px, 100% 100%, 100% 100%, 100% 100%, auto;
+}
+:root[data-theme-preview="overdrive-light"] .hud-plate::after { background: #ff5fa2; box-shadow: 0 0 12px #ff5fa2; }
+:root[data-theme-preview="overdrive-light"] [data-testid="dashboard"] > header [data-testid="app-tagline"] { color: #ff8fc0 !important; }
+:root[data-theme-preview="overdrive-light"] [data-testid="dashboard"] article { box-shadow: inset 0 3px 0 var(--rt-slate), inset 0 0 22px #d6338a0d; }
+:root[data-theme-preview="overdrive-light"] [data-testid="dashboard"] article:hover { box-shadow: inset 0 3px 0 var(--rt-amber), inset 0 0 26px #d6338a1a; }
+
+/* Frost (dark): Frost at night — deep icy blue-teal surfaces, a cool cyan accent, pale ice-blue buttons
+   and a soft cold glow from above */
+:root[data-theme-preview="frost-dark"] {
+  --rt-bg: #0e171d; --rt-panel: #15222b; --rt-panel-2: #121d25; --rt-plate: #0a1217; --rt-line: #2a414e;
+  --rt-text: #e4f1f7; --rt-label: #93aebd; --rt-amber: #4fc8ea; --rt-silver: #d4ecf6; --rt-cta-ink: #0f2a36; --rt-slate: #4f9fbf;
+  --secondary: #2a414e; --muted: #2a414e; --accent: #2a414e;
+  --color-slate-800: #2a414e; --color-slate-900: #15222b; --color-slate-950: #121d25;
+}
+:root[data-theme-preview="frost-dark"] [data-testid="dashboard"]::before {
+  background:
+    radial-gradient(900px 600px at 80% -10%, #bfe9f81f, transparent 70%),
+    radial-gradient(700px 500px at 0% 100%, #4fc8ea1a, transparent 70%);
+}
+/* menus (⋯ on cards, Stakks) in the light themes: darker versions of the pale action colours, so they read on white */
+:root:is([data-theme-preview="pearl"], [data-theme-preview="ash"], [data-theme-preview="frost"], [data-theme-preview="overdrive-light"]) [role="menu"] .text-amber-200 { color: #a15c00 !important; }
+:root:is([data-theme-preview="pearl"], [data-theme-preview="ash"], [data-theme-preview="frost"], [data-theme-preview="overdrive-light"]) [role="menu"] .text-violet-300 { color: #6d28d9 !important; }
+:root:is([data-theme-preview="pearl"], [data-theme-preview="ash"], [data-theme-preview="frost"], [data-theme-preview="overdrive-light"]) [role="menu"] .text-sky-300 { color: #0b6aa2 !important; }
+:root:is([data-theme-preview="pearl"], [data-theme-preview="ash"], [data-theme-preview="frost"], [data-theme-preview="overdrive-light"]) [role="menu"] .text-emerald-300 { color: #047857 !important; }
+:root:is([data-theme-preview="pearl"], [data-theme-preview="ash"], [data-theme-preview="frost"], [data-theme-preview="overdrive-light"]) [role="menu"] .text-red-400 { color: #b91c1c !important; }
+/* light themes: pale amber text in windows (e.g. "Listed as Sealed" in Add Item) in a darker amber so it reads on white */
+:root:is([data-theme-preview="pearl"], [data-theme-preview="ash"], [data-theme-preview="frost"], [data-theme-preview="overdrive-light"]) [role="dialog"] .text-amber-300 { color: #a15c00 !important; }
+
+/* Confirm box: light panel in light themes so its text reads */
+:root:is([data-theme-preview="pearl"], [data-theme-preview="ash"], [data-theme-preview="frost"], [data-theme-preview="overdrive-light"]) [data-testid="confirm-dialog"] {
+  background: var(--rt-panel) !important;
+  border-color: var(--rt-line);
 }

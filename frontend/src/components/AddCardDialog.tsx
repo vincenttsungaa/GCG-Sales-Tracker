@@ -18,7 +18,7 @@ import { apiGet } from "@/lib/api";
 import { CatalogSyncPanel, useCatalogSync } from "@/components/CatalogSync";
 import { COLOR_DOT_CLASS } from "@/lib/format";
 import { labelize, type BundleEntry, type CatalogCard, type ItemPayload } from "@/lib/types";
-import { ArrowLeft, Layers, Loader2, Minus, Plus, Search } from "lucide-react";
+import { ArrowLeft, ListPlus, Loader2, Minus, Plus, Search } from "lucide-react";
 import { BundleBar, bundlePayload } from "@/components/AddItemDialog";
 import { HoverZoom } from "@/components/InfoTip";
 import { CARD_CORNERS } from "@/components/ItemCard";
@@ -34,6 +34,7 @@ interface AddCardDialogProps {
   setBundle: (update: (cur: BundleEntry[]) => BundleEntry[]) => void;
   onListBundle: (payload: ItemPayload) => void;
   onAddItem: () => void; // switch to Add Item, keeping the bundle
+  bundleSaveLabel?: string; // the bundle's list button text (adding to a listing being edited)
 }
 
 const LABEL = "font-mono text-xs uppercase tracking-wider text-slate-400";
@@ -59,12 +60,12 @@ interface Release {
 }
 
 const ALL_RELEASES = "all";
+const CARD_PAGE = 120; // card results drawn at once; "Show more" adds the next lot
 
 // Keyword chips: each searches by card type (see TYPE_KEYWORDS in backend/lib/card_catalog.py) and
 // shows every matching card. EX tokens = EX Base + EX Resource.
 const KEYWORDS = ["EX Token", "EX Base", "EX Resource", "Resource", "Unit Token"];
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "");
-const isKeyword = (q: string) => KEYWORDS.some((k) => norm(k) === norm(q) || `${norm(k)}s` === norm(q));
 
 function CardSearch({ onPick }: { onPick: (card: CatalogCard) => void }) {
   const [query, setQuery] = useState("");
@@ -85,17 +86,21 @@ function CardSearch({ onPick }: { onPick: (card: CatalogCard) => void }) {
     staleTime: 5 * 60_000,
   });
 
-  // A picked release or a keyword shows all of its cards (up to 400); otherwise the first 48 matches.
+  // Typed text, a picked release or a keyword shows every match; an empty search, the first 48.
+  const limit = 5000; // every card, also for "All releases" with no search (the catalog is ~2,150 cards)
   const releaseParam = release === ALL_RELEASES ? "" : `&release=${encodeURIComponent(release)}`;
   const results = useQuery({
     queryKey: ["cards", "search", debounced, release],
     queryFn: () =>
       apiGet<CatalogCard[]>(
-        `/cards?limit=${release === ALL_RELEASES && !isKeyword(debounced) ? 48 : 400}&q=${encodeURIComponent(debounced)}${releaseParam}`,
+        `/cards?limit=${limit}&q=${encodeURIComponent(debounced)}${releaseParam}`,
       ),
     enabled: hasCatalog,
     placeholderData: keepPreviousData,
   });
+  // "All releases" is ~2,150 cards: draw them a page at a time so phones stay quick
+  const [shownCount, setShownCount] = useState(CARD_PAGE);
+  useEffect(() => setShownCount(CARD_PAGE), [debounced, release]);
 
   // "GD01 · Newtype Rising"; releases without a code show just their name ("Edition Beta").
   const releaseLabel = (r: Release) => (r.key === r.name ? r.name : `${r.key} · ${r.name}`);
@@ -175,25 +180,46 @@ function CardSearch({ onPick }: { onPick: (card: CatalogCard) => void }) {
       ) : (
         <ul
           data-testid="card-search-results"
-          className="grid max-h-[50svh] grid-cols-3 gap-2 overflow-y-auto pr-1 sm:grid-cols-4"
+          className="grid max-h-[50svh] grid-cols-3 gap-2 overflow-y-auto pr-1"
         >
-          {cards.map((card) => (
+          {cards.slice(0, shownCount).map((card) => (
             <li key={card.id}>
               <button
                 type="button"
                 data-testid={`card-result-${card.id}`}
                 onClick={() => onPick(card)}
+                title={card.art ? `${card.name} · ${card.art}` : card.name}
                 className="group flex w-full flex-col gap-1.5 rounded-lg border border-slate-800/80 bg-slate-900/60 p-1.5 text-left transition-colors hover:border-sky-500/60 focus-visible:border-sky-500 focus-visible:outline-none"
               >
-                <HoverZoom src={card.image_url} alt={card.name} className="block w-full">
-                  <img
-                    src={card.image_url}
-                    alt={card.name}
-                    loading="lazy"
-                    className="aspect-[63/88] w-full object-cover"
-                    style={CARD_CORNERS}
-                  />
-                </HoverZoom>
+                <div className="relative">
+                  <HoverZoom src={card.image_url} alt={card.name} className="block w-full">
+                    <img
+                      src={card.image_url}
+                      alt={card.name}
+                      loading="lazy"
+                      className="aspect-[63/88] w-full object-cover"
+                      style={CARD_CORNERS}
+                    />
+                  </HoverZoom>
+                  {/* name + colour / type on a dark fade, like the listing cards (doesn't block the hover zoom) */}
+                  <div className="pointer-events-none absolute inset-0 overflow-hidden" style={CARD_CORNERS}>
+                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#0b0f17]/95 via-[#0b0f17]/70 to-transparent px-1.5 pt-6 pb-1">
+                      <span className="line-clamp-2 font-heading text-xs leading-tight font-bold text-white [text-shadow:0_1px_2px_rgb(0_0_0/0.8)]">
+                        {card.name}
+                        {card.art && <span className="font-medium text-[#cbd5e1]"> · {card.art}</span>}
+                      </span>
+                      <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[0.65rem] text-[#e2e8f0]">
+                        {card.color && (
+                          <span className="flex items-center gap-1">
+                            <span className={`size-1.5 rounded-full ${COLOR_DOT_CLASS[card.color]}`} aria-hidden />
+                            {labelize(card.color)}
+                          </span>
+                        )}
+                        {card.card_type && <span className="capitalize">{card.card_type}</span>}
+                      </span>
+                    </div>
+                  </div>
+                </div>
                 <span className="flex items-center gap-1">
                   <RarityChip rarity={card.rarity} />
                   <span className="truncate font-mono text-[0.65rem] text-slate-400">
@@ -201,10 +227,16 @@ function CardSearch({ onPick }: { onPick: (card: CatalogCard) => void }) {
                     {card.parallel > 0 && " ★"}
                   </span>
                 </span>
-                <span className="line-clamp-2 text-xs leading-tight font-medium text-slate-100">{card.name}</span>
               </button>
             </li>
           ))}
+          {cards.length > shownCount && (
+            <li className="col-span-3 py-1 text-center">
+              <Button type="button" variant="outline" size="sm" onClick={() => setShownCount((n) => n + CARD_PAGE)} data-testid="card-results-more">
+                Show more ({cards.length - shownCount} left)
+              </Button>
+            </li>
+          )}
         </ul>
       )}
       <CatalogSyncPanel kind="cards" compact />
@@ -339,7 +371,7 @@ function CardDetailsForm({
               >
                 <Minus className="size-3.5" aria-hidden />
               </button>
-              <span className="min-w-6 text-center font-mono text-sm font-semibold text-white" aria-live="polite">
+              <span className="min-w-6 text-center font-mono text-sm font-semibold text-slate-100" aria-live="polite">
                 {quantity}
               </span>
               <button
@@ -447,7 +479,7 @@ function CardDetailsForm({
             {pending && <Loader2 className="size-4 animate-spin" />} Add card
           </Button>
           <Button variant={bundleCount > 0 ? "default" : "outline"} onClick={addToBundle} disabled={pending} data-testid="add-card-add-to-bundle">
-            <Layers className="size-4" /> {bundleCount > 0 ? `Add to bundle (${bundleCount + 1})` : "Add to bundle"}
+            <ListPlus className="size-4" /> {bundleCount > 0 ? `Add to bundle (${bundleCount + 1})` : "Add to bundle"}
           </Button>
         </div>
       </DialogFooter>
@@ -467,6 +499,7 @@ export default function AddCardDialog({
   setBundle,
   onListBundle,
   onAddItem,
+  bundleSaveLabel,
 }: AddCardDialogProps) {
   const [card, setCard] = useState<CatalogCard | null>(initialCard ?? null);
 
@@ -474,7 +507,8 @@ export default function AddCardDialog({
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       {/* Pinned near the top so the dialog doesn't jump around as search results change height. */}
       <DialogContent
-        className="top-4 max-h-[calc(100svh-2rem)] translate-y-0 overflow-x-hidden overflow-y-auto sm:top-[6svh] sm:max-h-[88svh] sm:max-w-2xl [&>*]:min-w-0"
+        // one width for search and the listing form, so the window doesn't resize when a card is picked
+        className="top-4 max-h-[calc(100svh-2rem)] translate-y-0 overflow-x-hidden overflow-y-auto sm:top-[6svh] sm:max-h-[88svh] sm:max-w-xl [&>*]:min-w-0"
         data-testid="add-card-dialog"
       >
         <DialogHeader>
@@ -495,6 +529,7 @@ export default function AddCardDialog({
             pending={pending}
             switchLabel="Add an item"
             onSwitch={onAddItem}
+            saveLabel={bundleSaveLabel}
           />
         )}
 

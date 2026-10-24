@@ -938,8 +938,7 @@ def get_product(product_id: str) -> dict[str, Any] | None:
     return next((p for p in load_catalog()["products"] if p["id"] == product_id), None)
 
 
-def _norm(s: str) -> str:
-    return re.sub(r"[^a-z0-9]+", "", s.lower())
+_norm = card_catalog._norm  # same matching rules as card search (Roman numerals included)
 
 
 def search_products(q: str = "", category: str | None = None, limit: int = 60) -> list[dict[str, Any]]:
@@ -952,7 +951,6 @@ def search_products(q: str = "", category: str | None = None, limit: int = 60) -
         if all(w in hay for w in words):
             out.append(p)
     return out[:limit]
-
 
 def match_text(text: str, codes: list[str] | None = None, limit: int = 6) -> list[dict[str, Any]]:
     """Products whose name or code (codes: read from the photo) is printed on the box (Scan)."""

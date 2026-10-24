@@ -112,6 +112,7 @@ class CollectionItem(BaseModel):
     sold_at: datetime | None = None
     # a sold record split off a listing by a partial sale: the listing's id (restoring merges it back)
     split_from: str | None = None
+    position: int | None = None  # "My order" (drag and drop); None = never arranged, shown first
     # the stack (named group, see routers/stacks.py) this listing is in, if any
     stack_id: str | None = None
 
@@ -162,7 +163,21 @@ class ItemCreate(BaseModel):
 
 
 class ItemUpdate(ItemCreate):
-    pass
+    # Sold listings only: fix the deal (a typo in the sold price, buyer or date). Ignored otherwise.
+    sale_price: float | None = Field(default=None, ge=0)  # AUD, per unit
+    buyer_name: ShortText
+    deal_date: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
+    # What the edit form saw when it opened: if the listing has changed since (a sale, a move to
+    # Storage in another tab), the save is refused instead of writing old values back.
+    expected_status: Status | None = None
+    expected_quantity: int | None = None
+
+    @field_validator("deal_date")
+    @classmethod
+    def _real_date(cls, v: str | None) -> str | None:
+        if v is not None:
+            date.fromisoformat(v)
+        return v
 
 
 class StatusUpdate(BaseModel):

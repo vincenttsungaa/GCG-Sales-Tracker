@@ -59,7 +59,7 @@ const TIP_ADD_TO_BUNDLE =
   "Puts this item, as set up above, in the bundle, then takes you back to search for the next item. Only items added this way are in the bundle: clicking Add item lists this item on its own instead. When everything is in, list the bundle from the Bundle box at the top.";
 const TIP_BUNDLE =
   "Several products listed as one. Leave the bundle price blank to use the total of their prices, or set your own (e.g. a discount). It's needed when an item has no price of its own.";
-import { ArrowLeft, Check, Layers, Loader2, Minus, Package, Plus, Search, X } from "lucide-react";
+import { ArrowLeft, Check, ListPlus, Loader2, Minus, Package, Plus, Search, X } from "lucide-react";
 import { CARD_CORNERS, useCutout } from "@/components/ItemCard";
 
 // A set piece (playmat, box, dice …) cut out of its photo and shown on the tiles' hex backdrop,
@@ -128,6 +128,7 @@ interface AddItemDialogProps {
   setBundle: (update: (cur: BundleEntry[]) => BundleEntry[]) => void;
   onListBundle: (payload: ItemPayload) => void;
   onAddCard: () => void; // switch to Add Card, keeping the bundle
+  bundleSaveLabel?: string; // the bundle's list button text (adding to a listing being edited)
 }
 
 const LABEL = "font-mono text-xs uppercase tracking-wider text-slate-400";
@@ -275,7 +276,7 @@ function CopyStepper({
         >
           <Minus className="size-3.5" aria-hidden />
         </button>
-        <span className="min-w-6 text-center font-mono text-sm font-semibold text-white" aria-live="polite">
+        <span className="min-w-6 text-center font-mono text-sm font-semibold text-slate-100" aria-live="polite">
           {count}
         </span>
         <button
@@ -786,7 +787,7 @@ function ProductDetailsForm({
                       >
                         <Minus className="size-3.5" aria-hidden />
                       </button>
-                      <span className="min-w-6 text-center font-mono text-sm font-semibold text-white" aria-live="polite">
+                      <span className="min-w-6 text-center font-mono text-sm font-semibold text-slate-100" aria-live="polite">
                         {partCopiesOf(p)}
                       </span>
                       <button
@@ -1227,7 +1228,7 @@ function ProductDetailsForm({
               {pending && <Loader2 className="size-4 animate-spin" />} List it on its own (keep the bundle)
             </Button>
             <Button size="sm" onClick={addToBundle} disabled={pending} data-testid="add-item-ask-add-to-bundle">
-              <Layers className="size-4" /> Add to bundle
+              <ListPlus className="size-4" /> Add to bundle
             </Button>
           </div>
         </div>
@@ -1246,7 +1247,7 @@ function ProductDetailsForm({
               disabled={pending}
               data-testid="add-item-add-to-bundle"
             >
-              <Layers className="size-4" /> {bundleCount > 0 ? `Add to bundle (${bundleCount + 1})` : "Add to bundle"}
+              <ListPlus className="size-4" /> {bundleCount > 0 ? `Add to bundle (${bundleCount + 1})` : "Add to bundle"}
             </Button>
             <InfoTip label="How Add to bundle works">{TIP_ADD_TO_BUNDLE}</InfoTip>
           </span>
@@ -1642,7 +1643,7 @@ function CustomItemForm({
               {pending && <Loader2 className="size-4 animate-spin" />} List it on its own (keep the bundle)
             </Button>
             <Button size="sm" onClick={addToBundle} disabled={pending}>
-              <Layers className="size-4" /> Add to bundle
+              <ListPlus className="size-4" /> Add to bundle
             </Button>
           </div>
         </div>
@@ -1660,7 +1661,7 @@ function CustomItemForm({
               disabled={pending || photoBusy}
               data-testid="add-item-custom-add-to-bundle"
             >
-              <Layers className="size-4" /> {bundleCount > 0 ? `Add to bundle (${bundleCount + 1})` : "Add to bundle"}
+              <ListPlus className="size-4" /> {bundleCount > 0 ? `Add to bundle (${bundleCount + 1})` : "Add to bundle"}
             </Button>
             <InfoTip label="How Add to bundle works">{TIP_ADD_TO_BUNDLE}</InfoTip>
           </span>
@@ -1735,6 +1736,7 @@ export function BundleBar({
   pending,
   switchLabel,
   onSwitch,
+  saveLabel,
 }: {
   entries: BundleEntry[];
   onRemove: (index: number) => void;
@@ -1743,6 +1745,7 @@ export function BundleBar({
   pending: boolean;
   switchLabel: string; // "Add a card" / "Add an item": go to the other dialog, keeping the bundle
   onSwitch: () => void;
+  saveLabel?: string; // the list button's text, e.g. "Save to listing" when adding to a listing being edited
 }) {
   // Optional price for the whole bundle; blank = the total of the item prices (when all have one).
   const [bundlePrice, setBundlePrice] = useState("");
@@ -1845,7 +1848,7 @@ export function BundleBar({
             data-testid="add-item-list-bundle"
           >
             {pending && <Loader2 className="size-4 animate-spin" />}
-            {entries.length < 2 ? "Add another item" : `List bundle (${entries.length})`}
+            {entries.length < 2 ? "Add another item" : `${saveLabel ?? "List bundle"} (${entries.length})`}
           </Button>
         </div>
       </div>
@@ -1869,6 +1872,7 @@ export default function AddItemDialog({
   setBundle,
   onListBundle,
   onAddCard,
+  bundleSaveLabel,
 }: AddItemDialogProps) {
   const [product, setProduct] = useState<CatalogProduct | null>(initialProduct ?? null);
   // "Custom item": something not in the product database, entered by hand.
@@ -1878,7 +1882,8 @@ export default function AddItemDialog({
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       {/* Pinned near the top so the dialog doesn't jump around as search results change height. */}
       <DialogContent
-        className="top-4 max-h-[calc(100svh-2rem)] translate-y-0 overflow-x-hidden overflow-y-auto sm:top-[6svh] sm:max-h-[88svh] sm:max-w-2xl [&>*]:min-w-0"
+        // one width for search and the listing form, so the window doesn't resize when a item is picked
+        className="top-4 max-h-[calc(100svh-2rem)] translate-y-0 overflow-x-hidden overflow-y-auto sm:top-[6svh] sm:max-h-[88svh] sm:max-w-xl [&>*]:min-w-0"
         data-testid="add-item-dialog"
       >
         <DialogHeader>
@@ -1903,6 +1908,7 @@ export default function AddItemDialog({
             pending={pending}
             switchLabel="Add a card"
             onSwitch={onAddCard}
+            saveLabel={bundleSaveLabel}
           />
         )}
 

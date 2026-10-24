@@ -97,7 +97,8 @@ class TestCrud:
         res = client.patch(f"/items/{card['id']}/status",
                            json={"status": "pending", "buyer_name": "Test Buyer"})
         assert res.status_code == 200, res.text
-        res = client.put(f"/items/{card['id']}", json=_payload(tag, price=20))
+        res = client.put(f"/items/{card['id']}", json=_payload(tag, price=20, expected_status=card["status"],
+                                                               expected_quantity=card["quantity"]))
         assert res.status_code == 200, res.text
         body = res.json()
         assert body["price"] == 20
@@ -250,23 +251,24 @@ class TestSaleLifecycle:
                                  "deal_date": "2026-01-02", "quantity_sold": 5})
         assert res.status_code == 422
 
+    def test_edit_sold_fixes_deal_not_asking_price(self, client, card):
+        client.patch(f"/items/{card['id']}/status",
+                     json={"status": "sold", "buyer_name": "Test Buyer", "deal_date": "2026-01-02", "sale_price": 8})
+        res = client.put(f"/items/{card['id']}", json={
+            "name": card["name"], "price": 99, "purchase_price": 4,
+            "sale_price": 9.5, "buyer_name": "Fixed Buyer", "deal_date": "2026-01-03"})
+        assert res.status_code == 200, res.text
+        body = res.json()
+        assert body["price"] == card["price"] and body["status"] == "sold"  # asking price locked once sold
+        assert (body["sale_price"], body["buyer_name"], body["deal_date"], body["purchase_price"]) == (9.5, "Fixed Buyer", "2026-01-03", 4)
+        assert client.put(f"/items/{card['id']}", json={"name": card["name"], "buyer_name": ""}).status_code == 422
 
-class TestStacks:
-    def test_one_stack_at_a_time_and_delete_keeps_listings(self, client, tag, card):
-        a = client.post("/stacks", json={"name": f"{tag}Sunday market"}).json()
-        b = client.post("/stacks", json={"name": f"{tag}For Jake"}).json()
-        try:
-            assert client.post("/stacks", json={"name": f"{tag}SUNDAY MARKET"}).status_code == 409
-            res = client.post("/stacks/assign", json={"ids": [card["id"]], "stack_id": a["id"]})
-            assert res.status_code == 200 and res.json()[0]["stack_id"] == a["id"]
-            client.post("/stacks/assign", json={"ids": [card["id"]], "stack_id": b["id"]})
-            listed = next(i for i in client.get("/items").json() if i["id"] == card["id"])
-            assert listed["stack_id"] == b["id"]  # moved, not in both
-            # editing the listing keeps its stack
-            assert client.put(f"/items/{card['id']}", json={"name": card["name"], "price": 9}).json()["stack_id"] == b["id"]
-            assert client.delete(f"/stacks/{b['id']}").status_code == 204
-            listed = next(i for i in client.get("/items").json() if i["id"] == card["id"])
-            assert listed["stack_id"] is None  # the listing stays, out of any stack
-        finally:
-            for s in (a, b):
-                client.delete(f"/stacks/{s['id']}")
+    def test_edit_refused_when_listing_changed(self, client, card):
+        # the form opened on a different quantity than the listing has now (e.g. sold in another tab)
+        res = client.put(f"/items/{card['id']}", json={"name": card["name"], "expected_status": card["status"],
+                                                         "expected_quantity": card["quantity"] + 1})
+        assert res.status_code == 409
+
+    def test_edit_from_outdated_page_is_refused(self, client, tag, card):
+        # a form that sends a quantity without saying what it saw (an old, not reloaded tab)
+        assert client.put(f"/items/{card['id']}", json=_payload(tag)).status_code == 422

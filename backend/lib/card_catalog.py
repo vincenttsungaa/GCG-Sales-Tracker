@@ -20,6 +20,7 @@ import json
 import logging
 import re
 import threading
+import unicodedata
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
@@ -233,7 +234,61 @@ def get_card(print_id: str) -> dict[str, Any] | None:
 
 
 def _norm(s: str) -> str:
-    return re.sub(r"[^a-z0-9]+", "", s.lower())
+    # NFKD turns the catalog's single-character Roman numerals into letters ("Zaku Ⅱ" → "zakuii"),
+    # so typing "Zaku II" finds them; it also folds full-width letters and digits.
+    # NFKD also splits accents off (Kämpfer → Kampfer), and the marks are dropped
+    s = s.replace("Ξ", "xi").replace("∀", "turna")  # Ξ Gundam / ∀ Gundam: symbols, not letters, in Unicode
+    folded = "".join(ch for ch in unicodedata.normalize("NFKD", s) if not unicodedata.combining(ch))
+    return re.sub(r"[^a-z0-9]+", "", folded.lower())
+
+
+# What each standard Resource card shows, as printed on its top banner (the catalog names them all
+# just "Resource"), so "freedom resource" finds R-008. Promo / EX resources are full-art with no
+# name printed, so they aren't listed. Keyed by card number: parallels share the art.
+RESOURCE_ART: dict[str, str] = {
+    "R-002": "Gundam (RX-78-2)",
+    "R-003": "Unicorn Gundam (Destroy Mode)",
+    "R-004": "Wing Gundam Zero",
+    "R-005": "Char's Zaku Ⅱ",
+    "R-006": "Kshatriya",
+    "R-007": "Duel Gundam (Assault Shroud)",
+    "R-008": "Freedom Gundam",
+    "R-009": "Gundam Aerial",
+    "R-010": "Psycho Gundam",
+    "R-011": "Gundam Epyon",
+    "R-012": "Gundam AGE-1 Normal",
+    "R-013": "Red Gundam",
+    "R-014": "Qubeley",
+    "R-015": "GQuuuuuuX (Omega Psycommu)",
+    "R-016": "Gundam X",
+    "R-017": "Gundam Barbatos 1st Form",
+    "R-018": "Zeta Gundam",
+    "R-019": "Gundam Kimaris",
+    "R-020": "Gundam NT-1",
+    "R-021": "The-O",
+    "R-022": "Kämpfer",
+    "R-023": "Gundam Dynames",
+    "R-024": "Providence Gundam",
+    "R-025": "GFreD",
+    "R-026": "Gundam Exia",
+    "R-027": "Gundam Gusion Rebake",
+    "R-028": "Graham's Union Flag Custom",
+    "R-029": "Graze Ein",
+    "R-031": "Penelope",
+    "R-032": "Victory Gundam",
+    "R-033": "Zeong",
+    "R-034": "Gundam Pharact",
+    "R-035": "Ξ Gundam (Xi Gundam)",
+    "R-036": "Gundam Kyrios",
+    "R-037": "Gundam Virtue",
+    "R-038": "Destiny Gundam",
+    "R-039": "∀ Gundam (Turn A Gundam)",
+    "R-040": "Unicorn Gundam 02 Banshee Norn (Destroy Mode)",
+}
+
+
+def resource_art(card: dict[str, Any]) -> str | None:
+    return RESOURCE_ART.get(card.get("card_no", "")) if card.get("card_type") == "resource" else None
 
 
 _RELEASE_CODE_RE = re.compile(r"\[([^\]]+)\]\s*$")
@@ -298,7 +353,7 @@ def search_cards(
             continue
         if release and release not in {release_key(p) for p in card.get("packages") or []}:
             continue
-        name = _norm(card["name"])
+        name = _norm(f'{card["name"]} {resource_art(card) or ""}')  # "Resource" + the unit on its art
         ids = _norm(card["id"]) + " " + _norm(card["card_no"])
         if types is not None:
             if card.get("card_type") not in types:

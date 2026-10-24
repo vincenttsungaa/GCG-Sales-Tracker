@@ -84,7 +84,7 @@ function IconActions({ item, actions }: { item: CollectionItem; actions: Actions
               variant="ghost"
               size="icon-xs"
               aria-label={`Mark ${item.name} as pending`}
-              title="Mark Pending"
+              title="Mark as Pending"
               data-testid={`item-pending-${item.id}`}
               onClick={() => actions.onMarkPending(item)}
             >
@@ -109,7 +109,7 @@ function IconActions({ item, actions }: { item: CollectionItem; actions: Actions
           variant="ghost"
           size="icon-xs"
           aria-label={`Move ${item.name} to storage`}
-          title="Move to storage"
+          title="Move to Storage"
           data-testid={`item-hold-${item.id}`}
           onClick={() => actions.onHold(item)}
           className="text-violet-300 hover:text-violet-200"
@@ -117,12 +117,12 @@ function IconActions({ item, actions }: { item: CollectionItem; actions: Actions
           <Lock className="size-4" />
         </Button>
       )}
-      {actions.onStack && !actions.stackName?.(item) && (item.status === "for_sale" || item.status === "pending") && (
+      {actions.onStack && !actions.stackName?.(item) && item.status !== "sold" && (
         <Button
           variant="ghost"
           size="icon-xs"
-          aria-label={`Move ${item.name} to a stack`}
-          title="Move to stack"
+          aria-label={`Move ${item.name} to a Stakk`}
+          title="Move to Stakk"
           data-testid={`item-stack-move-${item.id}`}
           onClick={() => actions.onStack?.(item)}
           className="text-sky-300 hover:text-sky-200"
@@ -134,8 +134,8 @@ function IconActions({ item, actions }: { item: CollectionItem; actions: Actions
         <Button
           variant="ghost"
           size="icon-xs"
-          aria-label={`Remove ${item.name} from the stack ${actions.stackName(item)}`}
-          title="Remove from stack"
+          aria-label={`Remove ${item.name} from the Stakk ${actions.stackName(item)}`}
+          title="Remove from Stakk"
           data-testid={`item-unstack-${item.id}`}
           onClick={() => actions.onUnstack?.(item)}
           className="text-slate-400 hover:text-slate-200"
@@ -359,16 +359,16 @@ function TouchActions({ item, actions }: { item: CollectionItem; actions: Action
             <Lock className="size-4" /> Storage
           </Button>
         )}
-        {actions.onStack && !actions.stackName?.(item) && (item.status === "for_sale" || item.status === "pending") && (
+        {actions.onStack && !actions.stackName?.(item) && item.status !== "sold" && (
           <Button
             size="sm"
             variant="outline"
             className={btn}
-            aria-label={`Move ${item.name} to a stack`}
+            aria-label={`Move ${item.name} to a Stakk`}
             data-testid={`item-stack-move-${item.id}`}
             onClick={() => actions.onStack?.(item)}
           >
-            <FolderInput className="size-4" /> Stack
+            <FolderInput className="size-4" /> Stakk
           </Button>
         )}
         {actions.onUnstack && actions.stackName?.(item) && (
@@ -376,11 +376,11 @@ function TouchActions({ item, actions }: { item: CollectionItem; actions: Action
             size="sm"
             variant="outline"
             className={btn}
-            aria-label={`Remove ${item.name} from the stack ${actions.stackName(item)}`}
+            aria-label={`Remove ${item.name} from the Stakk ${actions.stackName(item)}`}
             data-testid={`item-unstack-${item.id}`}
             onClick={() => actions.onUnstack?.(item)}
           >
-            <FolderMinus className="size-4" /> Remove from stack
+            <FolderMinus className="size-4" /> Remove from Stakk
           </Button>
         )}
         {(item.status === "pending" || item.status === "on_hold") && (
