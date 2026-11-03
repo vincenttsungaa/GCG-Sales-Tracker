@@ -8,7 +8,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
-from pydantic import BaseModel, EmailStr, Field, ValidationError
+from pydantic import BaseModel, Field, ValidationError
 from lib.export import XLSX_MIME, EmailNotConfigured, build_workbook, export_filename, send_workbook
 from models.item import (
     CollectionItem,
@@ -354,8 +354,7 @@ class ExportRequest(BaseModel):
 
 
 class EmailExportRequest(ExportRequest):
-    to: EmailStr
-    note: str | None = Field(default=None, max_length=2000)
+    note: str | None = Field(default=None, max_length=2000)  # a note to yourself, shown in the email
 
 
 async def _export_workbook(body: ExportRequest, full: bool) -> tuple[bytes, int]:
@@ -390,16 +389,18 @@ async def export_items(body: ExportRequest, user: dict = Depends(current_user)):
 
 @router.post("/items/export/email")
 async def email_export(body: EmailExportRequest, user: dict = Depends(current_user)):
-    """Email the .xlsx to an address typed in by the user (SMTP settings in backend/.env). Collector and up."""
+    """Email the .xlsx to the account's own confirmed email (SMTP settings in backend/.env). Collector and up."""
     if effective_tier(user) < 1:
         raise HTTPException(status_code=403, detail="Sending the export by email comes with the Collector plan — see the Support page.")
+    if not user.get("email_verified"):
+        raise HTTPException(status_code=400, detail="Confirm your email first: the file is sent to your account's email.")
     data, count = await _export_workbook(body, full=True)
     try:
         await asyncio.to_thread(
-            send_workbook, body.to, data, export_filename(body.label), count, body.note, (user.get("name") or "").strip() or None, user["email"]
+            send_workbook, user["email"], data, export_filename(body.label), count, body.note
         )
     except EmailNotConfigured as e:
         raise HTTPException(status_code=503, detail=str(e)) from e
     except (smtplib.SMTPException, OSError) as e:
         raise HTTPException(status_code=502, detail=f"Could not send the email: {e}") from e
-    return {"sent": True, "to": body.to, "count": count}
+    return {"sent": True, "to": user["email"], "count": count}

@@ -1586,6 +1586,8 @@ export default function Dashboard({
           stacks={stacks}
           tabLabel={TABS.find((t) => t.id === tab)?.label ?? "All Items"}
           full={user.tier >= 1}
+          email={user.email}
+          verified={user.email_verified}
           onClose={() => setExportOpen(false)}
         />
       )}
@@ -1827,7 +1829,6 @@ function ConfirmDialog({ state, onClose }: { state: ConfirmState | null; onClose
   );
 }
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // Fetch the .xlsx for these listings (empty ids = every listing).
 async function fetchWorkbook(body: { ids: string[]; label: string; per_stack: boolean }): Promise<{ blob: Blob; filename: string }> {
@@ -1858,6 +1859,8 @@ function ExportDialog({
   stacks,
   tabLabel,
   full,
+  email,
+  verified,
   onClose,
 }: {
   shown: CollectionItem[];
@@ -1865,13 +1868,14 @@ function ExportDialog({
   stacks: Stack[];
   tabLabel: string;
   full: boolean; // Collector and up: the full workbook, a sheet per Stakk, send by email (Free: one Listings sheet)
+  email: string; // "Email" sends the file to the account's own email
+  verified: boolean; // …once that email is confirmed
   onClose: () => void;
 }) {
   const [scope, setScope] = useState<ExportScope>("shown");
   const [stackId, setStackId] = useState(stacks[0]?.id ?? "");
   const [perStack, setPerStack] = useState(false);
   const [via, setVia] = useState<"download" | "share" | "email">("download");
-  const [email, setEmail] = useState("");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1946,18 +1950,16 @@ function ExportDialog({
     });
   const sendEmail = () =>
     run(async () => {
-      const to = email.trim();
-      if (!EMAIL_RE.test(to)) throw new Error("Enter a valid email address, e.g. name@example.com.");
       const res = await fetch("/api/items/export/email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...body, to, note: note.trim() || null }),
+        body: JSON.stringify({ ...body, note: note.trim() || null }),
       });
       if (!res.ok) {
         const b = await res.json().catch(() => null);
         throw new Error(typeof b?.detail === "string" ? b.detail : "Could not send the email — please try again.");
       }
-      toast.success(`Sent to ${to}`);
+      toast.success(`Sent to ${email}`);
       onClose();
     });
 
@@ -2084,23 +2086,22 @@ function ExportDialog({
             )}
             {via === "email" && (
               <div className="space-y-2">
-                <Input
-                  type="email"
-                  inputMode="email"
-                  autoComplete="email"
-                  placeholder="name@example.com"
-                  aria-label="Email address"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && void sendEmail()}
-                  data-testid="export-email"
-                />
-                <Textarea rows={2} placeholder="Message (optional)" value={note} onChange={(e) => setNote(e.target.value)} data-testid="export-note" />
+                {/* always your own account email: the address you confirmed */}
+                <p className="text-sm text-slate-400" data-testid="export-email">
+                  {verified ? (
+                    <>
+                      Sends to <b className="font-semibold break-all text-slate-200">{email}</b>
+                    </>
+                  ) : (
+                    <>Confirm your email first (check your inbox): the file is sent to {email}.</>
+                  )}
+                </p>
+                <Textarea rows={2} placeholder="Note to yourself (optional)" value={note} onChange={(e) => setNote(e.target.value)} data-testid="export-note" />
               </div>
             )}
             <Button
               className="w-full"
-              disabled={busy || count === 0}
+              disabled={busy || count === 0 || (via === "email" && !verified)}
               onClick={via === "download" ? download : via === "share" ? share : sendEmail}
               data-testid={via === "download" ? "export-download" : via === "share" ? "export-share" : "export-send"}
             >

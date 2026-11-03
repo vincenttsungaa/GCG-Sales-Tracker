@@ -433,7 +433,8 @@ export default function Landing({
             <button type="button" onClick={() => go("login")} className="text-[#5a6371] hover:text-[#1c222b] max-md:hidden">
               Log in
             </button>
-            <button type="button" onClick={() => go("signup")} className={`min-h-9 rounded-lg px-3.5 font-semibold ${BRAND}`}>
+            {/* phones: hidden, the sign-up form is right below in the hero */}
+            <button type="button" onClick={() => go("signup")} className={`min-h-9 rounded-lg px-3.5 font-semibold max-sm:hidden ${BRAND}`}>
               Sign up free
             </button>
           </nav>
