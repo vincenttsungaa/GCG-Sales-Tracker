@@ -146,7 +146,7 @@ const MORE = [
   ["Profit after costs", "Add what you paid and see the profit on every sale."],
   ["Storage", "Put listings away without deleting them, and bring them back any time."],
   ["Price breakdown", "Price each part of a set or each card in a lot."],
-  ["Export to Excel", "Your listings and sales as a spreadsheet, a sheet per Stakk if you like."],
+  ["Export to Excel", "Your listings and sales as a spreadsheet (Collector), a sheet per Stakk if you like (Dealer)."],
   ["Statistics", "Best sellers, top buyers, slow movers and monthly profit charts."],
   ["Your own order", "Drag listings and Stakks into the order you want."],
   ["Search and filters", "Find any listing by name, type, rarity, colour or buyer."],
@@ -164,7 +164,7 @@ const FAQ = [
   ["Is it really free?", "Yes. The Free plan keeps up to 100 listings that aren't sold, with no time limit and no payment details."],
   ["Can anyone else see my listings?", "No. Listings live in your own account and only you can see them."],
   ["Where do the card pictures come from?", "From the official card list, shown only to identify the cards you own."],
-  ["Can I get my data out?", "Yes. Export your listings and sales to Excel at any time."],
+  ["Can I get my data out?", "Yes. Collector and Dealer members can export their listings and sales to Excel at any time, and anyone can ask us for a copy of their data."],
 ] as const;
 
 const BRAND = "bg-[#8a1c1a] text-white hover:bg-[#6e1513]"; // the one "sign up" colour on this page

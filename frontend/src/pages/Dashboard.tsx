@@ -1579,13 +1579,14 @@ export default function Dashboard({
         </div>
       </footer>
 
-      {exportOpen && (
+      {exportOpen && user.tier < 1 && <ExportLockedDialog onClose={() => setExportOpen(false)} />}
+      {exportOpen && user.tier >= 1 && (
         <ExportDialog
           shown={visible}
           items={items}
           stacks={stacks}
           tabLabel={TABS.find((t) => t.id === tab)?.label ?? "All Items"}
-          full={user.tier >= 1}
+          full={user.tier >= 2}
           email={user.email}
           verified={user.email_verified}
           onClose={() => setExportOpen(false)}
@@ -1853,6 +1854,26 @@ const exportName = (label: string) => {
 type ExportScope = "shown" | "all" | "stack" | "sold";
 
 // Export the listings as an editable Excel workbook: 1) what to include, 2) download, share (phones) or email it.
+// Free plan: Excel export comes with Collector (the server refuses it too)
+function ExportLockedDialog({ onClose }: { onClose: () => void }) {
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-md" data-testid="export-locked">
+        <DialogHeader>
+          <DialogTitle className="font-heading uppercase tracking-tight">Export to Excel</DialogTitle>
+          <DialogDescription>
+            Your listings and sales as a spreadsheet come with a membership: one sheet with Collector, the full workbook (by Stakk, sent by
+            email) with Dealer.
+          </DialogDescription>
+        </DialogHeader>
+        <Button render={<a href="/support" />} className="w-full" data-testid="export-locked-plans">
+          See memberships
+        </Button>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function ExportDialog({
   shown,
   items,
@@ -1867,7 +1888,7 @@ function ExportDialog({
   items: CollectionItem[];
   stacks: Stack[];
   tabLabel: string;
-  full: boolean; // Collector and up: the full workbook, a sheet per Stakk, send by email (Free: one Listings sheet)
+  full: boolean; // Dealer: the full workbook, a sheet per Stakk, send by email (Collector: one Listings sheet)
   email: string; // "Email" sends the file to the account's own email
   verified: boolean; // …once that email is confirmed
   onClose: () => void;
@@ -2032,7 +2053,7 @@ function ExportDialog({
                 className="size-4 accent-sky-500"
                 data-testid="export-per-stack"
               />
-              Add a sheet for each Stakk{!full && " · Collector"}
+              Add a sheet for each Stakk{!full && " · Dealer"}
             </label>
             <div className="grid grid-cols-3 gap-2 pt-1" data-testid="export-summary">
               {(
@@ -2053,7 +2074,7 @@ function ExportDialog({
                 "Opens on a Summary sheet (totals by status and Stakk), then Listings and Sales."
               ) : (
                 <>
-                  One Listings sheet, sold ones included. The Summary, Sales and per-Stakk sheets and sending by email come with the Collector plan.{" "}
+                  One Listings sheet, sold ones included. The Summary, Sales and per-Stakk sheets and sending by email come with the Dealer plan.{" "}
                   <a href="/support" className="font-medium text-sky-300 underline-offset-2 hover:underline">
                     Support
                   </a>

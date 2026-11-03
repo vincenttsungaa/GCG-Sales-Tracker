@@ -19,8 +19,8 @@ const ROWS: [string, Cell, Cell, Cell][] = [
   ["Listings (not counting sold)", "100", "250", "Unlimited"],
   ["Stakks: folders, card count, filter, move to Storage", true, true, true],
   ["Each Stakk's value, sales and profit", true, true, true],
-  ["Excel export: one sheet of listings and sales", true, true, true],
-  ["Excel export: full workbook, by Stakk, send by email", false, true, true],
+  ["Excel export: one sheet of listings and sales", false, true, true],
+  ["Excel export: full workbook, by Stakk, send by email", false, false, true],
   ["Upload your own listing photos (Add Item)", true, true, true],
   ["Name with supporter badge (Limited: Founding supporter badge)", false, true, true],
   ["Statistics report", false, false, true],
@@ -165,6 +165,124 @@ const BMC_URL = "https://buymeacoffee.com/cardstakk/membership";
 
 // memberships are Buy Me a Coffee memberships (card payments by Stripe); the plan switches on by itself
 // when the BMC email matches a confirmed CardStakk account (backend/routers/bmc.py)
+interface TransferCheck {
+  done: boolean;
+  moving_listings: number;
+  moving_stakks: number;
+  deleting_listings: number;
+  deleting_stakks: number;
+  plan: string;
+  plan_until: string | null;
+  founding: boolean;
+}
+
+// site owner: move one account's listings, Stakks and plan into another (e.g. someone signed up again with a new email).
+// Check first shows what will happen; the move needs the receiving email typed again.
+function TransferTool() {
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [check, setCheck] = useState<TransferCheck | null>(null);
+  const [confirm, setConfirm] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const field = "min-h-10 border border-[#c3ccd8] bg-[#f7f8fa] px-3 text-sm";
+  const lbl = "flex min-w-56 flex-1 flex-col gap-1 text-xs font-semibold tracking-wider text-[#5b6470] uppercase";
+  const call = async (dryRun: boolean) => {
+    setBusy(true);
+    setMsg(null);
+    try {
+      const r = await apiPost<TransferCheck>("/admin/transfer", { from_email: from.trim(), to_email: to.trim(), dry_run: dryRun, confirm });
+      if (dryRun) setCheck(r);
+      else {
+        setCheck(null);
+        setConfirm("");
+        setMsg({ ok: true, text: `Done: ${r.moving_listings} listings and ${r.moving_stakks} Stakks moved to ${to.trim()}, with the ${r.plan} plan.` });
+      }
+    } catch (e) {
+      setMsg({ ok: false, text: errorText(e, "Couldn't move the account's data.") });
+    } finally {
+      setBusy(false);
+    }
+  };
+  const n = (count: number, word: string) => `${count} ${word}${count === 1 ? "" : "s"}`;
+  return (
+    <section className="mt-8 border border-dashed border-[#c3ccd8] bg-white p-5" data-testid="transfer-tool">
+      <h2 className="font-bold">Site owner: move an account&apos;s data to another account</h2>
+      <p className="mt-1 text-sm text-[#5b6470]">
+        Moves every listing and Stakk, and the plan (end date and Founding badge too). The receiving account&apos;s own listings and
+        Stakks are deleted first. The old account stays, empty, on Free.
+      </p>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          void call(true);
+        }}
+        className="mt-4 flex flex-wrap items-end gap-3"
+      >
+        <label className={lbl}>
+          From (old account)
+          <input type="email" required value={from} onChange={(e) => (setFrom(e.target.value), setCheck(null))} className={field} />
+        </label>
+        <label className={lbl}>
+          To (receiving account)
+          <input type="email" required value={to} onChange={(e) => (setTo(e.target.value), setCheck(null))} className={field} />
+        </label>
+        <button
+          type="submit"
+          disabled={busy}
+          className="flex min-h-10 items-center gap-2 rounded-md bg-[#4a6a94] px-4 text-sm font-semibold text-white hover:bg-[#3f5c82] disabled:opacity-60"
+        >
+          {busy && !check && <Loader2 className="size-4 animate-spin" aria-hidden />}
+          Check
+        </button>
+      </form>
+      {check && (
+        <div className="mt-4 border border-[#e8c9c7] bg-[#fbf3f2] p-4 text-sm" data-testid="transfer-check">
+          <ul className="list-disc space-y-1 pl-5 text-[#3d4550]">
+            <li>
+              Moves <b>{n(check.moving_listings, "listing")}</b> and <b>{n(check.moving_stakks, "Stakk")}</b> from {from.trim()} to {to.trim()}.
+            </li>
+            <li>
+              <b className="text-[#b42318]">Deletes</b> {to.trim()}&apos;s own {n(check.deleting_listings, "listing")} and{" "}
+              {n(check.deleting_stakks, "Stakk")}, for good.
+            </li>
+            <li>
+              {to.trim()} gets the <b>{check.plan}</b> plan
+              {check.plan_until ? ` until ${new Date(check.plan_until).toLocaleDateString()}` : ""}
+              {check.founding ? ", with the Founding badge" : ""}. {from.trim()} goes back to Free.
+            </li>
+          </ul>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void call(false);
+            }}
+            className="mt-4 flex flex-wrap items-end gap-3"
+          >
+            <label className={lbl}>
+              Type {to.trim()} to confirm
+              <input type="email" value={confirm} onChange={(e) => setConfirm(e.target.value)} className={field} />
+            </label>
+            <button
+              type="submit"
+              disabled={busy || confirm.trim().toLowerCase() !== to.trim().toLowerCase()}
+              className="flex min-h-10 items-center gap-2 rounded-md bg-[#b42318] px-4 text-sm font-semibold text-white hover:bg-[#912018] disabled:opacity-50"
+            >
+              {busy && <Loader2 className="size-4 animate-spin" aria-hidden />}
+              Move everything
+            </button>
+          </form>
+        </div>
+      )}
+      {msg && (
+        <p role="status" className={`mt-3 text-sm ${msg.ok ? "text-[#1f6f43]" : "text-[#b42318]"}`}>
+          {msg.text}
+        </p>
+      )}
+    </section>
+  );
+}
+
 function BecomeSupporter({ user }: { user: User | null }) {
   const paid = !!user && !user.is_admin && user.tier > 0;
   const button =
@@ -375,6 +493,7 @@ export default function Support({ user }: { user: User | null }) {
           <>
             <PreviewPlan user={user} />
             <OwnerTool />
+            <TransferTool />
           </>
         )}
       </main>

@@ -4,7 +4,7 @@ import { Backdrop } from "@/pages/Landing";
 // /privacy and /terms — plain-English pages, open to everyone (signed in or not).
 // A sensible starting point written for a small, free, fan-made site — not legal advice.
 export const CONTACT_EMAIL = "gcgsalestrackeradmin.au@gmail.com";
-const UPDATED = "27 October 2026";
+const UPDATED = "3 November 2026";
 
 function H({ children }: { children: ReactNode }) {
   return <h2 className="mt-8 text-lg font-bold">{children}</h2>;
@@ -33,17 +33,17 @@ function Privacy() {
       <h1 className="text-3xl font-bold">Privacy Policy</h1>
       <p className="mt-2 text-sm text-[#5b6470]">Last updated {UPDATED}</p>
       <P>
-        CardStakk is a free, unofficial, fan-made tool for tracking a Gundam Card Game collection and sales. It is run by an individual in
-        Australia and, for now, is only available in Australia. This page explains what we store about you, why, and what you can do
-        about it.
+        CardStakk is a free, unofficial, fan-made tool for tracking a Gundam Card Game collection and sales, with optional paid
+        memberships. It is run by an individual in Australia. This page explains what we store about you, why, and how
+        long we keep it.
       </P>
 
       <H>What we collect</H>
       <L
         items={[
           <>
-            <b>Your account:</b> your email address and your password. Passwords are stored only in scrambled (hashed) form — nobody,
-            including us, can read them.
+            <b>Your account:</b> your email address, your password, your display name and the profile picture you pick. Passwords are
+            stored only in scrambled (hashed) form — nobody, including us, can read them.
           </>,
           <>
             <b>What you enter:</b> your listings, Stakks, prices, notes, deals and any photos you add. This can include names of buyers you
@@ -54,7 +54,11 @@ function Privacy() {
             repeated wrong passwords and spam sign-ups.
           </>,
           <>
-            <b>Settings on your device:</b> your colour theme is saved in your own browser, not on our servers.
+            <b>Settings on your device:</b> your colour theme, and whether you closed the &ldquo;add to home screen&rdquo; message, are
+            saved in your own browser, not on our servers.
+          </>,
+          <>
+            <b>Feedback you send:</b> your message, with your account email, name and plan so we can reply.
           </>,
         ]}
       />
@@ -64,7 +68,9 @@ function Privacy() {
       <P>
         Supporter memberships (Collector and Dealer) are paid through Buy Me a Coffee, which takes card payments with Stripe. We
         never see your card details. Buy Me a Coffee tells us the email address you used, your name there and which membership you
-        have, so we can switch your plan on and off. Use the same email as your CardStakk account. While you're a supporter, your display name (the name in Account settings, never your email) is shown publicly in the
+        have, plus its start and end dates, so we can switch your plan on and off. Use the same email as your CardStakk account. If you
+        join before signing up, we keep that membership information so your plan switches on when you sign up and confirm the same email.
+        While you're a supporter, your display name (the name in Account settings, never your email) is shown publicly in the
         supporter list on the CardStakk home page. You can change that name at any time.
       </P>
 
@@ -72,7 +78,7 @@ function Privacy() {
       <L
         items={[
           "To give you your account and show you your own listings and sales.",
-          "To send account emails: confirming your email address and resetting your password. We don't send marketing emails.",
+          "To send the emails the site needs: confirming your email address, resetting your password, your Excel export when you ask for it, and membership emails (when it starts, and a reminder before it ends). We don't send marketing emails.",
           "To keep the site secure and working.",
         ]}
       />
@@ -82,19 +88,6 @@ function Privacy() {
         We keep your account and listings until you delete them or ask us to delete your account. When your account is deleted, your
         listings, Stakks and login details are deleted with it. Copies in database backups are removed as those backups expire.
       </P>
-
-      <H>Your choices</H>
-      <L
-        items={[
-          "See and change your listings at any time in the app, and export them to Excel.",
-          <>
-            Ask us for a copy of your data, to correct it, or to delete your account: email <Mail /> from the address you signed up with.
-          </>,
-          <>
-            If you&apos;re not happy with how we&apos;ve handled your information, tell us at <Mail />.
-          </>,
-        ]}
-      />
 
       <H>Children</H>
       <P>
@@ -148,8 +141,8 @@ function Terms() {
       <H>Your data</H>
       <P>
         What you enter stays yours. You let us store and show it to you so the site can work — nothing more. Prices, values and totals in
-        CardStakk are your own entries and calculations, not market prices or financial advice. Please keep your own backups (the Export
-        to Excel button makes one) — we can&apos;t promise data will never be lost.
+        CardStakk are your own entries and calculations, not market prices or financial advice. Please keep your own backups (Export
+        to Excel makes one, with a Collector or Dealer membership) — we can&apos;t promise data will never be lost.
       </P>
 
       <H>Fair use</H>
@@ -166,9 +159,10 @@ function Terms() {
       <H>Supporter memberships</H>
       <L
         items={[
-          "CardStakk is free to use. Collector and Dealer are optional monthly memberships, priced in Australian dollars on the Support page, that help pay for running and upgrading the site.",
+          "CardStakk is free to use. Collector and Dealer are optional memberships, priced in Australian dollars on the Support page, that help pay for running and upgrading the site.",
           "A membership unlocks the extra features listed on the Support page while it's active. Features marked \"Coming soon\" aren't available yet.",
-          "Memberships are paid and managed through Buy Me a Coffee, under its terms. They renew monthly until you cancel there; you can cancel at any time, and your plan stays until the end of the period you paid for.",
+          "Memberships are paid and managed through Buy Me a Coffee, under its terms. They renew each month until you cancel there; you can cancel at any time, and your plan stays until the end of the period you paid for.",
+          "Your plan switches on by itself when the email you used on Buy Me a Coffee matches your confirmed CardStakk email. If you used a different email, contact us and we'll link it by hand.",
           "When a membership ends, nothing is deleted: your listings stay, and you can't add more than the Free plan allows until you're back under its limit.",
           "A membership doesn't buy priority support or a guarantee that the service keeps running (CardStakk is run by one person, and we'll give notice before any big change so you can export your data).",
         ]}

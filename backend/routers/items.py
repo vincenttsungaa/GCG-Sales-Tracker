@@ -377,8 +377,10 @@ async def _export_items(ids: list[str]) -> list[dict]:
 
 @router.post("/items/export")
 async def export_items(body: ExportRequest, user: dict = Depends(current_user)):
-    """The listings as an .xlsx download."""
-    data, _ = await _export_workbook(body, full=effective_tier(user) >= 1)
+    """The listings as an .xlsx download. Collector: one Listings sheet; Dealer: the full workbook."""
+    if effective_tier(user) < 1:
+        raise HTTPException(status_code=403, detail="Excel export comes with the Collector plan — see the Support page.")
+    data, _ = await _export_workbook(body, full=effective_tier(user) >= 2)
     name = export_filename(body.label)
     return Response(
         content=data,
@@ -389,9 +391,9 @@ async def export_items(body: ExportRequest, user: dict = Depends(current_user)):
 
 @router.post("/items/export/email")
 async def email_export(body: EmailExportRequest, user: dict = Depends(current_user)):
-    """Email the .xlsx to the account's own confirmed email (SMTP settings in backend/.env). Collector and up."""
-    if effective_tier(user) < 1:
-        raise HTTPException(status_code=403, detail="Sending the export by email comes with the Collector plan — see the Support page.")
+    """Email the .xlsx to the account's own confirmed email (SMTP settings in backend/.env). Dealer."""
+    if effective_tier(user) < 2:
+        raise HTTPException(status_code=403, detail="Sending the export by email comes with the Dealer plan — see the Support page.")
     if not user.get("email_verified"):
         raise HTTPException(status_code=400, detail="Confirm your email first: the file is sent to your account's email.")
     data, count = await _export_workbook(body, full=True)
