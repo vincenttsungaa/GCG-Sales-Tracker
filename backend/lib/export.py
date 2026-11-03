@@ -8,6 +8,7 @@ so editing a price or a quantity updates them.
 
 from __future__ import annotations
 
+import logging
 import os
 import smtplib
 from datetime import datetime
@@ -17,6 +18,8 @@ from io import BytesIO
 import re
 
 from lib.email_design import add_html, file_box, quote, render, rows
+
+logger = logging.getLogger(__name__)
 from openpyxl import Workbook
 from openpyxl.formatting.rule import FormulaRule
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
@@ -365,6 +368,11 @@ def send_workbook(
         ),
     )
     msg.add_attachment(data, maintype="application", subtype=XLSX_MIME.split("/", 1)[1], filename=filename)
+    from lib.auth import _NO_MAIL
+
+    if to.lower().endswith(_NO_MAIL):  # test address: log instead of sending, like the account emails
+        logger.warning("EMAIL (test address, not sent) to %s — %s (%s)", to, msg["Subject"], filename)
+        return
 
     if os.environ.get("SMTP_SSL", "").lower() in ("1", "true", "yes") or port == 465:
         with smtplib.SMTP_SSL(host, port, timeout=30) as smtp:

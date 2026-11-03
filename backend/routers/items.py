@@ -445,5 +445,6 @@ async def email_export(body: EmailExportRequest, user: dict = Depends(current_us
     except EmailNotConfigured as e:
         raise HTTPException(status_code=503, detail=str(e)) from e
     except (smtplib.SMTPException, OSError) as e:
-        raise HTTPException(status_code=502, detail=f"Could not send the email: {e}") from e
+        logger.error("export email to %s failed: %s", user["email"], e)
+        raise HTTPException(status_code=502, detail="Couldn't send the email right now — please try again later.") from e
     return {"sent": True, "to": user["email"], "count": count}

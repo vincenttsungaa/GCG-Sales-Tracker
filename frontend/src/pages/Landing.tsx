@@ -446,7 +446,7 @@ export default function Landing({
             (below on phones), with two notes floating over it */}
         <section className={`${WRAP} grid items-center gap-8 pt-9 pb-14 sm:pt-14 md:grid-cols-[1.05fr_1fr] md:gap-12 md:pb-16`}>
           <div className="min-w-0">
-          <span className={`${PLATE} ${HERO_PLATE} text-[10.5px] text-[#f3d38a] italic max-sm:whitespace-normal`}>
+          <span className={`${PLATE} ${HERO_PLATE} text-[10.5px] text-[#f3d38a] italic max-lg:whitespace-normal`}>
             {/* two trading cards: the star is kept for supporters */}
             <svg viewBox="0 0 16 16" aria-hidden className="size-[13px] flex-none">
               <rect x="1.5" y="3" width="8" height="11" rx="1.2" transform="rotate(-10 5.5 8.5)" fill="none" stroke="currentColor" strokeWidth="1.4" />

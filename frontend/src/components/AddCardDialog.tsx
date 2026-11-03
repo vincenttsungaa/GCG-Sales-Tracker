@@ -266,22 +266,26 @@ function CardDetailsForm({
   // Copies to sell — set with the − / + on the card image (no Qty box).
   const [quantity, setQuantity] = useState(1);
   const [notes, setNotes] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  // a price problem is shown under its own box, which gets the cursor (like the sell window)
+  const [error, setError] = useState<{ field: "price" | "purchase"; text: string } | null>(null);
+  const fail = (field: "price" | "purchase", text: string) => {
+    setError({ field, text });
+    document.getElementById(`add-card-${field}`)?.focus();
+    return null;
+  };
 
   // Checked prices; null (with the error shown) if invalid. In a bundle the price is optional
   // (the card can share the bundle's price).
   const readPrices = (allowNoPrice: boolean): { price: number | null; purchase: number | null } | null => {
     const priceNum = price.trim() === "" ? null : Number(price);
     if ((priceNum == null && !allowNoPrice) || (priceNum != null && (Number.isNaN(priceNum) || priceNum < 0))) {
-      setError(priceNum == null ? "Enter an asking price (0 if it's free)." : "The asking price can't be negative.");
-      return null;
+      return fail("price", priceNum == null ? "Enter an asking price (0 if it's free)." : "The asking price can't be negative.");
     }
     let purchaseNum: number | null = null;
     if (purchase.trim() !== "") {
       purchaseNum = Number(purchase);
       if (Number.isNaN(purchaseNum) || purchaseNum < 0) {
-        setError("Purchase price must be zero or more.");
-        return null;
+        return fail("purchase", "Purchase price must be zero or more.");
       }
     }
     return { price: priceNum, purchase: purchaseNum };
@@ -430,8 +434,18 @@ function CardDetailsForm({
             placeholder="e.g. 12.50"
             autoFocus
             value={price}
-            onChange={(e) => setPrice(e.target.value)}
+            onChange={(e) => {
+              setPrice(e.target.value);
+              if (error?.field === "price") setError(null);
+            }}
+            aria-invalid={error?.field === "price" || undefined}
+            aria-describedby={error?.field === "price" ? "add-card-price-error" : undefined}
           />
+          {error?.field === "price" && (
+            <p id="add-card-price-error" className="text-sm text-red-400" role="alert">
+              {error.text}
+            </p>
+          )}
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="add-card-purchase" className={LABEL}>
@@ -446,8 +460,18 @@ function CardDetailsForm({
             step="0.01"
             placeholder="What you paid"
             value={purchase}
-            onChange={(e) => setPurchase(e.target.value)}
+            onChange={(e) => {
+              setPurchase(e.target.value);
+              if (error?.field === "purchase") setError(null);
+            }}
+            aria-invalid={error?.field === "purchase" || undefined}
+            aria-describedby={error?.field === "purchase" ? "add-card-purchase-error" : undefined}
           />
+          {error?.field === "purchase" && (
+            <p id="add-card-purchase-error" className="text-sm text-red-400" role="alert">
+              {error.text}
+            </p>
+          )}
         </div>
         <div className="col-span-2 flex flex-col gap-1.5">
           <Label htmlFor="add-card-notes" className={LABEL}>
@@ -463,12 +487,6 @@ function CardDetailsForm({
           />
         </div>
       </div>
-
-      {error && (
-        <p className="text-sm text-red-400" role="alert">
-          {error}
-        </p>
-      )}
 
       <DialogFooter className="gap-2 sm:justify-between">
         <Button variant="ghost" onClick={onBack} data-testid="add-card-back">

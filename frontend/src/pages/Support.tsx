@@ -315,7 +315,8 @@ function BecomeSupporter({ user }: { user: User | null }) {
               </>
             )}
           </p>
-          {!user.email_verified && (
+          {/* only before a plan is on: a plan the owner set by hand is already on, confirmed or not */}
+          {!user.email_verified && !paid && (
             <p className="mt-3 text-sm text-[#8a5a00]">Confirm your email first (check your inbox): perks switch on once it&apos;s confirmed.</p>
           )}
           <a href={BMC_URL} target="_blank" rel="noopener noreferrer" className={`mt-4 ${button}`}>
