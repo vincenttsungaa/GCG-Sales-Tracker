@@ -740,5 +740,6 @@ nav[data-testid="pagination-bottom"] { overflow-anchor: none; }
 /* Small text at 4.5:1 or better: Frost's cyan and Ash Crimson (dark)'s crimson prices are a shade deeper / lighter
    than their accent (3.75:1 and 3.8:1 before). Buttons and other accents keep the theme colour. */
 :root[data-theme-preview="frost"] :is([data-testid="dashboard"], [role="dialog"]) :is(.text-sky-300, .text-sky-400),
-:root[data-theme-preview="frost"] [data-testid="dashboard"] > header [data-testid="app-tagline"] { color: #0b7592 !important; }
+:root[data-theme-preview="frost"] [data-testid="dashboard"] > header [data-testid="app-tagline"],
+:root[data-theme-preview="frost"] [data-testid="account-page"] [class*="text-[var(--rt-amber)]"] { color: #0b7592 !important; }
 :root[data-theme-preview="ash-dark"] :is([data-testid="dashboard"], [role="dialog"]) :is(.text-sky-300, .text-sky-400) { color: #ff6b71 !important; }

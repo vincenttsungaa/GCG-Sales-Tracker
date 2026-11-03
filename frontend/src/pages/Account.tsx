@@ -214,24 +214,24 @@ export default function Account({ user }: { user: User }) {
 
   return (
     <div className="min-h-svh bg-[var(--rt-bg)] font-sans text-[var(--rt-text)]" data-testid="account-page">
-      {/* the same top bar as the landing page: the app's name plate, then back to the listings */}
-      <header className="sticky top-0 z-30 border-b border-[#dbe1e8] bg-white">
+      {/* the same top bar as the landing page, in the picked theme's colours: the name plate, then back to the listings */}
+      <header className="sticky top-0 z-30 border-b border-[var(--rt-line)] bg-[var(--rt-panel)]">
         <div className="mx-auto flex min-h-[60px] max-w-[1100px] items-stretch justify-between gap-4 pr-4 sm:pr-6">
           <a
             href="/"
             aria-label="CardStakk home"
-            className="relative flex items-center gap-2.5 pr-11 pl-4 [clip-path:polygon(0_0,100%_0,calc(100%-22px)_100%,0_100%)] shadow-[inset_-1px_0_0_#dbe1e8] sm:pl-6"
+            className="relative flex items-center gap-2.5 pr-11 pl-4 [clip-path:polygon(0_0,100%_0,calc(100%-22px)_100%,0_100%)] shadow-[inset_-1px_0_0_var(--rt-line)] sm:pl-6"
           >
             <img src="/favicon.svg" alt="" aria-hidden className="size-8 shrink-0" />
             {/* phones: the icon only, so the long "Back to your listings" button fits */}
             <span className="max-sm:hidden">
               <span className="block text-[17px] leading-[1.15] font-bold tracking-[0.16em] uppercase italic">CardStakk</span>
-              <span className="block text-[8.5px] tracking-[0.16em] text-[#4a6a94] uppercase">GCG Sales Tracker</span>
+              <span className="block text-[8.5px] tracking-[0.16em] text-[var(--rt-amber)] uppercase">GCG Sales Tracker</span>
             </span>
-            <span aria-hidden className="absolute inset-y-0 right-[9px] w-1 -skew-x-[20deg] bg-[#4a6a94]" />
+            <span aria-hidden className="absolute inset-y-0 right-[9px] w-1 -skew-x-[20deg] bg-[var(--rt-amber)]" />
           </a>
           <nav aria-label="Main" className="flex items-center text-sm">
-            <a href="/" className="inline-flex min-h-9 items-center rounded-lg bg-[#8a1c1a] px-3.5 font-semibold whitespace-nowrap text-white hover:bg-[#6e1513]">
+            <a href="/" className="inline-flex min-h-9 items-center rounded-lg bg-[var(--rt-amber)] px-3.5 font-semibold whitespace-nowrap text-[var(--acc-on-accent)] hover:brightness-110">
               Back to your listings
             </a>
           </nav>
