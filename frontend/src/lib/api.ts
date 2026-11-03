@@ -18,9 +18,21 @@ export class ApiError extends Error {
 
 type JsonBody = unknown;
 
+// No answer at all (offline, connection dropped): fetch only says "Failed to fetch", so say this instead.
+export const OFFLINE = "Couldn’t reach CardStakk — check your connection and try again.";
+
+export async function apiFetch(url: string, init?: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, init);
+  } catch {
+    throw new Error(OFFLINE);
+  }
+}
+
 // The backend's own message (e.g. "cannot sell 3 units — only 2 owned") when it sent one.
 // For a 422 field error: "image_url: String should match pattern …".
 export function errorText(e: unknown, fallback: string): string {
+  if (e instanceof Error && e.message === OFFLINE) return OFFLINE;
   const detail = e instanceof ApiError ? (e.body as { detail?: unknown } | null)?.detail : undefined;
   if (typeof detail === "string") return detail;
   const first = Array.isArray(detail) ? (detail[0] as { loc?: unknown[]; msg?: string } | undefined) : undefined;
@@ -28,7 +40,7 @@ export function errorText(e: unknown, fallback: string): string {
 }
 
 async function request<T>(method: string, path: string, body?: JsonBody): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await apiFetch(`${BASE}${path}`, {
     method,
     headers: body === undefined ? undefined : { "Content-Type": "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body),
