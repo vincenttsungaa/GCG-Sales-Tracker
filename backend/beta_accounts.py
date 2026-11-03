@@ -5,6 +5,7 @@ Run from backend/ with the venv on (uses MONGO_URL / DB_NAME from backend/.env).
     python beta_accounts.py create 5      # make 5 more, numbered after the ones that exist
     python beta_accounts.py list          # who exists, their plan, how many listings each has
     python beta_accounts.py plan dealer   # put every beta account on Dealer (or: free / collector), no end date
+    python beta_accounts.py reset 8 9 10  # these back to brand new: no listings or Stakks, logged out, same password and plan
     python beta_accounts.py delete        # remove every beta account and everything in it (asks first)
 
 The emails and passwords are saved to backend/beta-accounts.csv (kept out of git) and printed here.
@@ -87,6 +88,30 @@ async def delete() -> None:
     print(f"Deleted {len(users)} beta accounts.")
 
 
+async def reset(numbers: list[int]) -> None:
+    """Back to how create() made it, for handing to a new tester: listings, Stakks, log-ins, picture, the
+    welcome window and the feedback form all start again. The password and plan stay."""
+    for n in numbers:
+        email = email_for(n)
+        user = await db.users.find_one({"email": email, "beta": True}, {"id": 1})
+        if not user:
+            print(f"{email}: no beta account, skipped.")
+            continue
+        uid = user["id"]
+        items = (await db.items.delete_many({"owner_id": uid})).deleted_count
+        stakks = (await db.stacks.delete_many({"owner_id": uid})).deleted_count
+        await db.sessions.delete_many({"user_id": uid})
+        await db.user_tokens.delete_many({"user_id": uid})
+        await db.users.update_one(
+            {"id": uid},
+            {
+                "$set": {"name": f"Beta Tester {n:02d}", "avatar": None, "picture": None, "email_verified": True},
+                "$unset": {k: "" for k in ("beta_welcomed", "beta_feedback_sent", "preview_tier", "reminded_for", "plan_request")},
+            },
+        )
+        print(f"{email}: like new ({items} listings and {stakks} Stakks removed, logged out everywhere). Same password.")
+
+
 if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else ""
     if cmd == "create":
@@ -95,6 +120,8 @@ if __name__ == "__main__":
         asyncio.run(set_plan(sys.argv[2].lower()))
     elif cmd == "list":
         asyncio.run(show())
+    elif cmd == "reset" and len(sys.argv) > 2:
+        asyncio.run(reset([int(x) for x in sys.argv[2:]]))
     elif cmd == "delete":
         asyncio.run(delete())
     else:
