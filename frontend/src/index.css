@@ -722,3 +722,13 @@ nav[data-testid="pagination-bottom"] { overflow-anchor: none; }
 :root:is([data-theme-preview$="-dark"], [data-theme-preview="overdrive"], [data-theme-preview="gunmetal"], [data-theme-preview="crimson"]) [data-testid="account-page"] {
   --acc-danger: #ff8a80; --acc-ok: #6fd49a; --acc-warn: #f0c46a; --acc-on-accent: var(--rt-cta-ink, #2a2d31);
 }
+
+/* iPhone / iPad Safari zooms the page in when a text box with letters under 16px gets the focus (logging in,
+   searching), and stays zoomed after. 16px boxes there stop it; everywhere else they keep their own size. */
+@supports (-webkit-touch-callout: none) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+  select,
+  textarea {
+    font-size: max(16px, 1em) !important;
+  }
+}
