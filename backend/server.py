@@ -51,8 +51,8 @@ ALLOWED_ORIGINS = {
 }
 # what the website itself may load: its own files, Google Fonts, card pictures from anywhere (https), your photos (data:/blob:)
 CSP_PAGE = (
-    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
-    "font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self'; worker-src 'self' blob:; "
+    "default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+    "font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://cloudflareinsights.com; worker-src 'self' blob:; "
     "manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
 )
 CSP_SVG = "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; sandbox"  # pictures the server draws

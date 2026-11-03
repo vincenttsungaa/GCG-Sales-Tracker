@@ -62,7 +62,7 @@ function Privacy() {
           </>,
         ]}
       />
-      <P>We don&apos;t use advertising, analytics or tracking cookies, and we don&apos;t sell or rent your information to anyone.</P>
+      <P>We don&apos;t sell or rent your information to anyone.</P>
 
       <H>If you become a supporter</H>
       <P>
