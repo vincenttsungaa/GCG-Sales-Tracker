@@ -1,5 +1,7 @@
 # Putting CardStakk online
 
+No card for Oracle? Run it on your own Windows PC or laptop instead: see [windows/WINDOWS.md](windows/WINDOWS.md).
+
 How it fits together:
 
 - One small Oracle Cloud server runs the backend. The backend also serves the built frontend.
