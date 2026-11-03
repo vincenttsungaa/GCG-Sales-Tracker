@@ -743,3 +743,34 @@ nav[data-testid="pagination-bottom"] { overflow-anchor: none; }
 :root[data-theme-preview="frost"] [data-testid="dashboard"] > header [data-testid="app-tagline"],
 :root[data-theme-preview="frost"] [data-testid="account-page"] [class*="text-[var(--rt-amber)]"] { color: #0b7592 !important; }
 :root[data-theme-preview="ash-dark"] :is([data-testid="dashboard"], [role="dialog"]) :is(.text-sky-300, .text-sky-400) { color: #ff6b71 !important; }
+
+/* ---- Statistics: the page takes the colours of the picked theme. Layout colours come from the theme's
+   --rt-* ones; the status colours (profit, loss, warnings) are fixed, with lighter versions on dark themes ---- */
+[data-testid="stats-page"] {
+  --st-ink: var(--rt-text); --st-sub: color-mix(in srgb, var(--rt-text) 75%, var(--rt-label)); --st-muted: var(--rt-label);
+  --st-line: var(--rt-line); --st-grid-line: color-mix(in srgb, var(--rt-line) 60%, var(--rt-panel));
+  --st-soft: color-mix(in srgb, var(--rt-line) 45%, var(--rt-panel)); --st-p2: var(--rt-panel-2);
+  --st-acc: var(--rt-amber); --st-acc-text: var(--rt-amber); --st-on-acc: #ffffff; --st-acc-bg: color-mix(in srgb, var(--rt-amber) 12%, var(--rt-panel));
+  --st-chip: var(--rt-text); --st-chip-text: var(--rt-panel);
+  --st-cost: color-mix(in srgb, var(--rt-label) 60%, var(--rt-panel)); --st-nocost: color-mix(in srgb, var(--rt-label) 25%, var(--rt-panel));
+  --st-profit: #2f8a5f; --st-good: #1f6f43; --st-good-bg: #e4f4ea;
+  --st-bad: #b42318; --st-bad-bg: #fdecec; --st-bad-line: #f3c2c2; --st-bad-ink: #5b2020;
+  --st-warn: #8a5a00; --st-warn-ink: #5c3d00; --st-warn-bg: #fdf0d8; --st-warn-bg2: #fff4dc; --st-warn-line: #efc56b;
+  --st-orange: #c27c0e; --st-on-orange: #ffffff; --st-purple: #7c4dbd; --st-purple-bg: #ede7f8; --st-purple-ink: #5b3a9c;
+  --st-grid: color-mix(in srgb, var(--rt-amber) 7%, transparent); --st-grid-2: color-mix(in srgb, var(--rt-amber) 10%, transparent);
+  --st-vignette: color-mix(in srgb, var(--rt-bg) 85%, transparent);
+}
+:root:not([data-theme-preview]) [data-testid="stats-page"],
+:root:is([data-theme-preview$="-dark"], [data-theme-preview="overdrive"], [data-theme-preview="gunmetal"], [data-theme-preview="crimson"]) [data-testid="stats-page"] {
+  --st-on-acc: var(--rt-cta-ink, #1b1d21); --st-chip: var(--rt-plate, #16181b); --st-chip-text: var(--rt-text);
+  --st-cost: color-mix(in srgb, var(--rt-label) 45%, var(--rt-panel)); --st-nocost: color-mix(in srgb, var(--rt-label) 22%, var(--rt-panel));
+  --st-profit: #4fbf85; --st-good: #6fd49a; --st-good-bg: rgba(111, 212, 154, 0.14);
+  --st-bad: #ff8a80; --st-bad-bg: rgba(255, 138, 128, 0.14); --st-bad-line: rgba(255, 138, 128, 0.35); --st-bad-ink: #ffd0cb;
+  --st-warn: #f0c46a; --st-warn-ink: #f6dca0; --st-warn-bg: rgba(240, 196, 106, 0.14); --st-warn-bg2: rgba(240, 196, 106, 0.1); --st-warn-line: rgba(240, 196, 106, 0.35);
+  --st-orange: #e8a93a; --st-on-orange: #1b1d21; --st-purple: #a98ae6; --st-purple-bg: rgba(169, 138, 230, 0.16); --st-purple-ink: #cdb8f5;
+  --st-acc-bg: color-mix(in srgb, var(--rt-amber) 18%, var(--rt-panel));
+  --st-grid: rgba(255, 255, 255, 0.035); --st-grid-2: rgba(255, 255, 255, 0.05);
+}
+/* accent words in small text: Frost's cyan a shade deeper, Ash Crimson (dark)'s crimson a shade lighter (4.5:1) */
+:root[data-theme-preview="frost"] [data-testid="stats-page"] { --st-acc-text: #0b7592; }
+:root[data-theme-preview="ash-dark"] [data-testid="stats-page"] { --st-acc-text: #ff6b71; }

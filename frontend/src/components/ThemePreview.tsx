@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
-// Colour themes. Each is a palette in index.css (:root[data-theme-preview=...]); "graphite" is the
-// original dark look with no attribute. Pearl is the default; the choice is remembered in this
+// Colour themes. Each is a palette in index.css (:root[data-theme-preview=...]); the plain :root
+// colours there are the shared base they build on. Pearl is the default; the choice is remembered in this
 // browser, and index.html applies it before the app loads so the page doesn't flash the wrong colours
 // (keep its list in step with this one). Picked on the Account page.
 // swatch: background, panel, accent — for the preview cards
@@ -14,7 +14,6 @@ export const THEMES = [
   ["frost-dark", "Frost (dark)", ["#0e171d", "#15222b", "#4fc8ea"]],
   ["overdrive-light", "Overdrive (light)", ["#f3eff9", "#ffffff", "#c2185b"]],
   ["overdrive", "Overdrive (dark)", ["#171021", "#241933", "#ff5fa2"]],
-  ["graphite", "Graphite", ["#2a2d31", "#3a3e44", "#e8a93a"]],
   ["gunmetal", "Gunmetal", ["#1b1d21", "#262a2f", "#e8a93a"]],
   ["crimson", "Crimson Night", ["#161112", "#231a1b", "#e0b14d"]],
 ] as const;
@@ -35,8 +34,7 @@ export default function ThemePicker() {
   const [theme, setTheme] = useState(saved);
   useEffect(() => {
     const root = document.documentElement;
-    if (theme === "graphite") delete root.dataset.themePreview;
-    else root.dataset.themePreview = theme;
+    root.dataset.themePreview = theme;
     try {
       localStorage.setItem(THEME_KEY, theme);
     } catch {

@@ -31,8 +31,8 @@
       try {
         var t = localStorage.getItem("cardstakk:theme") || "pearl";
         // a theme that was removed falls back to Pearl (keep this list in step with ThemePreview.tsx)
-        if (["pearl", "pearl-dark", "ash", "ash-dark", "frost", "frost-dark", "overdrive-light", "overdrive", "graphite", "gunmetal", "crimson"].indexOf(t) < 0) t = "pearl";
-        if (t !== "graphite") document.documentElement.dataset.themePreview = t;
+        if (["pearl", "pearl-dark", "ash", "ash-dark", "frost", "frost-dark", "overdrive-light", "overdrive", "gunmetal", "crimson"].indexOf(t) < 0) t = "pearl";
+        document.documentElement.dataset.themePreview = t;
       } catch (e) {
         document.documentElement.dataset.themePreview = "pearl";
       }
