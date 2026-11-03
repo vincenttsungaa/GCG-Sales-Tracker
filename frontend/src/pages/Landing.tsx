@@ -23,12 +23,13 @@ export interface User {
   tier_until: string | null; // when a membership ends (ISO), if it does
   created_at?: string | null; // when the account was made (ISO); very old accounts may not have it
   founding?: boolean; // Founding Supporter (gold badge), while on a paid plan
+  beta_feedback_sent?: boolean; // sent the beta questionnaire: the form then asks about bugs only
 }
 
-// signup → the email first, then "password" asks for the password (one less field up front)
 // Closed beta: sign-ups and memberships are paused (keep in step with CLOSED_BETA in backend/lib/auth.py)
 export const CLOSED_BETA = true;
 
+// signup → the email first, then "password" asks for the password (one less field up front)
 type Mode = "signup" | "password" | "login" | "forgot" | "reset";
 
 const DISCLAIMER =

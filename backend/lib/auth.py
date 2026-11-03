@@ -305,6 +305,7 @@ def public_user(user: dict) -> dict:
         "founding": bool(user.get("founding")) and effective_tier(user) > 0,
         "tier_until": user["tier_until"].isoformat() + "Z" if user.get("tier_until") else None,
         "created_at": user["created_at"].isoformat() + "Z" if user.get("created_at") else None,  # shown as "Joined …"
+        "beta_feedback_sent": bool(user.get("beta_feedback_sent")),  # the beta form then asks about bugs only
     }
 
 
