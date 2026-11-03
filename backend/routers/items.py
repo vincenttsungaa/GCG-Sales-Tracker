@@ -43,12 +43,31 @@ async def list_items():
 _add_locks: dict[str, asyncio.Lock] = {}
 
 
+async def _unsold_keys() -> set[str]:
+    docs = await db.items.find({"status": {"$ne": "sold"}}, {"_id": 0, "id": 1, "split_from": 1}).to_list(None)
+    return {d.get("split_from") or d["id"] for d in docs}
+
+
 async def _listing_count() -> int:
     """Unsold listings for the plan limit. Copies split off a listing (1 of 2 to Pending or Storage,
     or a restored sale that kept its own row) count as that same listing, so splitting never
     pushes anyone over their limit: only adding new cards does."""
-    docs = await db.items.find({"status": {"$ne": "sold"}}, {"_id": 0, "id": 1, "split_from": 1}).to_list(None)
-    return len({d.get("split_from") or d["id"] for d in docs})
+    return len(await _unsold_keys())
+
+
+async def _check_restore_limit(doc: dict, user: dict) -> None:
+    """Bringing a sale back (Sold → For Sale, Pending or Storage) is a listing again: refused at the plan limit,
+    like adding one, unless it goes back into a listing that's still there (then it isn't a new one)."""
+    limit = listing_limit(user)
+    if limit is None:
+        return
+    keys = await _unsold_keys()
+    if (doc.get("split_from") or doc["id"]) not in keys and len(keys) >= limit:
+        raise HTTPException(
+            status_code=403,
+            detail=f"You've reached the {limit}-listing limit on the {PLANS[effective_tier(user)]['name']} plan — "
+            "bringing this sale back would go over it. Upgrade on the Support page, or sell or delete a listing first.",
+        )
 
 
 @router.post("/items", response_model=CollectionItem, status_code=201)
@@ -163,11 +182,20 @@ async def _split_origin(doc: dict) -> dict | None:
 
 
 @router.patch("/items/{item_id}/status", response_model=CollectionItem)
-async def update_status(item_id: str, input: StatusUpdate):
+async def update_status(item_id: str, input: StatusUpdate, user: dict = Depends(current_user)):
     doc = await _load(item_id)
 
     if input.status == "sold" and doc["status"] == "sold":
         raise HTTPException(status_code=422, detail="this item is already sold")
+    if doc["status"] == "sold" and input.status != "sold":
+        # the same one-at-a-time lock as adding, so restores sent together can't all slip under the limit
+        async with _add_locks.setdefault(user["id"], asyncio.Lock()):
+            await _check_restore_limit(doc, user)
+            return await _apply_status(item_id, doc, input)
+    return await _apply_status(item_id, doc, input)
+
+
+async def _apply_status(item_id: str, doc: dict, input: StatusUpdate) -> CollectionItem:
 
     update: dict = {"status": input.status}
     owned = doc["quantity"]

@@ -39,8 +39,49 @@ async def lifespan(app: FastAPI):
     client.close()
 
 
+# The live site (COOKIE_SECURE=true, served over https): the API's /docs pages are off, and the browser checks below apply
+PRODUCTION = os.environ.get("COOKIE_SECURE", "").lower() in ("1", "true", "yes")
+
 # Create the main app without a prefix
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(lifespan=lifespan, docs_url=None if PRODUCTION else "/docs", redoc_url=None, openapi_url=None if PRODUCTION else "/openapi.json")
+
+MAX_BODY = 3 * 1024 * 1024  # the largest thing sent is a listing with a photo (~600 KB) or an export of every listing
+ALLOWED_ORIGINS = {
+    o.strip().rstrip("/") for o in (os.environ.get("CORS_ORIGINS", "") + "," + os.environ.get("APP_URL", "")).split(",") if o.strip()
+}
+# what the website itself may load: its own files, Google Fonts, card pictures from anywhere (https), your photos (data:/blob:)
+CSP_PAGE = (
+    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+    "font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self'; worker-src 'self' blob:; "
+    "manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+)
+CSP_SVG = "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; sandbox"  # pictures the server draws
+
+
+@app.middleware("http")
+async def security(request: Request, call_next):
+    """Every response: browser safety headers. Every change (POST, PUT, PATCH, DELETE): not too large, and on the live
+    site only from CardStakk's own pages (another site can't make your browser change your account). Buy Me a
+    Coffee's webhook comes from its servers, checked by its signature instead."""
+    if request.method not in ("GET", "HEAD", "OPTIONS"):
+        size = request.headers.get("content-length", "")
+        if size.isdigit() and int(size) > MAX_BODY:
+            return JSONResponse(status_code=413, content={"detail": "That's too large to send."})
+        origin = (request.headers.get("origin") or "").rstrip("/")
+        if PRODUCTION and origin and origin not in ALLOWED_ORIGINS and not request.url.path.startswith("/api/bmc/"):
+            return JSONResponse(status_code=403, content={"detail": "Request blocked."})
+    response = await call_next(request)
+    h = response.headers
+    h.setdefault("X-Content-Type-Options", "nosniff")
+    h.setdefault("X-Frame-Options", "DENY")
+    h.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    h.setdefault("Permissions-Policy", "camera=(self), microphone=(), geolocation=(), payment=()")
+    kind = h.get("content-type", "")
+    if kind.startswith("image/svg+xml"):
+        h.setdefault("Content-Security-Policy", CSP_SVG)
+    elif PRODUCTION and kind.startswith("text/html"):
+        h.setdefault("Content-Security-Policy", CSP_PAGE)
+    return response
 
 # A 422 says where and why, without repeating the input back (FastAPI's default sends the whole
 # value: a 600 KB photo, or the password someone typed)
