@@ -358,7 +358,8 @@ def app_url(request: Request) -> str:
 _NO_MAIL = ("@example.com", "@example.org", "@example.net", ".test", ".invalid")
 
 
-def _send(to: str, subject: str, body: str, reply_to: str | None = None, html: str | None = None) -> None:
+def _send(to: str, subject: str, body: str, reply_to: str | None = None, html: str | None = None, image: tuple[bytes, str] | None = None) -> None:
+    """image: (bytes, "png" / "jpeg" / "webp"), attached as screenshot.<type> (feedback screenshots)."""
     host = os.environ.get("SMTP_HOST")
     if not host or to.lower().endswith(_NO_MAIL):
         # no mail server yet: the link goes to the server log, so local testing still works
@@ -373,6 +374,8 @@ def _send(to: str, subject: str, body: str, reply_to: str | None = None, html: s
     msg.set_content(body)
     if html:
         add_html(msg, html)  # the designed version (lib/email_design.py); the plain text stays for simple mail apps
+    if image:
+        msg.add_attachment(image[0], maintype="image", subtype=image[1], filename=f"screenshot.{'jpg' if image[1] == 'jpeg' else image[1]}")
     if os.environ.get("SMTP_SSL", "").lower() in ("1", "true", "yes") or port == 465:
         with smtplib.SMTP_SSL(host, port, timeout=30) as smtp:
             if user:

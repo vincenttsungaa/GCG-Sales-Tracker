@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
+import { ImagePlus, Loader2 } from "lucide-react";
 import { apiPost, errorText } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -60,6 +60,71 @@ function Scale({ label, value, onChange, skip }: { label: string; value: number 
   );
 }
 
+// A screenshot, shrunk in the browser like listing photos: at most 1600px on the long side, as a JPEG under ~1 MB
+async function shrink(file: File): Promise<string> {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image();
+    img.src = url;
+    await img.decode();
+    const scale = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(img.naturalWidth * scale);
+    canvas.height = Math.round(img.naturalHeight * scale);
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("no canvas");
+    ctx.fillStyle = "#ffffff"; // see-through parts of a PNG would turn black as a JPEG
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    for (const q of [0.85, 0.7, 0.5]) {
+      const data = canvas.toDataURL("image/jpeg", q);
+      if (data.length < 1_400_000) return data;
+    }
+    throw new Error("too big");
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+function Screenshot({ value, onChange }: { value: string | null; onChange: (v: string | null) => void }) {
+  const [error, setError] = useState<string | null>(null);
+  const pick = async (file: File | undefined) => {
+    if (!file) return;
+    setError(null);
+    try {
+      onChange(await shrink(file));
+    } catch {
+      setError("Couldn't use that picture — try a PNG or JPG screenshot.");
+    }
+  };
+  return (
+    <div className="space-y-1.5">
+      <span className="block font-semibold text-slate-100">
+        Screenshot <span className="font-normal text-slate-400">(optional)</span>
+      </span>
+      {value ? (
+        <div className="flex items-start gap-3">
+          <img src={value} alt="Your screenshot" className="max-h-36 max-w-[60%] rounded-md border border-slate-700 object-contain" />
+          <Button variant="outline" size="sm" onClick={() => onChange(null)}>
+            Remove
+          </Button>
+        </div>
+      ) : (
+        <label className={`${CHIP} inline-flex cursor-pointer items-center gap-2 border-slate-700 text-slate-300 hover:border-slate-500 focus-within:border-sky-400`}>
+          <ImagePlus className="size-4" aria-hidden />
+          Add a screenshot
+          <input type="file" accept="image/*" className="sr-only" onChange={(e) => pick(e.target.files?.[0])} />
+        </label>
+      )}
+      {error && (
+        <p role="alert" className="text-sm text-red-400">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function compose(a: Answers): string {
   const lines = [
     `Overall, easy to use: ${a.overall}/5 (1 hard, 5 easy)`,
@@ -80,6 +145,7 @@ export default function BetaFeedbackDialog({ open, onOpenChange, email, done }: 
   const queryClient = useQueryClient();
   const [a, setA] = useState<Answers>(EMPTY);
   const [bug, setBug] = useState(NO_BUG);
+  const [shot, setShot] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
@@ -101,8 +167,9 @@ export default function BetaFeedbackDialog({ open, onOpenChange, email, done }: 
       ...(bug.expected.trim() ? ["", "WHAT THEY EXPECTED", bug.expected.trim()] : []),
     ].join("\n");
     try {
-      await apiPost("/auth/feedback", { topic: "Bug or something not working", message });
+      await apiPost("/auth/feedback", { topic: "Bug or something not working", message, screenshot: shot });
       setBug(NO_BUG);
+      setShot(null);
       setSent(true);
     } catch (err) {
       setError(errorText(err, "Couldn't send it — please try again."));
@@ -122,8 +189,9 @@ export default function BetaFeedbackDialog({ open, onOpenChange, email, done }: 
     setBusy(true);
     setError(null);
     try {
-      await apiPost("/auth/feedback", { topic: "Beta feedback", message: compose(a) });
+      await apiPost("/auth/feedback", { topic: "Beta feedback", message: compose(a), screenshot: shot });
       setA(EMPTY);
+      setShot(null);
       setSent(true);
       // from now on the window asks about bugs only (the server remembers it too)
       queryClient.setQueryData<User | null>(["me"], (u) => (u ? { ...u, beta_feedback_sent: true } : u));
@@ -195,7 +263,8 @@ export default function BetaFeedbackDialog({ open, onOpenChange, email, done }: 
               </span>
               <Textarea rows={2} maxLength={MAX_TEXT} value={bug.expected} onChange={(e) => setBug({ ...bug, expected: e.target.value })} />
             </label>
-            <p className="text-xs text-slate-400">Sent with your account ({email}). Got a screenshot? Send it to us the same way you got your test account.</p>
+            <Screenshot value={shot} onChange={setShot} />
+            <p className="text-xs text-slate-400">Sent with your account ({email}).</p>
             {error && (
               <p role="alert" className="text-sm text-red-400">
                 {error}
@@ -267,6 +336,7 @@ export default function BetaFeedbackDialog({ open, onOpenChange, email, done }: 
               </label>
             ))}
 
+            <Screenshot value={shot} onChange={setShot} />
             <p className="text-xs text-slate-400">
               Sent to the CardStakk team with your account ({email}), so we know which test account it came from.
             </p>
