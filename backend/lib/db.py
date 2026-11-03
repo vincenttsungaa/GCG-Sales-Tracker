@@ -1,4 +1,4 @@
-"""Shared Mongo handle — import `client`/`db` from here (server.py, routers, seed.py)."""
+"""Shared Mongo handle — import `client`/`db` from here (server.py, routers, scripts)."""
 
 import logging
 import os

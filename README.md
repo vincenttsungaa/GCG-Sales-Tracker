@@ -7,7 +7,7 @@ An app for tracking a Gundam Card Game Sales. It has two parts:
 
 Some files are not included in this repository on purpose: the Python virtual environment (`venv`), the Node packages (`node_modules`), cache files (`__pycache__`) and the `.env` file with private settings. You'll create these yourself in the steps below. It only takes a few minutes.
 
-To put CardStakk online (Oracle Cloud + Cloudflare), see [deploy/DEPLOY.md](deploy/DEPLOY.md).
+To run the live site on a Windows PC (with Cloudflare Tunnel), see [deploy/windows/WINDOWS.md](deploy/windows/WINDOWS.md).
 
 ## Requirements
 
@@ -69,12 +69,6 @@ python scrape_cards.py
 ```
 
 This saves `data/cards.json` + `data/card_images/` (about 2,000 cards, ~110 MB) and `data/products.json` + `data/product_images/`. It takes a few minutes. Run it again whenever new sets or products come out — images you already have are skipped. Use `--cards-only` or `--products-only` to refresh just one. You can also do this from the app: **Add Card** or **Add Item → Update database**.
-
-(Optional) Add sample data:
-
-```bash
-python seed.py
-```
 
 ## 3. Set up the frontend (one time only)
 
