@@ -325,7 +325,7 @@ FEEDBACK_TOPICS = (
 
 
 class FeedbackIn(BaseModel):
-    topic: Literal[FEEDBACK_TOPICS]  # type: ignore[valid-type]
+    topic: Literal[FEEDBACK_TOPICS + ("Beta feedback",)]  # type: ignore[valid-type]  # the beta questionnaire, not in the topic list
     message: str = Field(min_length=10, max_length=3000)
 
 
@@ -376,6 +376,8 @@ async def send_feedback(body: FeedbackIn, user: dict = Depends(current_user)):
     except (smtplib.SMTPException, OSError):
         raise HTTPException(status_code=502, detail="Couldn't send your feedback right now — please try again later.")
     auth.note_fail(key)  # counts toward the 5-per-15-minutes limit
+    if body.topic == "Beta feedback":
+        await db.users.update_one({"id": user["id"]}, {"$set": {"beta_feedback_sent": True}})
     return {"sent": True, "reply_to": user["email"]}
 
 
