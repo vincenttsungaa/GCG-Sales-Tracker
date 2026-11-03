@@ -168,12 +168,13 @@ export default function Account({ user }: { user: User }) {
   // delete
   const [delOpen, setDelOpen] = useState(false);
   const [confirmText, setConfirmText] = useState("");
+  const [delPassword, setDelPassword] = useState("");
   const [delMsg, setDelMsg] = useState<Msg>(null);
   const deleteAccount = async () => {
     if (busy) return;
     setBusy("delete");
     try {
-      await apiDelete("/auth/me");
+      await apiDelete("/auth/me", user.has_password ? { password: delPassword } : undefined);
       queryClient.clear();
       window.location.assign("/");
     } catch (err) {
@@ -476,10 +477,22 @@ export default function Account({ user }: { user: User }) {
                   This can&apos;t be undone. Type <b>DELETE</b> to confirm.
                 </p>
                 <input value={confirmText} onChange={(e) => setConfirmText(e.target.value)} aria-label="Type DELETE to confirm" className={INPUT} />
+                {user.has_password && (
+                  <input
+                    type="password"
+                    autoComplete="current-password"
+                    placeholder="Your password"
+                    aria-label="Your password"
+                    value={delPassword}
+                    onChange={(e) => setDelPassword(e.target.value)}
+                    className={INPUT}
+                    data-testid="delete-password"
+                  />
+                )}
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    disabled={confirmText.trim() !== "DELETE" || busy === "delete"}
+                    disabled={confirmText.trim() !== "DELETE" || (user.has_password && !delPassword) || busy === "delete"}
                     onClick={deleteAccount}
                     className="inline-flex min-h-9 items-center gap-2 rounded-md bg-[#b42318] px-4 text-sm font-semibold text-white disabled:opacity-50"
                   >

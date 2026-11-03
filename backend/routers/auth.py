@@ -271,9 +271,26 @@ async def change_email(body: EmailIn, request: Request, user: dict = Depends(cur
         raise HTTPException(status_code=400, detail="That's already your email.")
     if await db.users.find_one({"email": email}):
         raise HTTPException(status_code=409, detail="Another account already uses that email.")
+    old = user["email"]
     await db.users.update_one({"id": user["id"]}, {"$set": {"email": email, "email_verified": False}})
     user = {**user, "email": email, "email_verified": False}
     await _send_verify(request, user)
+    # tell the old address too: if someone else changed it, the owner finds out straight away
+    await auth.send_mail(
+        old,
+        "Your CardStakk email was changed",
+        f"The email on your CardStakk account was changed from {old} to {email}.\n\n"
+        f"If you did this, nothing more to do. If you didn't, reply to this email or write to {_feedback_inbox() or 'us'} straight away.",
+        render(
+            eyebrow="Account change",
+            title="Your email was changed",
+            body=[
+                rows([("From", old), ("To", email), ("When", datetime.now().strftime("%d %b %Y, %H:%M"))]),
+                p(f"If you did this, there's nothing more to do. If you didn't, reply to this email or write to {_feedback_inbox() or 'us'} straight away and we'll lock the account."),
+            ],
+            why="Sent to your old address because the email on your CardStakk account was changed.",
+        ),
+    )
     return public_user(user)
 
 
@@ -365,9 +382,19 @@ async def feedback_topics():
     return list(FEEDBACK_TOPICS)
 
 
+class DeleteIn(BaseModel):
+    password: str | None = Field(default=None, max_length=200)
+
+
 @router.delete("/me", status_code=204)
-async def delete_account(request: Request, response: Response, user: dict = Depends(current_user)):
-    """Delete the account and everything in it: listings, Stakks, sessions."""
+async def delete_account(response: Response, body: DeleteIn | None = None, user: dict = Depends(current_user)):
+    """Delete the account and everything in it: listings, Stakks, sessions. Needs the account's password
+    (same 5-try lock as log-in), so someone using a phone that's still logged in can't wipe it."""
+    if user.get("password_hash"):
+        auth.check_rate(f"account:{user['id']}", limit=auth.LOGIN_TRIES, detail=auth.LOCKED)
+        password = (body.password if body else None) or ""
+        ok = await asyncio.to_thread(auth.check_password, password, user["password_hash"])
+        _check_current(user, password, ok)
     for name in ("items", "stacks"):
         await db[name].delete_many({"owner_id": user["id"]})
     await db.sessions.delete_many({"user_id": user["id"]})

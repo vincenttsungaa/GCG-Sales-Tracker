@@ -73,6 +73,7 @@ async def _check_restore_limit(doc: dict, user: dict) -> None:
 @router.post("/items", response_model=CollectionItem, status_code=201)
 async def create_item(input: ItemCreate, user: dict = Depends(current_user)):
     # each plan lists up to so many listings that aren't sold; existing ones are never touched
+    _check_photos(user, input)
     limit = listing_limit(user) if user else None
     async with _add_locks.setdefault(user["id"], asyncio.Lock()):
         if limit is not None and await _listing_count() >= limit:
@@ -84,6 +85,17 @@ async def create_item(input: ItemCreate, user: dict = Depends(current_user)):
         obj = CollectionItem(**input.model_dump())
         await db.items.insert_one(obj.model_dump())
     return obj
+
+
+def _check_photos(user: dict, new: ItemCreate | ItemUpdate, old: dict | None = None) -> None:
+    """Your own uploaded photos (stored in the database, up to ~600 KB each) only once your email is confirmed:
+    stops throwaway sign-ups filling the database with pictures. Photos already on a listing can stay."""
+    if user.get("email_verified"):
+        return
+    kept = {(old or {}).get("image_url")} | {b.get("image_url") for b in (old or {}).get("bundle_items") or []}
+    urls = [new.image_url, *(b.image_url for b in new.bundle_items or [])]
+    if any(u and u.startswith("data:") and u not in kept for u in urls):
+        raise HTTPException(status_code=403, detail="Confirm your email first to add your own photos (check your inbox for the link).")
 
 
 async def _load(item_id: str) -> dict:
@@ -102,8 +114,9 @@ async def _load(item_id: str) -> dict:
 
 
 @router.put("/items/{item_id}", response_model=CollectionItem)
-async def update_item(item_id: str, input: ItemUpdate):
+async def update_item(item_id: str, input: ItemUpdate, user: dict = Depends(current_user)):
     doc = await _load(item_id)
+    _check_photos(user, input, doc)
     if "quantity" in input.model_fields_set and input.expected_quantity is None:
         # an edit form from before this check (a tab not reloaded) could write an old quantity back
         raise HTTPException(status_code=422, detail="this page is out of date — reload it and try again")

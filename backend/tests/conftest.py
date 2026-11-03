@@ -27,9 +27,15 @@ def api_url(path: str = "") -> str:
 def new_account(c: httpx.Client) -> str:
     """Sign up a throwaway account on this client (its cookie signs it in); returns the email."""
     email = f"pytest-{uuid4().hex[:12]}@example.com"
-    res = c.post("/auth/signup", json={"email": email, "password": f"pytest-{uuid4().hex}"})
+    c.password = f"pytest-{uuid4().hex}"  # kept on the client: deleting the account asks for it
+    res = c.post("/auth/signup", json={"email": email, "password": c.password})
     assert res.status_code == 201, res.text
     return email
+
+
+def delete_account(c: httpx.Client) -> None:
+    """Delete the throwaway account this client signed up (and everything it made)."""
+    c.request("DELETE", "/auth/me", json={"password": c.password})
 
 
 @pytest.fixture(scope="session")
@@ -46,7 +52,7 @@ def session_cookies():
         except httpx.HTTPError:
             pytest.skip("backend not running on BACKEND_URL")
         yield dict(c.cookies)
-        c.delete("/auth/me")
+        delete_account(c)
 
 
 @pytest.fixture

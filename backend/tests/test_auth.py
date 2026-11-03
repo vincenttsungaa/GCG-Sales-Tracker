@@ -7,7 +7,7 @@ deleted with everything it made.
 import httpx
 import pytest
 
-from tests.conftest import API_URL, new_account
+from tests.conftest import API_URL, delete_account, new_account
 
 try:
     httpx.get(API_URL + "/", timeout=3)
@@ -20,7 +20,7 @@ def user_a():
     with httpx.Client(base_url=API_URL, timeout=30.0) as c:
         c.email = new_account(c)
         yield c
-        c.delete("/auth/me")
+        delete_account(c)
 
 
 @pytest.fixture
@@ -28,7 +28,7 @@ def user_b():
     with httpx.Client(base_url=API_URL, timeout=30.0) as c:
         new_account(c)
         yield c
-        c.delete("/auth/me")
+        delete_account(c)
 
 
 def test_listings_need_a_login():
@@ -99,3 +99,21 @@ def test_bmc_webhook_needs_a_signature():
         body = b'{"type":"membership.started","live_mode":true,"created":1,"data":{"supporter_email":"x@example.com"}}'
         assert c.post("/bmc/webhook", content=body).status_code in (401, 503)
         assert c.post("/bmc/webhook", content=body, headers={"x-signature-sha256": "00" * 32}).status_code in (401, 503)
+
+
+def test_deleting_an_account_needs_its_password():
+    with httpx.Client(base_url=API_URL, timeout=30.0) as c:
+        new_account(c)
+        assert c.request("DELETE", "/auth/me", json={"password": "wrong-password"}).status_code == 401
+        assert c.delete("/auth/me").status_code == 401  # no password at all
+        assert c.get("/auth/me").status_code == 200  # still there
+        assert c.request("DELETE", "/auth/me", json={"password": c.password}).status_code == 204
+        assert c.get("/auth/me").status_code == 401
+
+
+def test_own_photos_need_a_confirmed_email(user_a):
+    photo = "data:image/webp;base64,UklGRg=="
+    res = user_a.post("/items", json={"kind": "item", "name": "Photo test", "price": 1, "image_url": photo})
+    assert res.status_code == 403  # new accounts aren't confirmed
+    ok = user_a.post("/items", json={"kind": "item", "name": "Photo test", "price": 1, "image_url": "https://example.com/a.webp"})
+    assert ok.status_code == 201  # a picture from the web is fine
