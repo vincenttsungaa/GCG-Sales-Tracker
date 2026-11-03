@@ -295,7 +295,7 @@ function MissingCostRow({ item }: { item: CollectionItem }) {
             />
           </span>
         </label>
-        <button type="submit" disabled={busy} className="h-8 rounded-md bg-[var(--st-ink)] px-3 text-xs font-semibold text-[var(--st-chip-text)] disabled:opacity-60">
+        <button type="submit" disabled={busy} className="h-8 rounded-md bg-[var(--st-chip)] px-3 text-xs font-semibold text-[var(--st-chip-text)] disabled:opacity-60">
           {busy ? "Saving…" : "Save"}
         </button>
       </form>
@@ -334,7 +334,7 @@ function Page({ s, stacks, range, setRange, stackId, setStackId }: {
           <p className="font-mono text-[11px] font-bold tracking-[0.2em] text-[var(--st-warn)] uppercase">Your numbers</p>
           <h1 className="mt-0.5 text-[30px] font-extrabold tracking-tight sm:text-[34px]">
             Statistics
-            <span className="ml-3 inline-block bg-[var(--st-ink)] px-3 py-1 align-[8px] font-mono text-[10px] tracking-[0.14em] text-[#b99aff] uppercase [clip-path:polygon(6px_0,100%_0,calc(100%-6px)_100%,0_100%)]">
+            <span className="ml-3 inline-block bg-[var(--st-chip)] px-3 py-1 align-[8px] font-mono text-[10px] tracking-[0.14em] text-[#b99aff] uppercase [clip-path:polygon(6px_0,100%_0,calc(100%-6px)_100%,0_100%)]">
               ★ Dealer
             </span>
           </h1>
@@ -383,7 +383,7 @@ function Page({ s, stacks, range, setRange, stackId, setStackId }: {
             aria-expanded={showMissing}
             aria-controls="missing-cost"
             onClick={() => setShowMissing((v) => !v)}
-            className="rounded-md bg-[var(--st-ink)] px-3 py-1.5 text-xs font-semibold whitespace-nowrap text-[var(--st-chip-text)]"
+            className="rounded-md bg-[var(--st-chip)] px-3 py-1.5 text-xs font-semibold whitespace-nowrap text-[var(--st-chip-text)]"
           >
             {showMissing ? "Hide list" : "Add bought prices →"}
           </button>
@@ -480,7 +480,7 @@ function Page({ s, stacks, range, setRange, stackId, setStackId }: {
                 <div key={x.code} className="contents">
                   <span
                     title={x.code}
-                    className="max-w-40 truncate bg-[var(--st-ink)] px-2.5 py-1 text-center font-mono text-[11px] font-bold text-[var(--st-chip-text)] [clip-path:polygon(5px_0,100%_0,calc(100%-5px)_100%,0_100%)]"
+                    className="max-w-40 truncate bg-[var(--st-chip)] px-2.5 py-1 text-center font-mono text-[11px] font-bold text-[var(--st-chip-text)] [clip-path:polygon(5px_0,100%_0,calc(100%-5px)_100%,0_100%)]"
                   >
                     {x.code}
                   </span>

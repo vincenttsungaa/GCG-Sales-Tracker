@@ -773,4 +773,4 @@ nav[data-testid="pagination-bottom"] { overflow-anchor: none; }
 }
 /* accent words in small text: Frost's cyan a shade deeper, Ash Crimson (dark)'s crimson a shade lighter (4.5:1) */
 :root[data-theme-preview="frost"] [data-testid="stats-page"] { --st-acc-text: #0b7592; }
-:root[data-theme-preview="ash-dark"] [data-testid="stats-page"] { --st-acc-text: #ff6b71; }
+:root[data-theme-preview="ash-dark"] [data-testid="stats-page"] { --st-acc-text: #ff6b71; --st-chip: #111214; } /* its plate is crimson: too dark-red for text on chips */
