@@ -8,10 +8,10 @@ How it fits together:
 - Cloudflare Tunnel connects the server to `cardstakkgcgsalestracker.com`.
 - The database stays on MongoDB Atlas. Emails go through Resend.
 
-The server has no open ports apart from SSH. Visitors only ever reach Cloudflare, which handles HTTPS, hides the server's address, and can let in Australia only.
+The server has no open ports apart from SSH. Visitors only ever reach Cloudflare, which handles HTTPS, hides the server's address.
 
 ```
-visitor ──https──▶ Cloudflare (Australia-only rule) ──tunnel──▶ server: CardStakk on 127.0.0.1:8001 ──▶ MongoDB Atlas
+visitor ──https──▶ Cloudflare ──tunnel──▶ server: CardStakk on 127.0.0.1:8001 ──▶ MongoDB Atlas
 ```
 
 ## 0. Before you start (on your PC)
@@ -96,20 +96,8 @@ It builds the frontend, starts CardStakk and ends with **"CardStakk is running."
 
 Open https://cardstakkgcgsalestracker.com and CardStakk loads.
 
-## 7. Australia only (Cloudflare WAF)
 
-1. In the domain's **Security → WAF → Custom rules**, click **Create rule** and name it `Australia only`.
-2. Choose **Edit expression** and paste:
-
-```
-(ip.src.country ne "AU" and not starts_with(http.request.uri.path, "/api/bmc/"))
-```
-
-3. Set **Action** to **Block**, then deploy.
-
-The `/api/bmc/` part lets Buy Me a Coffee through. Its servers aren't in Australia, and without it memberships would never switch on.
-
-## 8. Check everything
+## 7. Check everything
 
 1. **Site:** sign up with a real email, confirm it from the email, and log out and back in.
 2. **Buy Me a Coffee:** on the webhook page, click **Send test event**. `journalctl -u cardstakk -n 20` should show "BMC test event … received and verified".

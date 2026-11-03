@@ -5,7 +5,7 @@ CardStakk runs on this computer, and Cloudflare Tunnel connects it to `cardstakk
 The site is only up while the computer is on, awake and logged in.
 
 ```
-visitor ──https──▶ Cloudflare (Australia-only rule) ──tunnel──▶ this PC: CardStakk on 127.0.0.1:8002 ──▶ MongoDB Atlas
+visitor ──https──▶ Cloudflare ──tunnel──▶ this PC: CardStakk on 127.0.0.1:8002 ──▶ MongoDB Atlas
 ```
 
 The live copy lives in **its own folder**, separate from the one you develop in, and runs on **port 8002**. Editing, testing or restarting your development copy (port 8001) never touches the live site. New code only goes live when you push it to GitHub and run `update.bat`.
@@ -68,20 +68,8 @@ A window called **CardStakk live** opens. Minimise it, but don't close it. To ch
    - **Service:** `HTTP` → `localhost:8002`
 5. In the domain's **SSL/TLS → Edge Certificates**, turn on **Always Use HTTPS**.
 
-## 5. Australia only (Cloudflare WAF)
 
-1. In the domain's **Security → WAF → Custom rules**, click **Create rule**.
-2. Choose **Edit expression** and paste:
-
-```
-(ip.src.country ne "AU" and not starts_with(http.request.uri.path, "/api/bmc/"))
-```
-
-3. Set **Action** to **Block**, then deploy.
-
-The `/api/bmc/` part lets Buy Me a Coffee's webhook through.
-
-## 6. Keep the computer awake
+## 5. Keep the computer awake
 
 1. Go to **Settings → System → Power** (on some PCs, **Power & battery**).
 2. Set **Sleep** (when plugged in) to **Never**.
