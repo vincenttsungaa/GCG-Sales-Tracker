@@ -16,6 +16,7 @@ import ScanDialog from "@/components/ScanDialog";
 import { Menu } from "@base-ui/react/menu";
 import { CLOSED_BETA, type User } from "@/pages/Landing";
 import BetaFeedbackDialog from "@/components/BetaFeedback";
+import BetaWelcomeDialog from "@/components/BetaWelcome";
 import { NO_STACK, StackDialog, StackFolder, StackSales, StacksPanel } from "@/components/Stacks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1603,6 +1604,7 @@ export default function Dashboard({
 
       {/* a name is required: asked for once, right after sign-up (or for an older account without one) */}
       {!user.name?.trim() && <NameRequiredDialog onSaved={(u) => queryClient.setQueryData(["me"], u)} />}
+      {CLOSED_BETA && user.beta_welcome && !!user.name?.trim() && <BetaWelcomeDialog />}
       {CLOSED_BETA && <BetaFeedbackDialog open={betaOpen} onOpenChange={setBetaOpen} email={user.email} done={!!user.beta_feedback_sent} />}
       {aboutOpen && (
         <Dialog open onOpenChange={(open) => !open && setAboutOpen(false)}>

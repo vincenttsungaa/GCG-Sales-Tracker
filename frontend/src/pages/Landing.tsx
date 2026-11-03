@@ -24,6 +24,7 @@ export interface User {
   created_at?: string | null; // when the account was made (ISO); very old accounts may not have it
   founding?: boolean; // Founding Supporter (gold badge), while on a paid plan
   beta_feedback_sent?: boolean; // sent the beta questionnaire: the form then asks about bugs only
+  beta_welcome?: boolean; // a beta tester account that hasn't closed the welcome window yet
 }
 
 // Closed beta: sign-ups and memberships are paused (keep in step with CLOSED_BETA in backend/lib/auth.py)

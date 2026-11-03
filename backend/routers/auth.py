@@ -392,6 +392,12 @@ async def send_feedback(body: FeedbackIn, user: dict = Depends(current_user)):
     return {"sent": True, "reply_to": user["email"]}
 
 
+@router.post("/beta-welcomed", status_code=204)
+async def beta_welcomed(user: dict = Depends(current_user)):
+    """The beta tester closed the welcome window: don't show it again, on any device."""
+    await db.users.update_one({"id": user["id"]}, {"$set": {"beta_welcomed": True}})
+
+
 @router.get("/feedback/topics")
 async def feedback_topics():
     return list(FEEDBACK_TOPICS)
