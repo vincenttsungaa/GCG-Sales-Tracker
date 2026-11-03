@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Check, ExternalLink, Loader2, Minus } from "lucide-react";
 import { apiPost, errorText } from "@/lib/api";
-import { Backdrop, type User } from "@/pages/Landing";
+import { Backdrop, CLOSED_BETA, type User } from "@/pages/Landing";
 
 // /support — the plans (Free / Collector / Dealer), your current plan, joining on Buy Me a Coffee, and for the
 // site owner a tool to set someone's plan by hand (a member who paid with another email, or testing). Prices in A$ per month.
@@ -285,6 +285,15 @@ function TransferTool() {
 
 function BecomeSupporter({ user }: { user: User | null }) {
   const paid = !!user && !user.is_admin && user.tier > 0;
+  if (CLOSED_BETA)
+    return (
+      <section className="mt-6 border border-[#d5dbe3] bg-white p-5" data-testid="become-supporter">
+        <h2 className="font-bold">Memberships</h2>
+        <p className="mt-1 max-w-[44em] text-sm text-[#5b6470]">
+          Memberships are paused while CardStakk is in closed beta. Beta testers have every Dealer feature for free in the meantime.
+        </p>
+      </section>
+    );
   const button =
     "inline-flex min-h-10 items-center gap-2 rounded-md bg-[#8a1c1a] px-4 text-sm font-semibold text-white hover:bg-[#6e1513]";
   return (
@@ -370,9 +379,11 @@ export default function Support({ user }: { user: User | null }) {
                 <a href="/" className="text-[#5a6371] hover:text-[#1c222b] max-md:hidden">
                   Log in
                 </a>
-                <a href="/" className="inline-flex min-h-9 items-center rounded-lg bg-[#8a1c1a] px-3.5 font-semibold text-white hover:bg-[#6e1513]">
-                  Sign up free
-                </a>
+                {!CLOSED_BETA && (
+                  <a href="/" className="inline-flex min-h-9 items-center rounded-lg bg-[#8a1c1a] px-3.5 font-semibold text-white hover:bg-[#6e1513]">
+                    Sign up free
+                  </a>
+                )}
               </>
             )}
           </nav>

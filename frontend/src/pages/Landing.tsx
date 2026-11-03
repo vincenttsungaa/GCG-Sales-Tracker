@@ -26,6 +26,9 @@ export interface User {
 }
 
 // signup → the email first, then "password" asks for the password (one less field up front)
+// Closed beta: sign-ups and memberships are paused (keep in step with CLOSED_BETA in backend/lib/auth.py)
+export const CLOSED_BETA = true;
+
 type Mode = "signup" | "password" | "login" | "forgot" | "reset";
 
 const DISCLAIMER =
@@ -327,7 +330,7 @@ export default function Landing({
   resetToken?: string | null;
   notice?: string | null;
 }) {
-  const [mode, setMode] = useState<Mode>(resetToken ? "reset" : "signup");
+  const [mode, setMode] = useState<Mode>(resetToken ? "reset" : CLOSED_BETA ? "login" : "signup");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -434,9 +437,11 @@ export default function Landing({
               Log in
             </button>
             {/* phones: hidden, the sign-up form is right below in the hero */}
-            <button type="button" onClick={() => go("signup")} className={`min-h-9 rounded-lg px-3.5 font-semibold max-sm:hidden ${BRAND}`}>
-              Sign up free
-            </button>
+            {!CLOSED_BETA && (
+              <button type="button" onClick={() => go("signup")} className={`min-h-9 rounded-lg px-3.5 font-semibold max-sm:hidden ${BRAND}`}>
+                Sign up free
+              </button>
+            )}
           </nav>
         </div>
       </header>
@@ -575,7 +580,8 @@ export default function Landing({
                   </button>
                 </>
               )}
-              {mode === "login" && (
+              {mode === "login" && CLOSED_BETA && "CardStakk is in closed beta: new accounts open soon."}
+              {mode === "login" && !CLOSED_BETA && (
                 <>
                   New here?{" "}
                   <button type="button" onClick={() => go("signup")} className={LINK}>
@@ -717,9 +723,11 @@ export default function Landing({
         <button type="button" onClick={() => go("login")} className="min-h-11 flex-1 rounded-lg border border-[#dbe1e8] bg-white font-semibold">
           Log in
         </button>
-        <button type="button" onClick={() => go("signup")} className={`min-h-11 flex-1 rounded-lg font-semibold ${BRAND}`}>
-          Sign up free
-        </button>
+        {!CLOSED_BETA && (
+          <button type="button" onClick={() => go("signup")} className={`min-h-11 flex-1 rounded-lg font-semibold ${BRAND}`}>
+            Sign up free
+          </button>
+        )}
       </div>
     </div>
   );

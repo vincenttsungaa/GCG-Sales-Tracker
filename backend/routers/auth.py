@@ -70,6 +70,8 @@ async def _send_verify(request: Request, user: dict) -> None:
 
 @router.post("/signup", status_code=201)
 async def signup(body: SignupIn, request: Request, response: Response):
+    if auth.CLOSED_BETA:
+        raise HTTPException(status_code=403, detail="CardStakk is in closed beta: new accounts open soon.")
     email = auth.norm_email(body.email)
     auth.check_rate(f"signup:{auth.client_ip(request)}", limit=auth.NETWORK_SIGNUPS)
     if await db.users.find_one({"email": email}):

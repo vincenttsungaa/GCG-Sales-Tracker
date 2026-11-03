@@ -71,6 +71,10 @@ def is_admin(user: dict) -> bool:
 
 # max_listings counts listings that aren't sold (a ×3 listing is one); None = unlimited
 # price: A$ a month, paid as a Buy Me a Coffee membership (routers/bmc.py switches the plan on and off)
+# Closed beta: no new accounts (testers use the beta accounts from beta_accounts.py). Set to False to open
+# sign-ups again, together with CLOSED_BETA in frontend/src/pages/Landing.tsx.
+CLOSED_BETA = True
+
 PLANS = {
     0: {"name": "Free", "max_listings": 100, "price": 0},
     1: {"name": "Collector", "max_listings": 250, "price": 10},
