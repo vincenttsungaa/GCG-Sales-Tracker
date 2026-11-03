@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast, Toaster } from "sonner";
-import { apiDelete, apiGet, apiPatch, apiPost, apiPut, errorText } from "@/lib/api";
+import { apiDelete, apiFetch, apiGet, apiPatch, apiPost, apiPut, errorText } from "@/lib/api";
 import FilterBar from "@/components/FilterBar";
 import { EMPTY_FILTERS, filtersActive, type InventoryFilters } from "@/lib/filters";
 import ItemCard from "@/components/ItemCard";
@@ -1574,7 +1574,7 @@ export default function Dashboard({
             <a href="/terms" className="font-medium text-slate-300 underline-offset-4 hover:text-sky-300 hover:underline">
               Terms
             </a>
-            <span className="font-mono text-slate-600">© {new Date().getFullYear()} CardStakk</span>
+            <span className="font-mono text-slate-400">© {new Date().getFullYear()} CardStakk</span>
           </nav>
         </div>
       </footer>
@@ -1833,7 +1833,7 @@ function ConfirmDialog({ state, onClose }: { state: ConfirmState | null; onClose
 
 // Fetch the .xlsx for these listings (empty ids = every listing).
 async function fetchWorkbook(body: { ids: string[]; label: string; per_stack: boolean }): Promise<{ blob: Blob; filename: string }> {
-  const res = await fetch("/api/items/export", {
+  const res = await apiFetch("/api/items/export", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -1971,7 +1971,7 @@ function ExportDialog({
     });
   const sendEmail = () =>
     run(async () => {
-      const res = await fetch("/api/items/export/email", {
+      const res = await apiFetch("/api/items/export/email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...body, note: note.trim() || null }),

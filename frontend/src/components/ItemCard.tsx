@@ -344,7 +344,7 @@ function Detail({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex items-baseline justify-between gap-2 text-xs">
       {/* labels in normal case; only the bundle "Total" stays in capitals */}
-      <span className={`shrink-0 text-xs text-slate-500 ${label === "Total" ? "font-mono text-[0.65rem] uppercase tracking-wider" : ""}`}>{label}</span>
+      <span className={`shrink-0 text-xs text-slate-400 ${label === "Total" ? "font-mono text-[0.65rem] uppercase tracking-wider" : ""}`}>{label}</span>
       <span className="min-w-0 truncate text-right">{children}</span>
     </div>
   );
