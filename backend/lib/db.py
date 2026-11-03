@@ -23,8 +23,29 @@ INDEXES: dict[str, list[IndexModel]] = {
         IndexModel([("created_at", DESCENDING)], name="created_at"),  # list/export sort
         IndexModel([("buyer_name", ASCENDING)], name="buyer_name"),
         IndexModel([("deal_date", ASCENDING)], name="deal_date"),
+        IndexModel([("owner_id", ASCENDING), ("created_at", DESCENDING)], name="owner_created"),  # each user's list
     ],
-    "stacks": [IndexModel([("id", ASCENDING)], name="id", unique=True)],
+    "stacks": [
+        IndexModel([("id", ASCENDING)], name="id", unique=True),
+        IndexModel([("owner_id", ASCENDING)], name="owner_id"),
+    ],
+    # accounts (lib/auth.py)
+    "users": [
+        IndexModel([("id", ASCENDING)], name="id", unique=True),
+        IndexModel([("email", ASCENDING)], name="email", unique=True),
+    ],
+    "sessions": [
+        IndexModel([("token_hash", ASCENDING)], name="token_hash", unique=True),
+        IndexModel([("user_id", ASCENDING)], name="user_id"),
+        IndexModel([("expires_at", ASCENDING)], name="expires", expireAfterSeconds=0),  # Mongo removes old ones
+    ],
+    # Buy Me a Coffee members by email (routers/bmc.py), also for members who haven't signed up yet
+    "bmc_members": [IndexModel([("email", ASCENDING)], name="email", unique=True)],
+    "user_tokens": [
+        IndexModel([("token_hash", ASCENDING)], name="token_hash", unique=True),
+        IndexModel([("user_id", ASCENDING)], name="user_id"),
+        IndexModel([("expires_at", ASCENDING)], name="expires", expireAfterSeconds=0),
+    ],
 }
 
 

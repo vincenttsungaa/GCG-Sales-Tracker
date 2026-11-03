@@ -6,7 +6,7 @@ import logging
 import smtplib
 from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
 from pydantic import BaseModel, EmailStr, Field, ValidationError
 from lib.export import XLSX_MIME, EmailNotConfigured, build_workbook, export_filename, send_workbook
@@ -18,7 +18,8 @@ from models.item import (
     normalise_doc,
     utcnow,
 )
-from lib.db import db
+from lib.auth import mine as db  # the signed-in user's own listings / Stakks only
+from lib.auth import PLANS, current_user, effective_tier, listing_limit
 
 router = APIRouter(tags=["items"])
 logger = logging.getLogger(__name__)
@@ -37,10 +38,32 @@ async def list_items():
     return items
 
 
+# one add at a time per account, so adds sent together can't all pass the limit check
+# ponytail: per server process; a shared lock (or a counter in Mongo) if it ever runs on several
+_add_locks: dict[str, asyncio.Lock] = {}
+
+
+async def _listing_count() -> int:
+    """Unsold listings for the plan limit. Copies split off a listing (1 of 2 to Pending or Storage,
+    or a restored sale that kept its own row) count as that same listing, so splitting never
+    pushes anyone over their limit: only adding new cards does."""
+    docs = await db.items.find({"status": {"$ne": "sold"}}, {"_id": 0, "id": 1, "split_from": 1}).to_list(None)
+    return len({d.get("split_from") or d["id"] for d in docs})
+
+
 @router.post("/items", response_model=CollectionItem, status_code=201)
-async def create_item(input: ItemCreate):
-    obj = CollectionItem(**input.model_dump())
-    await db.items.insert_one(obj.model_dump())
+async def create_item(input: ItemCreate, user: dict = Depends(current_user)):
+    # each plan lists up to so many listings that aren't sold; existing ones are never touched
+    limit = listing_limit(user) if user else None
+    async with _add_locks.setdefault(user["id"], asyncio.Lock()):
+        if limit is not None and await _listing_count() >= limit:
+            raise HTTPException(
+                status_code=403,
+                detail=f"You've reached the {limit}-listing limit on the {PLANS[effective_tier(user)]['name']} plan — "
+                "upgrade on the Support page to add more.",
+            )
+        obj = CollectionItem(**input.model_dump())
+        await db.items.insert_one(obj.model_dump())
     return obj
 
 
@@ -335,12 +358,13 @@ class EmailExportRequest(ExportRequest):
     note: str | None = Field(default=None, max_length=2000)
 
 
-async def _export_workbook(body: ExportRequest) -> tuple[bytes, int]:
+async def _export_workbook(body: ExportRequest, full: bool) -> tuple[bytes, int]:
     items = [normalise_doc(dict(d)) for d in await _export_items(body.ids)]
     stacks = await db.stacks.find({}, {"_id": 0}).to_list(None)
     order = sorted(stacks, key=lambda s: (s.get("order", -1), str(s.get("created_at", ""))))  # sidebar order
     names = {s["id"]: s["name"] for s in order}
-    data = await asyncio.to_thread(build_workbook, items, names, body.label, body.per_stack)
+    # Free: one Listings sheet. Collector and up: Summary, Listings, Sales and (if asked) a sheet per Stakk
+    data = await asyncio.to_thread(build_workbook, items, names, body.label, full and body.per_stack, full)
     return data, len(items)
 
 
@@ -353,9 +377,9 @@ async def _export_items(ids: list[str]) -> list[dict]:
 
 
 @router.post("/items/export")
-async def export_items(body: ExportRequest):
+async def export_items(body: ExportRequest, user: dict = Depends(current_user)):
     """The listings as an .xlsx download."""
-    data, _ = await _export_workbook(body)
+    data, _ = await _export_workbook(body, full=effective_tier(user) >= 1)
     name = export_filename(body.label)
     return Response(
         content=data,
@@ -365,11 +389,15 @@ async def export_items(body: ExportRequest):
 
 
 @router.post("/items/export/email")
-async def email_export(body: EmailExportRequest):
-    """Email the .xlsx to an address typed in by the user (SMTP settings in backend/.env)."""
-    data, count = await _export_workbook(body)
+async def email_export(body: EmailExportRequest, user: dict = Depends(current_user)):
+    """Email the .xlsx to an address typed in by the user (SMTP settings in backend/.env). Collector and up."""
+    if effective_tier(user) < 1:
+        raise HTTPException(status_code=403, detail="Sending the export by email comes with the Collector plan — see the Support page.")
+    data, count = await _export_workbook(body, full=True)
     try:
-        await asyncio.to_thread(send_workbook, body.to, data, export_filename(body.label), count, body.note)
+        await asyncio.to_thread(
+            send_workbook, body.to, data, export_filename(body.label), count, body.note, (user.get("name") or "").strip() or None, user["email"]
+        )
     except EmailNotConfigured as e:
         raise HTTPException(status_code=503, detail=str(e)) from e
     except (smtplib.SMTPException, OSError) as e:

@@ -2,7 +2,9 @@
 
 import re
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
+
+from lib.auth import require_admin
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
@@ -200,7 +202,7 @@ def sync_status():
     }
 
 
-@router.post("/products/sync", status_code=202)
+@router.post("/products/sync", status_code=202, dependencies=[Depends(require_admin)])
 def start_sync(body: SyncRequest | None = None):
     """Re-scrape gundam-gcg.com/en/products (all categories except Booster Pack)."""
     job.start(images=(body or SyncRequest()).images)

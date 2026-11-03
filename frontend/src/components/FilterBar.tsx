@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,6 +32,10 @@ const RARITY_ITEMS = [{ value: "all", label: "All rarities" }, ...RARITIES.map((
 
 export default function FilterBar({ filters, onChange, showBuyer = false }: FilterBarProps) {
   const set = (patch: Partial<InventoryFilters>) => onChange({ ...filters, ...patch });
+  // Phones: only the search shows until "More filters" is tapped (the rest filled the first screen)
+  const [more, setMore] = useState(false);
+  const hiddenOn = [filters.cardType !== "all", filters.rarity !== "all", filters.color !== "all", !!filters.buyer, !!(filters.dateFrom || filters.dateTo)].filter(Boolean).length;
+  const phoneHide = more ? "" : "max-sm:hidden";
 
   return (
     <div
@@ -40,9 +45,20 @@ export default function FilterBar({ filters, onChange, showBuyer = false }: Filt
       <div className="flex flex-wrap items-center gap-3 lg:grid lg:grid-cols-2 lg:items-stretch lg:gap-x-2 lg:gap-y-2.5">
         {/* Name search */}
         <div className="flex w-full min-w-52 flex-1 flex-col gap-1.5 sm:w-auto lg:col-span-2 lg:w-full lg:min-w-0 lg:flex-none">
-          <Label htmlFor="filter-search" className="font-mono text-xs uppercase tracking-wider text-slate-400">
-            Search name
-          </Label>
+          <div className="flex items-center justify-between gap-2">
+            <Label htmlFor="filter-search" className="font-mono text-xs uppercase tracking-wider text-slate-400">
+              Search name
+            </Label>
+            <button
+              type="button"
+              aria-expanded={more}
+              onClick={() => setMore(!more)}
+              data-testid="filter-more"
+              className="font-mono text-xs uppercase tracking-wider text-[var(--rt-text)] underline underline-offset-2 sm:hidden"
+            >
+              {more ? "Fewer filters" : `More filters${hiddenOn ? ` (${hiddenOn} on)` : ""}`}
+            </button>
+          </div>
           <Input
             id="filter-search"
             data-testid="filter-search"
@@ -53,7 +69,7 @@ export default function FilterBar({ filters, onChange, showBuyer = false }: Filt
           />
         </div>
         {/* Type */}
-        <div className="flex min-w-36 flex-1 flex-col gap-1.5 sm:flex-none lg:min-w-0">
+        <div className={`flex min-w-36 flex-1 flex-col gap-1.5 sm:flex-none lg:min-w-0 ${phoneHide}`}>
           <Label htmlFor="filter-type" className="font-mono text-xs uppercase tracking-wider text-slate-400">Type</Label>
           <Select
             value={filters.cardType}
@@ -74,7 +90,7 @@ export default function FilterBar({ filters, onChange, showBuyer = false }: Filt
           </Select>
         </div>
         {/* Rarity */}
-        <div className="flex min-w-28 flex-1 flex-col gap-1.5 sm:flex-none lg:min-w-0">
+        <div className={`flex min-w-28 flex-1 flex-col gap-1.5 sm:flex-none lg:min-w-0 ${phoneHide}`}>
           <Label htmlFor="filter-rarity" className="font-mono text-xs uppercase tracking-wider text-slate-400">Rarity</Label>
           <Select
             value={filters.rarity}
@@ -96,7 +112,7 @@ export default function FilterBar({ filters, onChange, showBuyer = false }: Filt
         </div>
         {/* Buyer — only shown on the Pending and Sold tabs */}
         {showBuyer && (
-        <div className="flex min-w-40 flex-col gap-1.5 lg:col-span-2 lg:min-w-0">
+        <div className={`flex min-w-40 flex-col gap-1.5 lg:col-span-2 lg:min-w-0 ${phoneHide}`}>
           <Label htmlFor="filter-buyer" className="font-mono text-xs uppercase tracking-wider text-slate-400">
             Buyer
           </Label>
@@ -112,7 +128,7 @@ export default function FilterBar({ filters, onChange, showBuyer = false }: Filt
         )}
         {/* Deal date range — also only on the Pending and Sold tabs (only those entries have a deal) */}
         {showBuyer && (
-        <div className="flex w-full flex-col gap-1.5 sm:w-auto lg:col-span-2 lg:w-full">
+        <div className={`flex w-full flex-col gap-1.5 sm:w-auto lg:col-span-2 lg:w-full ${phoneHide}`}>
           <Label className="font-mono text-xs uppercase tracking-wider text-slate-400">
             Deal date
           </Label>
@@ -151,7 +167,7 @@ export default function FilterBar({ filters, onChange, showBuyer = false }: Filt
       </div>
 
       {/* Color pills: none picked = every colour; tap the picked one again to clear it */}
-      <div className="flex flex-wrap items-center gap-2" data-testid="filter-colors">
+      <div className={`flex flex-wrap items-center gap-2 ${phoneHide}`} data-testid="filter-colors">
         <span className="w-full font-mono text-xs uppercase tracking-wider text-slate-400 md:w-auto lg:w-full">Color</span>
         {GUNDAM_COLORS.map((color) => (
           <Button

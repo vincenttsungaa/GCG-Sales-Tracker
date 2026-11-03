@@ -16,6 +16,7 @@ from io import BytesIO
 
 import re
 
+from lib.email_design import add_html, file_box, quote, render, rows
 from openpyxl import Workbook
 from openpyxl.formatting.rule import FormulaRule
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
@@ -189,11 +190,22 @@ def _sheet_name(name: str, taken: set[str]) -> str:
 
 
 def build_workbook(
-    items: list[dict], stacks: dict[str, str] | None = None, label: str | None = None, per_stack: bool = False
+    items: list[dict],
+    stacks: dict[str, str] | None = None,
+    label: str | None = None,
+    per_stack: bool = False,
+    full: bool = True,
 ) -> bytes:
-    """Summary sheet (formulas), Listings (all), Sales (sold only), and optionally a sheet per stack."""
+    """Summary sheet (formulas), Listings (all), Sales (sold only), and optionally a sheet per stack.
+    full=False (Free plan): just the Listings sheet — every listing, sold ones included."""
     stacks = stacks or {}
     wb = Workbook()
+    if not full:
+        wb.active.title = "Listings"
+        _write_listings(wb.active, items, stacks, "Listings")
+        out = BytesIO()
+        wb.save(out)
+        return out.getvalue()
     s = wb.active
     s.title = "Summary"
     ws = wb.create_sheet("Listings")
@@ -312,7 +324,9 @@ class EmailNotConfigured(RuntimeError):
     pass
 
 
-def send_workbook(to: str, data: bytes, filename: str, count: int, note: str | None = None) -> None:
+def send_workbook(
+    to: str, data: bytes, filename: str, count: int, note: str | None = None, sender_name: str | None = None, reply_to: str | None = None
+) -> None:
     """Email the workbook through the SMTP server set in backend/.env (SMTP_HOST, SMTP_PORT,
     SMTP_USER, SMTP_PASSWORD, SMTP_FROM; SMTP_SSL=true for port 465)."""
     host = os.environ.get("SMTP_HOST")
@@ -327,6 +341,8 @@ def send_workbook(to: str, data: bytes, filename: str, count: int, note: str | N
     msg["Subject"] = f"CardStakk listings — {count} {'listing' if count == 1 else 'listings'}"
     msg["From"] = sender
     msg["To"] = to
+    if reply_to:
+        msg["Reply-To"] = reply_to  # hitting Reply answers the person who sent it
     body = [
         f"Attached: {filename} ({count} {'listing' if count == 1 else 'listings'}).",
         "It opens in Excel, Google Sheets, LibreOffice, Numbers and the Excel / Sheets phone apps.",
@@ -334,6 +350,20 @@ def send_workbook(to: str, data: bytes, filename: str, count: int, note: str | N
     if note:
         body = [note.strip(), "", *body]
     msg.set_content("\n".join(body) + "\n\n— Sent from CardStakk")
+    listings = f"{count} {'listing' if count == 1 else 'listings'}"
+    add_html(
+        msg,
+        render(
+            eyebrow="Spreadsheet attached",
+            title=f"{sender_name} sent you a spreadsheet" if sender_name else "A spreadsheet from CardStakk",
+            body=[
+                *([quote(note.strip())] if note and note.strip() else []),
+                file_box(filename, "Opens in Excel, Google Sheets, Numbers and the phone apps"),
+                rows([("Listings", listings)]),
+            ],
+            why=f"Sent from CardStakk by {reply_to}. Reply to answer them directly." if reply_to else "Sent from CardStakk.",
+        ),
+    )
     msg.add_attachment(data, maintype="application", subtype=XLSX_MIME.split("/", 1)[1], filename=filename)
 
     if os.environ.get("SMTP_SSL", "").lower() in ("1", "true", "yes") or port == 465:

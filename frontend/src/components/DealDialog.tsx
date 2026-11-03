@@ -33,6 +33,24 @@ export default function DealDialog({ state, today, onClose, onConfirm, pending }
   const [salePrice, setSalePrice] = useState(String(item.sale_price ?? item.price));
   const [qty, setQty] = useState(String(item.quantity));
   const [error, setError] = useState<string | null>(null);
+  const [errorField, setErrorField] = useState<"buyer" | "date" | "price" | "qty" | null>(null);
+  // a problem is shown under its own box, which gets the focus
+  const fail = (field: "buyer" | "date" | "price" | "qty", message: string) => {
+    setError(message);
+    setErrorField(field);
+    document.getElementById(`deal-${field}`)?.focus();
+  };
+  const edited = (field: typeof errorField) => {
+    if (errorField === field) setError(null), setErrorField(null);
+  };
+  const fieldError = (field: typeof errorField) =>
+    error && errorField === field ? (
+      <p id={`deal-${field}-error`} data-testid="deal-form-error" className="text-xs text-red-400">
+        {error}
+      </p>
+    ) : null;
+  const invalid = (field: typeof errorField) =>
+    errorField === field ? { "aria-invalid": true, "aria-describedby": `deal-${field}-error` } : {};
   // "today" may arrive after the dialog opened: fill it in then, unless a date was typed
   useEffect(() => {
     if (today) setDealDate((d) => d || today);
@@ -51,28 +69,22 @@ export default function DealDialog({ state, today, onClose, onConfirm, pending }
       ? (priceNum - item.purchase_price) * qtyNum
       : null;
 
+  const qtyTooMany = splittable && qtyNum > item.quantity;
+  // what the buyer pays in all: 2 × A$30.00
+  const dealTotal =
+    selling && !Number.isNaN(priceNum) && priceNum >= 0 && (!splittable || (Number.isInteger(qtyNum) && qtyNum >= 1 && !qtyTooMany))
+      ? priceNum * (splittable ? qtyNum : item.quantity)
+      : null;
+
   const handleConfirm = () => {
-    if (selling && !buyer.trim()) {
-      setError("Buyer name is required to mark as sold.");
-      return;
-    }
-    if (selling && !dealDate) {
-      setError("Deal date is required to mark as sold.");
-      return;
-    }
-    if (selling && salePrice.trim() === "") {
-      setError("Enter the sale price (0 if it was free).");
-      return;
-    }
-    if (salePrice.trim() !== "" && (Number.isNaN(priceNum) || priceNum < 0)) {
-      setError("Sale price must be zero or more.");
-      return;
-    }
-    if (splittable && (!Number.isInteger(qtyNum) || qtyNum < 1 || qtyNum > item.quantity)) {
-      setError(`Quantity must be between 1 and ${item.quantity}.`);
-      return;
-    }
+    if (selling && !buyer.trim()) return fail("buyer", "Enter the buyer's name to mark this as sold.");
+    if (selling && !dealDate) return fail("date", "Pick the deal date to mark this as sold.");
+    if (selling && salePrice.trim() === "") return fail("price", "Enter the sale price (0 if it was free).");
+    if (salePrice.trim() !== "" && (Number.isNaN(priceNum) || priceNum < 0)) return fail("price", "The sale price can't be negative.");
+    if (splittable && (!Number.isInteger(qtyNum) || qtyNum < 1 || qtyNum > item.quantity))
+      return fail("qty", `Enter a whole number from 1 to ${item.quantity}.`);
     setError(null);
+    setErrorField(null);
     onConfirm(
       {
         status: target,
@@ -119,24 +131,28 @@ export default function DealDialog({ state, today, onClose, onConfirm, pending }
               data-testid="deal-buyer"
               placeholder="Who is buying?"
               value={buyer}
-              onChange={(e) => setBuyer(e.target.value)}
+              onChange={(e) => (setBuyer(e.target.value), edited("buyer"))}
+              {...invalid("buyer")}
             />
+            {fieldError("buyer")}
           </div>
           )}
-          {/* phones: the date gets its own row (iOS date boxes are wide and spilled into the price box) */}
-          <div className={splittable ? "grid grid-cols-2 gap-3 sm:grid-cols-3" : "grid grid-cols-2 gap-3 sm:gap-4"}>
+          {/* the date gets its own row (date boxes are wide: a third of the row cut the year off) */}
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
             {!storing && (
             <>
-            <div className="col-span-full flex min-w-0 flex-col gap-1.5 sm:col-span-1">
+            <div className="col-span-full flex min-w-0 flex-col gap-1.5">
               <Label htmlFor="deal-date" className="font-mono text-xs uppercase tracking-wider text-slate-400">Deal date{selling ? " (required)" : ""}</Label>
               <Input
                 id="deal-date"
                 data-testid="deal-date"
                 type="date"
                 value={dealDate}
-                onChange={(e) => setDealDate(e.target.value)}
+                onChange={(e) => (setDealDate(e.target.value), edited("date"))}
                 className="w-full min-w-0 appearance-none [color-scheme:dark]"
+                {...invalid("date")}
               />
+              {fieldError("date")}
             </div>
             <div className="flex min-w-0 flex-col gap-1.5">
               <Label htmlFor="deal-price" className="font-mono text-xs uppercase tracking-wider text-slate-400">
@@ -149,8 +165,10 @@ export default function DealDialog({ state, today, onClose, onConfirm, pending }
                 min="0"
                 step="0.01"
                 value={salePrice}
-                onChange={(e) => setSalePrice(e.target.value)}
+                onChange={(e) => (setSalePrice(e.target.value), edited("price"))}
+                {...invalid("price")}
               />
+              {fieldError("price")}
             </div>
             </>
             )}
@@ -167,22 +185,36 @@ export default function DealDialog({ state, today, onClose, onConfirm, pending }
                   max={item.quantity}
                   step="1"
                   value={qty}
-                  onChange={(e) => setQty(e.target.value)}
+                  onChange={(e) => (setQty(e.target.value), edited("qty"))}
+                  {...invalid("qty")}
                 />
+                {fieldError("qty") ??
+                  (qtyTooMany && (
+                    <p className="text-xs text-red-400" data-testid="deal-qty-too-many">
+                      You have {item.quantity}.
+                    </p>
+                  ))}
               </div>
             )}
           </div>
+          {dealTotal != null && (
+            <p data-testid="deal-total" className="text-sm text-slate-300">
+              Total{" "}
+              <span className="font-mono font-semibold tabular-nums text-slate-100">{formatAud(dealTotal)}</span>
+              {(splittable ? qtyNum : item.quantity) > 1 && (
+                <span className="text-slate-400">
+                  {" "}
+                  ({splittable ? qtyNum : item.quantity} × {formatAud(priceNum)})
+                </span>
+              )}
+            </p>
+          )}
           {expectedProfit != null && (
             <p
               data-testid="deal-profit-preview"
               className={`text-sm font-medium ${expectedProfit >= 0 ? "text-emerald-400" : "text-red-400"}`}
             >
               Expected {expectedProfit >= 0 ? "profit" : "loss"}: {formatAud(Math.abs(expectedProfit))}
-            </p>
-          )}
-          {error && (
-            <p data-testid="deal-form-error" className="text-sm text-red-400">
-              {error}
             </p>
           )}
         </div>

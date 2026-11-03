@@ -244,7 +244,7 @@
 /* phones: narrower letter spacing on the name and tighter buttons, so CARDSTAKK fits without "…" */
 @media (max-width: 639px) {
   [data-testid="dashboard"] > header h1 { letter-spacing: 0.1em; }
-  .hud-seg [data-slot="button"] { padding-inline: 7px; gap: 4px; letter-spacing: 0.04em; }
+  .hud-seg [data-slot="button"] { padding-inline: 7px; gap: 4px; letter-spacing: 0.04em; min-width: 44px; height: 40px; } /* 44px: still a comfortable tap, and the bar fits 360px phones */
 }
 [data-testid="add-card-button"] {
   background: var(--rt-silver) !important;
@@ -264,7 +264,8 @@
 [data-testid="add-item-button"],
 [data-testid="add-card-button"] { font-size: 10px !important; }
 [data-testid="export-open"],
-[data-testid="select-mode"] { font-size: calc(0.8rem - 2px) !important; }
+[data-testid="select-mode"],
+[data-testid="arrange-toggle"] { font-size: calc(0.8rem - 2px) !important; }
 
 /* panels: stat boxes, filters and tiles, with cut corners like armour plates */
 [data-testid="dashboard"] [data-slot="card"],
@@ -279,7 +280,11 @@
   box-shadow: inset 0 3px 0 var(--rt-slate);
 }
 [data-testid="dashboard"] article:hover { box-shadow: inset 0 3px 0 var(--rt-amber); }
+/* inside an open Stakk the cards are narrower: a smaller name so it fits */
+[data-testid="stack-folder-dialog"] [data-testid^="item-name-"] { font-size: 0.875rem; }
 [data-testid="dashboard"] article[aria-selected="true"] { box-shadow: inset 0 3px 0 var(--rt-amber), inset 0 0 0 2px var(--rt-amber); }
+/* the listing whose items / price breakdown panel is open */
+[data-testid="dashboard"] article[data-details-open] { box-shadow: inset 0 3px 0 var(--rt-amber), inset 0 0 0 2px var(--rt-amber); }
 
 /* stat boxes: coloured side bars */
 [data-testid="sidebar"] [data-slot="card"] { box-shadow: inset 4px 0 0 var(--rt-silver); }
@@ -303,6 +308,13 @@
 /* labels, inputs, tabs */
 [data-testid="dashboard"] .font-mono.uppercase,
 [data-testid="dashboard"] label { color: var(--rt-label) !important; }
+/* the plan badge in the header keeps its gold text on the dark plate in every theme */
+[data-testid="dashboard"] [data-testid="plan-chip"].font-mono.uppercase { color: #b99aff !important; } /* Dealer: purple */
+[data-testid="dashboard"] [data-testid="plan-chip"][data-tier="1"].font-mono.uppercase { color: #7fb2ff !important; } /* Collector: blue */
+[data-testid="dashboard"] [data-testid="plan-chip"][data-founding="true"].font-mono.uppercase { color: #f3d38a !important; } /* Founding: gold */
+[data-testid="dashboard"] [data-testid="plan-chip"][data-tier="0"].font-mono.uppercase { color: #ffffff !important; }
+/* light themes: pale green money text in windows (e.g. "Sold from this Stakk") in a darker green so it reads on white */
+:root:is([data-theme-preview="pearl"], [data-theme-preview="ash"], [data-theme-preview="frost"], [data-theme-preview="overdrive-light"]) [role="dialog"] .text-emerald-300 { color: #047857 !important; }
 [data-testid="dashboard"] [data-slot="input"],
 [data-testid="dashboard"] [data-slot="select-trigger"] {
   background: var(--rt-panel-2) !important;
@@ -670,9 +682,43 @@ nav[data-testid^="pagination"] [class*="text-xs"] { font-size: 10px !important; 
 :root:is([data-theme-preview="pearl"], [data-theme-preview="ash"], [data-theme-preview="frost"], [data-theme-preview="overdrive-light"]) [role="menu"] .text-red-400 { color: #b91c1c !important; }
 /* light themes: pale amber text in windows (e.g. "Listed as Sealed" in Add Item) in a darker amber so it reads on white */
 :root:is([data-theme-preview="pearl"], [data-theme-preview="ash"], [data-theme-preview="frost"], [data-theme-preview="overdrive-light"]) [role="dialog"] .text-amber-300 { color: #a15c00 !important; }
+/* light themes: the plan chip when close to the limit */
+:root:is([data-theme-preview="pearl"], [data-theme-preview="ash"], [data-theme-preview="frost"], [data-theme-preview="overdrive-light"]) [data-testid="plan-chip"].text-amber-300 { color: #a15c00 !important; }
+/* light themes: the Stakk folder's value / sales / profit boxes */
+:root:is([data-theme-preview="pearl"], [data-theme-preview="ash"], [data-theme-preview="frost"], [data-theme-preview="overdrive-light"]) [data-testid="stakk-money"] .text-emerald-300 { color: #047857 !important; }
+:root:is([data-theme-preview="pearl"], [data-theme-preview="ash"], [data-theme-preview="frost"], [data-theme-preview="overdrive-light"]) [data-testid="stakk-money"] .text-red-400 { color: #b91c1c !important; }
+:root:is([data-theme-preview="pearl"], [data-theme-preview="ash"], [data-theme-preview="frost"], [data-theme-preview="overdrive-light"]) [data-testid="stakk-money-locked"] .text-sky-300 { color: #0b6aa2 !important; }
 
 /* Confirm box: light panel in light themes so its text reads */
 :root:is([data-theme-preview="pearl"], [data-theme-preview="ash"], [data-theme-preview="frost"], [data-theme-preview="overdrive-light"]) [data-testid="confirm-dialog"] {
-  background: var(--rt-panel) !important;
-  border-color: var(--rt-line);
+  /* read by the box's own background class (an !important utility, which a plain override can't beat) */
+  --confirm-bg: var(--rt-panel);
+}
+
+/* Buyer / deal-date strip on Pending and Sold listings: the dark-theme tints wash out on light themes */
+:root:is([data-theme-preview="pearl"], [data-theme-preview="ash"], [data-theme-preview="frost"], [data-theme-preview="overdrive-light"]) [class*="bg-green-950/40"] {
+  background-color: #dcfce7 !important; border-color: #86efac !important; color: #166534 !important;
+}
+:root:is([data-theme-preview="pearl"], [data-theme-preview="ash"], [data-theme-preview="frost"], [data-theme-preview="overdrive-light"]) [class*="bg-amber-950/40"] {
+  background-color: #fef3c7 !important; border-color: #fcd34d !important; color: #92400e !important;
+}
+
+/* Main buttons (Confirm sale, Add card, Save changes): the pale silver read as a secondary button on
+   light panels, so the light themes use their accent colour. Ash Crimson's silver is already crimson. */
+:root:is([data-theme-preview="pearl"], [data-theme-preview="frost"], [data-theme-preview="overdrive-light"]) {
+  --primary: var(--rt-amber);
+  --primary-foreground: #ffffff;
+}
+
+/* Changing page from the bottom page numbers: the browser kept the footer in place while the new
+   page's pictures loaded, scrolling back down past the list's top. Don't anchor to them. */
+[data-testid="site-footer"],
+nav[data-testid="pagination-bottom"] { overflow-anchor: none; }
+
+/* ---- Account settings: the page takes the colours of the picked theme (Tailwind classes there use the
+   --rt-* variables). Status colours and the ink on accent buttons, light themes first, then the dark ones ---- */
+[data-testid="account-page"] { --acc-danger: #b42318; --acc-ok: #1f6f43; --acc-warn: #8a5a00; --acc-on-accent: #ffffff; }
+:root:not([data-theme-preview]) [data-testid="account-page"],
+:root:is([data-theme-preview$="-dark"], [data-theme-preview="overdrive"], [data-theme-preview="gunmetal"], [data-theme-preview="crimson"]) [data-testid="account-page"] {
+  --acc-danger: #ff8a80; --acc-ok: #6fd49a; --acc-warn: #f0c46a; --acc-on-accent: var(--rt-cta-ink, #2a2d31);
 }

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -8,6 +9,8 @@ interface PaginationProps {
   total: number;
   onPageChange: (page: number) => void;
   testId?: string; // two of these on one page (above and below the list) need their own test ids
+  listings?: number; // when Stakk folders fold several listings into one tile: how many listings that is
+  aside?: ReactNode; // shown at the right end of the "Showing …" line (phones: Rearrange)
 }
 
 /** Page numbers to show: always first, last, and the current page ±1, with "…" gaps. */
@@ -22,7 +25,7 @@ function pageList(page: number, pageCount: number): (number | "gap")[] {
   return out;
 }
 
-export default function Pagination({ page, pageCount, pageSize, total, onPageChange, testId = "pagination" }: PaginationProps) {
+export default function Pagination({ page, pageCount, pageSize, total, onPageChange, testId = "pagination", listings, aside }: PaginationProps) {
   const first = (page - 1) * pageSize + 1;
   const last = Math.min(page * pageSize, total);
 
@@ -32,11 +35,18 @@ export default function Pagination({ page, pageCount, pageSize, total, onPageCha
       data-testid={testId}
       className="flex flex-wrap items-center justify-between gap-3"
     >
+      <div className="flex items-center justify-between gap-2 max-md:w-full">
       <p className="text-xs text-slate-500" data-testid={`${testId}-summary`}>
         Showing <span className="font-mono tabular-nums text-slate-300">{first}–{last}</span> of{" "}
         <span className="font-mono tabular-nums text-slate-300">{total}</span>
+        {listings != null && listings !== total && (
+          <span data-testid={`${testId}-listings`}> · {listings} listings, Stakks shown as folders</span>
+        )}
       </p>
-      <div className="flex items-center gap-1">
+      {aside}
+      </div>
+      {/* wraps on narrow phones (many pages + "Go to" is wider than 343px) instead of widening the page */}
+      <div className="flex flex-wrap items-center gap-1">
         <Button
           variant="ghost"
           size="sm"

@@ -1,0 +1,16 @@
+# CardStakk backend (also serves the built frontend). deploy/setup.sh fills in the folder and user.
+# One worker on purpose: log-in limits and the membership reminder live in this one process.
+[Unit]
+Description=CardStakk
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=__USER__
+WorkingDirectory=__APP_DIR__/backend
+ExecStart=__APP_DIR__/backend/venv/bin/uvicorn server:app --host 127.0.0.1 --port 8001 --workers 1
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

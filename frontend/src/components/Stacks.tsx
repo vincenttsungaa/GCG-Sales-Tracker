@@ -7,7 +7,8 @@ import { formatAud, formatDate } from "@/lib/format";
 import { saleProfit, saleTotal, type CollectionItem, type Stack } from "@/lib/types";
 import { Menu } from "@base-ui/react/menu";
 import { FolderThumb } from "@/components/ItemCard";
-import { ArrowDown, ArrowUp, Check, Ellipsis, FolderInput, GripVertical, Lock, Pencil, Plus, Trash2, Undo2, X } from "lucide-react";
+import { rarityClass } from "@/components/badges";
+import { ArrowDown, ArrowUp, Check, Ellipsis, FolderInput, GripVertical, Layers, Lock, Pencil, Plus, Trash2, Undo2, X } from "lucide-react";
 
 const LABEL = "font-mono text-xs uppercase tracking-wider text-slate-400";
 export const NO_STACK = "none"; // the "Not in a stack" filter
@@ -15,7 +16,7 @@ export const NO_STACK = "none"; // the "Not in a stack" filter
 // Sidebar list of stacks: click one to show only its listings. Each row is just the name and count;
 // store / back to sale / rename / delete sit in its ⋯ menu. Past 6 stacks the list stays short
 // (your top 6 in drag order, "Show more" for the rest) and a filter box finds any stack.
-const SHORT_LIST = 6;
+const SHORT_LIST = 6; // more than this: the filter box shows
 export function StacksPanel({
   stacks,
   counts,
@@ -29,6 +30,8 @@ export function StacksPanel({
   onStore,
   onUnstore,
   onReorder,
+  items = [],
+  onShowMany,
 }: {
   stacks: Stack[];
   counts: Record<string, number>; // listings per stack id (and NO_STACK): For Sale, Pending and Storage
@@ -42,23 +45,25 @@ export function StacksPanel({
   onStore: (stack: Stack) => void; // whole stack to Storage
   onUnstore: (stack: Stack) => void; // whole stack back to For Sale
   onReorder: (ids: string[]) => void; // drag and drop: every stack id in the new order
+  items?: CollectionItem[]; // every listing, sold ones too: for the Combine totals
+  onShowMany?: (ids: string[]) => void; // Combine → "Show their listings"
 }) {
+  // Combine: tick several Stakks to add up their sales (separate from the account-wide Realized sales)
+  const [combine, setCombine] = useState(false);
+  const [picked, setPicked] = useState<string[]>([]);
+  const togglePick = (id: string) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
   const [dragId, setDragId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState("");
   const [editing, setEditing] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
-  const [expanded, setExpanded] = useState(false);
   const [query, setQuery] = useState("");
   const long = stacks.length > SHORT_LIST;
   const q = query.trim().toLowerCase();
   const shown = q
     ? stacks.filter((s) => s.name.toLowerCase().includes(q))
-    : long && !expanded
-      ? stacks.filter((s, i) => i < SHORT_LIST || s.id === selected) // the picked stack stays in view
-      : stacks;
-  const hidden = stacks.length - shown.length;
+    : stacks; // the Stakks window has room for all of them
   const drop = (targetId: string) => {
     if (dragId && dragId !== targetId) {
       const all = stacks.map((x) => x.id);
@@ -80,7 +85,7 @@ export function StacksPanel({
   };
   const row = (active: boolean) =>
     `flex min-w-0 flex-1 items-center gap-2 rounded px-2 py-1.5 text-left text-sm transition-colors ${
-      active ? "bg-sky-950/60 text-sky-100 ring-1 ring-sky-500/60" : "text-slate-200 hover:bg-slate-800/60"
+      active ? "bg-sky-500/15 font-semibold text-[var(--rt-text)] ring-1 ring-sky-500/60" : "text-slate-200 hover:bg-slate-800/60"
     }`;
   const item = "flex cursor-default items-center gap-2 rounded px-2 py-1.5 text-sm outline-none select-none data-[highlighted]:bg-slate-800";
   const add = () => {
@@ -92,8 +97,23 @@ export function StacksPanel({
     <section data-testid="stacks-panel" className="space-y-2 rounded-lg border border-slate-800/80 bg-slate-900/60 p-3">
       <div className="flex items-center justify-between">
         <p className={LABEL}>Stakks</p>
-        {selected && (
-          <Button variant="link" size="xs" className="h-auto px-0 text-xs" onClick={() => onSelect(null)} data-testid="stacks-show-all">
+        {stacks.length > 1 && (
+          <button
+            type="button"
+            aria-pressed={combine}
+            onClick={() => {
+              setCombine((c) => !c);
+              setPicked([]);
+            }}
+            className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${combine ? "border-[var(--rt-amber)] bg-[var(--rt-amber)] text-[var(--rt-cta-ink,#fff)]" : "border-slate-700 text-[var(--rt-text)] hover:border-slate-500"}`}
+            data-testid="stacks-combine"
+          >
+            {combine && <Check className="mr-1 inline size-3" aria-hidden />}
+            Combine
+          </button>
+        )}
+        {!combine && selected && (
+          <Button variant="link" size="xs" className="h-auto px-0 text-xs font-semibold text-[var(--rt-text)] underline underline-offset-2" onClick={() => onSelect(null)} data-testid="stacks-show-all">
             Clear
           </Button>
         )}
@@ -150,7 +170,22 @@ export function StacksPanel({
             ) : (
               <>
                 <GripVertical className="size-3.5 shrink-0 cursor-grab text-slate-700 group-hover:text-slate-400" aria-hidden />
-                <button type="button" className={row(selected === s.id)} onClick={() => onSelect(selected === s.id ? null : s.id)} aria-pressed={selected === s.id} title={s.name} data-testid={`stack-${s.id}`}>
+                <button
+                  type="button"
+                  className={row(combine ? picked.includes(s.id) : selected === s.id)}
+                  onClick={() => (combine ? togglePick(s.id) : onSelect(selected === s.id ? null : s.id))}
+                  {...(combine ? { role: "checkbox", "aria-checked": picked.includes(s.id) } : { "aria-pressed": selected === s.id })}
+                  title={s.name}
+                  data-testid={`stack-${s.id}`}
+                >
+                  {combine && (
+                    <span
+                      aria-hidden
+                      className={`grid size-4 shrink-0 place-items-center rounded-[3px] border ${picked.includes(s.id) ? "border-[var(--rt-amber)] bg-[var(--rt-amber)] text-[var(--rt-cta-ink,#fff)]" : "border-slate-500"}`}
+                    >
+                      {picked.includes(s.id) && <Check className="size-3" strokeWidth={3} />}
+                    </span>
+                  )}
                   <span className="min-w-0 flex-1 truncate">{s.name}</span>
                   {(stored[s.id] ?? 0) > 0 && <span className="size-1.5 shrink-0 rounded-full bg-violet-300" title="Has listings in Storage" />}
                   <span className="font-mono text-xs text-slate-500">{counts[s.id] ?? 0}</span>
@@ -202,22 +237,23 @@ export function StacksPanel({
           </li>
         ))}
         {q && shown.length === 0 && <li className="px-2 py-1.5 text-xs text-slate-500">No Stakk matches “{query.trim()}”.</li>}
-        {long && !q && (
-          <li>
-            <button type="button" className="px-2 py-1 text-xs text-sky-300 hover:underline" onClick={() => setExpanded(!expanded)} data-testid="stacks-more">
-              {expanded ? "Show fewer ▴" : `Show ${hidden} more ▾`}
-            </button>
-          </li>
-        )}
-        <li className="flex items-center gap-1">
+        {!combine && <li className="flex items-center gap-1">
           <span className="w-3.5 shrink-0" />
           <button type="button" className={row(selected === NO_STACK)} onClick={() => onSelect(selected === NO_STACK ? null : NO_STACK)} aria-pressed={selected === NO_STACK} data-testid="stack-none">
             <span className="flex-1 text-slate-400">Not in a Stakk</span>
             <span className="font-mono text-xs text-slate-500">{counts[NO_STACK] ?? 0}</span>
           </button>
           <span className="w-6 shrink-0" />
-        </li>
+        </li>}
       </ul>
+      {combine && (
+        <CombinedSales
+          names={stacks.filter((s) => picked.includes(s.id)).map((s) => s.name)}
+          items={items.filter((i) => i.stack_id && picked.includes(i.stack_id))}
+          onShow={onShowMany && (() => onShowMany(picked))}
+          onClear={() => setPicked([])}
+        />
+      )}
       {adding ? (
         <form className="flex items-center gap-1" onSubmit={(e) => { e.preventDefault(); add(); }}>
           <Input autoFocus placeholder="Stakk name, e.g. Sunday market" value={newName} maxLength={60} onChange={(e) => setNewName(e.target.value)} className="h-8 text-sm" data-testid="stack-new-name" />
@@ -228,6 +264,61 @@ export function StacksPanel({
           <Plus className="size-3.5" /> New Stakk
         </Button>
       )}
+    </section>
+  );
+}
+
+// Combine: the ticked Stakks' sales added up — sold for, profit after costs, and what's left unsold.
+// Sold records keep their Stakk, so a Stakk's sales stay with it after the sale.
+function CombinedSales({ names, items, onShow, onClear }: { names: string[]; items: CollectionItem[]; onShow?: () => void; onClear: () => void }) {
+  if (names.length === 0) return <p className="border-t border-slate-800/80 pt-2 text-xs text-slate-500">Tick two or more Stakks to add up their sales.</p>;
+  const sold = items.filter((i) => i.status === "sold");
+  const soldFor = sold.reduce((t, i) => t + saleTotal(i), 0);
+  const profits = sold.map(saleProfit);
+  const profit = profits.reduce<number>((t, p) => t + (p ?? 0), 0);
+  const noCost = profits.filter((p) => p == null).length;
+  const unsold = items.filter((i) => i.status !== "sold").reduce((t, i) => t + i.price * i.quantity, 0);
+  const units = sold.reduce((t, i) => t + i.quantity, 0);
+  const ROW = "flex items-baseline justify-between gap-3 py-0.5";
+  return (
+    <section className="space-y-1.5 border-t border-slate-800/80 pt-2" aria-live="polite" data-testid="stacks-combined">
+      <p className={LABEL} title={names.join(", ")}>
+        {names.length} {names.length === 1 ? "Stakk" : "Stakks"} combined
+      </p>
+      <div className="text-sm">
+        <p className={ROW}>
+          <span className="text-slate-400">Sold for</span>
+          <span className="font-mono font-semibold tabular-nums text-[var(--rt-text)]">
+            {formatAud(soldFor)} <span className="font-normal text-slate-500">({units} sold)</span>
+          </span>
+        </p>
+        <p className={ROW}>
+          <span className="text-slate-400">Profit after costs</span>
+          <span className={`font-mono font-semibold tabular-nums ${profit < 0 ? "text-red-400" : "text-emerald-300"}`}>
+            {profit < 0 ? "−" : "+"}
+            {formatAud(Math.abs(profit))}
+          </span>
+        </p>
+        {noCost > 0 && (
+          <p className="text-xs text-slate-500">
+            {noCost} {noCost === 1 ? "sale has" : "sales have"} no bought price, so {noCost === 1 ? "it isn't" : "they aren't"} in the profit.
+          </p>
+        )}
+        <p className={ROW}>
+          <span className="text-slate-400">Unsold value</span>
+          <span className="font-mono font-semibold tabular-nums text-[var(--rt-text)]">{formatAud(unsold)}</span>
+        </p>
+      </div>
+      <div className="flex gap-1.5">
+        {onShow && (
+          <Button size="sm" className="flex-1" onClick={onShow} data-testid="stacks-combined-show">
+            Show their listings
+          </Button>
+        )}
+        <Button size="sm" variant="outline" className="flex-1" onClick={onClear} data-testid="stacks-combined-clear">
+          Clear
+        </Button>
+      </div>
     </section>
   );
 }
@@ -326,56 +417,82 @@ export function StackDialog({
   );
 }
 
-// Storage: a stack's listings grouped into one tile, like an iPhone app folder — a mini grid of the
-// first nine pictures, the name underneath; click to open it.
-export function StackFolder({ name, items, onOpen }: { name: string; items: CollectionItem[]; onOpen: () => void }) {
+// A Stakk in the listings grid: shaped like a listing card so the rows line up — a header, the first
+// four pictures, the name on a dark fade, its value (Collector and up) and Open. Click anywhere to open it.
+// It's an <article> like a listing, so every theme gives it the same panel, border and cut corners.
+const FOLDER_FADE = { background: "linear-gradient(to top, rgba(11,15,23,0.95), rgba(11,15,23,0.75) 45%, rgba(11,15,23,0))" };
+export function StackFolder({ name, items, value, onOpen }: { name: string; items: CollectionItem[]; value: number | null; onOpen: () => void }) {
+  const count = `${items.length} ${items.length === 1 ? "listing" : "listings"}`;
   return (
-    <button
-      type="button"
+    <article
       data-testid="stack-folder"
       onClick={onOpen}
-      className="group flex flex-col items-center gap-2 rounded-xl p-2 text-center outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
+      className="group flex w-full cursor-pointer flex-col gap-2.5 rounded-xl border border-slate-800/80 bg-[#10151F] p-2.5 transition-colors duration-200 hover:border-sky-500/40"
     >
-      <span className="grid aspect-square w-full grid-cols-3 content-start gap-1.5 rounded-[22%] border border-slate-700/70 bg-slate-700/30 p-[9%] shadow-lg backdrop-blur transition group-hover:scale-[1.03] group-hover:border-sky-500/60">
-        {items.slice(0, 9).map((item) => (
-          <span key={item.id} className="aspect-square overflow-hidden rounded-[22%] bg-slate-900/80">
-            <FolderThumb item={item} />
+      <span className="flex items-center gap-2">
+        <span className="inline-flex size-6 items-center justify-center rounded-md border border-slate-700 text-slate-500">
+          <Layers className="size-3.5" aria-hidden />
+        </span>
+        <span className="truncate font-mono text-xs font-semibold tracking-wide text-slate-300">STAKK · {count}</span>
+      </span>
+      <span className="item-photo-backdrop relative block aspect-[63/88] overflow-hidden rounded-md border border-slate-800/80">
+        <span className="absolute inset-0 grid grid-cols-2 content-start gap-1.5 px-[9%] pt-[9%]">
+          {items.slice(0, 4).map((item) => (
+            <span key={item.id} className="block aspect-[63/88] overflow-hidden rounded-sm shadow-md transition group-hover:scale-[1.02]">
+              <FolderThumb item={item} />
+            </span>
+          ))}
+        </span>
+        <span className="absolute inset-x-0 bottom-0 px-2 pt-10 pb-2" style={FOLDER_FADE}>
+          <span className="block truncate text-sm font-bold text-white" title={name}>
+            {name}
           </span>
-        ))}
+        </span>
       </span>
-      <span className="w-full truncate text-sm font-medium text-slate-200">{name}</span>
-      <span className="-mt-2 font-mono text-xs text-slate-500">
-        {items.length} {items.length === 1 ? "listing" : "listings"}
+      <span className="flex items-center justify-between gap-2 rounded-md border border-slate-800/60 bg-slate-950/40 px-2 py-1.5 text-xs">
+        <span className="text-slate-500">{value === null ? "Listings" : "Value"}</span>
+        <span className="font-mono font-semibold tabular-nums text-sky-300">{value === null ? items.length : formatAud(value)}</span>
       </span>
-    </button>
+      <Button
+        size="sm"
+        variant="outline"
+        className="mt-auto h-8 w-full font-semibold tracking-wide"
+        aria-label={`Open Stakk ${name}, ${count}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          onOpen();
+        }}
+      >
+        Open
+      </Button>
+    </article>
   );
 }
 
 // Inside an open folder: what this stack has sold so far (sold records keep their stack).
-// totalsOnly: just the totals (the Sold tab already shows each sale as a card above).
-export function StackSales({ sold, totalsOnly = false }: { sold: CollectionItem[]; totalsOnly?: boolean }) {
+// The totals (value, sales, profit) sit at the top of the folder, for Tier 1 and up.
+export function StackSales({ sold }: { sold: CollectionItem[] }) {
   if (sold.length === 0) return <p className="text-sm text-slate-500" data-testid="stack-sales-empty">Nothing sold from this Stakk yet.</p>;
-  const realized = sold.reduce((sum, i) => sum + saleTotal(i), 0);
-  const profit = sold.reduce((sum, i) => sum + (saleProfit(i) ?? 0), 0);
   const newest = [...sold].sort((a, b) => (b.deal_date ?? "").localeCompare(a.deal_date ?? ""));
   return (
     <section className="space-y-2" data-testid="stack-sales">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3">
-        <p className={LABEL}>Realized sales</p>
-        <p className="font-mono text-sm tabular-nums">
-          <span className="text-emerald-300" data-testid="stack-sales-total">{formatAud(realized)}</span>
-          <span className="text-slate-500">
-            {" "}· {formatAud(Math.abs(profit))} {profit >= 0 ? "profit" : "loss"} · {sold.length} sold
-          </span>
-        </p>
+        <p className={LABEL}>Sold from this Stakk</p>
+        <p className="font-mono text-sm tabular-nums text-slate-500">{sold.length} sold</p>
       </div>
-      {!totalsOnly && (
       <ul className="max-h-48 divide-y divide-slate-800/80 overflow-y-auto rounded-md border border-slate-800/80 text-sm">
         {newest.map((i) => (
           <li key={i.id} className="flex items-center gap-3 px-3 py-1.5">
-            <span className="min-w-0 flex-1 truncate text-slate-200">
-              {i.name}
-              {i.quantity > 1 && <span className="text-slate-500"> ×{i.quantity}</span>}
+            {/* name, then which card it was (cards share names across sets and rarities): number + rarity */}
+            <span className="flex min-w-0 flex-1 items-center gap-2">
+              <span className="truncate text-slate-200">
+                {i.name}
+                {i.quantity > 1 && <span className="text-slate-500"> ×{i.quantity}</span>}
+              </span>
+              {(i.card_no ?? i.set_code) && <span className="shrink-0 font-mono text-xs text-slate-400">{i.card_no ?? i.set_code}</span>}
+              {i.rarity && (
+                <span className={`shrink-0 rounded border px-1 font-mono text-[10px] font-semibold ${rarityClass(i.rarity)}`}>{i.rarity}</span>
+              )}
             </span>
             <span className="hidden truncate text-xs text-slate-500 sm:block">
               {i.buyer_name}
@@ -385,7 +502,6 @@ export function StackSales({ sold, totalsOnly = false }: { sold: CollectionItem[
           </li>
         ))}
       </ul>
-      )}
     </section>
   );
 }

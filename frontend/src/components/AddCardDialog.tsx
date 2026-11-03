@@ -64,7 +64,7 @@ const CARD_PAGE = 120; // card results drawn at once; "Show more" adds the next 
 
 // Keyword chips: each searches by card type (see TYPE_KEYWORDS in backend/lib/card_catalog.py) and
 // shows every matching card. EX tokens = EX Base + EX Resource.
-const KEYWORDS = ["EX Token", "EX Base", "EX Resource", "Resource", "Unit Token"];
+const KEYWORDS = ["Unit", "Pilot", "EX Token", "EX Base", "EX Resource", "Resource", "Unit Token"];
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "");
 
 function CardSearch({ onPick }: { onPick: (card: CatalogCard) => void }) {
@@ -124,7 +124,7 @@ function CardSearch({ onPick }: { onPick: (card: CatalogCard) => void }) {
           <Input
             autoFocus
             data-testid="card-search"
-            placeholder="Search card name, number or keyword — e.g. Zock, ST11-003, EX Token"
+            placeholder="Search card name, number or keyword — e.g. Zock, ST11-003, Pilot"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="h-10 bg-slate-950/60 pl-9"
@@ -149,8 +149,8 @@ function CardSearch({ onPick }: { onPick: (card: CatalogCard) => void }) {
         </Select>
       </div>
 
-      <div className="flex flex-wrap items-center gap-1.5" data-testid="card-keywords">
-        <span className="text-xs text-slate-500">Keywords:</span>
+      <div className="flex flex-wrap items-center gap-1" data-testid="card-keywords">
+        <span className="mr-0.5 text-xs text-slate-500">Keywords:</span>
         {KEYWORDS.map((k) => {
           const active = norm(k) === norm(query);
           return (
@@ -160,7 +160,7 @@ function CardSearch({ onPick }: { onPick: (card: CatalogCard) => void }) {
               data-testid={`card-keyword-${norm(k)}`}
               aria-pressed={active}
               onClick={() => setQuery(active ? "" : k)}
-              className={`rounded border px-2 py-0.5 text-xs transition-colors ${
+              className={`rounded border px-1.5 py-0.5 text-xs transition-colors ${
                 active ? "border-sky-500 bg-sky-950/50 text-sky-200" : "border-slate-700 text-slate-300 hover:border-slate-500"
               }`}
             >
@@ -273,7 +273,7 @@ function CardDetailsForm({
   const readPrices = (allowNoPrice: boolean): { price: number | null; purchase: number | null } | null => {
     const priceNum = price.trim() === "" ? null : Number(price);
     if ((priceNum == null && !allowNoPrice) || (priceNum != null && (Number.isNaN(priceNum) || priceNum < 0))) {
-      setError("Enter an asking price of zero or more.");
+      setError(priceNum == null ? "Enter an asking price (0 if it's free)." : "The asking price can't be negative.");
       return null;
     }
     let purchaseNum: number | null = null;
@@ -427,7 +427,7 @@ function CardDetailsForm({
             inputMode="decimal"
             min="0"
             step="0.01"
-            placeholder="0.00"
+            placeholder="e.g. 12.50"
             autoFocus
             value={price}
             onChange={(e) => setPrice(e.target.value)}

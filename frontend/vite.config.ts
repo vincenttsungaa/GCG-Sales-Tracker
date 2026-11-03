@@ -8,7 +8,9 @@ import basicSsl from "@vitejs/plugin-basic-ssl";
 export default defineConfig({
   // basicSsl: serve https (self-signed) so phone browsers allow the camera for Scan — they only do on
   // https or localhost. Open https://<PC-IP>:3000 and accept the certificate warning once.
-  plugins: [react(), tailwindcss(), basicSsl()],
+  // NO_SSL=1 serves plain http instead (e.g. `NO_SSL=1 npm run dev -- --port 3001`), for browsers that
+  // refuse the self-signed certificate. Scan's camera then only works on this computer.
+  plugins: [react(), tailwindcss(), ...(process.env.NO_SSL ? [] : [basicSsl()])],
   resolve: {
     alias: { "@": path.resolve(__dirname, "./src") },
   },

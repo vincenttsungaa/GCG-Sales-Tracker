@@ -36,3 +36,9 @@ def test_reserved_sheet_name_is_avoided():
     items = [{"id": "1", "kind": "card", "name": "A", "status": "for_sale", "stack_id": "h"}]
     wb = load_workbook(BytesIO(build_workbook(items, {"h": "History"}, per_stack=True)))
     assert "History" not in wb.sheetnames and "History (2)" in wb.sheetnames
+
+
+def test_free_plan_gets_one_listings_sheet():
+    items = [{"id": "1", "kind": "card", "name": "A", "status": "for_sale", "stack_id": "s1"}, {"id": "2", "kind": "card", "name": "B", "status": "sold"}]
+    wb = load_workbook(BytesIO(build_workbook(items, {"s1": "S"}, per_stack=True, full=False)))
+    assert wb.sheetnames == ["Listings"] and wb["Listings"]["A4"].value == "B"  # sold ones included

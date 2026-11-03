@@ -5,8 +5,8 @@ const audFormatter = new Intl.NumberFormat("en-AU", { style: "currency", currenc
 
 export function formatAud(value: number): string {
   // en-AU renders AUD as "$" — force the explicit "A$" style (A$45.00) to keep AUD unambiguous.
-  const formatted = audFormatter.format(value);
-  return formatted.startsWith("$") ? `A$${formatted.slice(1)}` : formatted;
+  // also for losses: "-$4.00" → "-A$4.00"
+  return audFormatter.format(value).replace(/^(-?)\$/, "$1A$");
 }
 
 // Deal dates are YYYY-MM-DD strings; display as DD/MM/YYYY (Australian standard).
@@ -39,7 +39,7 @@ export const COLOR_TRIM_CLASS: Record<GundamColor, string> = {
 
 export const STATUS_BADGE_CLASS: Record<ItemStatus, string> = {
   for_sale: "bg-blue-900/70 text-blue-100 border-blue-500/40",
-  pending: "bg-amber-900/70 text-amber-100 border-amber-500/40",
+  pending: "bg-amber-400 text-amber-950 border-amber-300", // solid, so it reads on any picture and theme
   on_hold: "bg-violet-900/70 text-violet-100 border-violet-500/40",
-  sold: "bg-green-900/70 text-green-100 border-green-500/40",
+  sold: "bg-green-600 text-white border-green-500",
 };

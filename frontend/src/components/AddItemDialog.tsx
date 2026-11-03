@@ -197,10 +197,11 @@ function ProductSearch({ onPick }: { onPick: (p: CatalogProduct) => void }) {
       ) : (
         <ul
           data-testid="product-search-results"
-          className="grid max-h-[50svh] grid-cols-2 gap-2 overflow-y-auto pr-1 sm:grid-cols-3"
+          className="grid max-h-[50svh] grid-cols-2 gap-2.5 overflow-y-auto pr-1 sm:grid-cols-3 sm:gap-3"
         >
           {products.map((p) => (
-            <li key={p.id}>
+            <li key={p.id} className="flex">
+              {/* every tile in a row the same height: the button fills its cell, the name keeps room for 2 lines */}
               <button
                 type="button"
                 data-testid={`product-result-${p.id}`}
@@ -226,7 +227,7 @@ function ProductSearch({ onPick }: { onPick: (p: CatalogProduct) => void }) {
                     </span>
                   )}
                 </span>
-                <span className="line-clamp-2 text-xs leading-tight font-medium text-slate-100">{p.name}</span>
+                <span className="line-clamp-2 min-h-[2lh] text-xs leading-tight font-medium text-slate-100">{p.name}</span>
               </button>
             </li>
           ))}
@@ -512,7 +513,7 @@ function ProductDetailsForm({
       setError(
         anyCardPrice
           ? "Enter an asking price, or give every picked item a price."
-          : "Enter an asking price of zero or more.",
+          : "Enter an asking price (0 if it's free).",
       );
       return null;
     }
@@ -522,7 +523,7 @@ function ProductDetailsForm({
     const qtyNum = cardLot ? 1 : cardMode ? Math.max(totalCopies, 1) : singleKit ? partCopiesOf(parts[0]) : noQtyBox && parts.length > 0 ? 1 : Number(quantity);
     let purchaseNum: number | null = null;
     if (Number.isNaN(priceNum) || priceNum < 0) {
-      setError("Enter an asking price of zero or more.");
+      setError("The asking price can't be negative.");
       return null;
     }
     if (purchase.trim() !== "") {
@@ -1139,7 +1140,7 @@ function ProductDetailsForm({
             inputMode="decimal"
             min="0"
             step="0.01"
-            placeholder={everythingPriced ? `${pricedTotal(priceParts).toFixed(2)} (total of prices)` : "0.00"}
+            placeholder={everythingPriced ? `${pricedTotal(priceParts).toFixed(2)} (total of prices)` : "e.g. 12.50"}
             autoFocus
             value={price}
             onChange={(e) => setPrice(e.target.value)}
@@ -1267,29 +1268,43 @@ function ProductDetailsForm({
 
 /* ---------------- custom item (not in the product database) ---------------- */
 
-// A photo chosen from the computer, shrunk to at most 800px and stored with the listing.
+// A photo chosen from the computer or phone, compressed in the browser before it's stored with the
+// listing: at most 1200px on the long side, WebP (JPEG where the browser can't make WebP), at the
+// highest quality that fits in ~200 KB — a 5 MB phone photo usually ends up 100–200 KB and still sharp.
+const PHOTO_MAX_BYTES = 200_000;
 function readPhoto(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error("Could not read the photo."));
-    reader.onload = () => {
-      const img = new Image();
-      img.onerror = () => reject(new Error("That file isn't a photo the browser can open."));
-      img.onload = () => {
-        const scale = Math.min(1, 800 / Math.max(img.width, img.height));
-        const canvas = document.createElement("canvas");
-        canvas.width = Math.round(img.width * scale);
-        canvas.height = Math.round(img.height * scale);
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return reject(new Error("Could not read the photo."));
+    const src = URL.createObjectURL(file);
+    const img = new Image();
+    img.onerror = () => {
+      URL.revokeObjectURL(src);
+      reject(new Error("That file isn't a photo the browser can open."));
+    };
+    img.onload = () => {
+      URL.revokeObjectURL(src);
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return reject(new Error("Could not read the photo."));
+      let url = "";
+      // largest size first; only shrink further if even lower quality doesn't fit
+      for (const maxPx of [1200, 1000, 800]) {
+        const scale = Math.min(1, maxPx / Math.max(img.naturalWidth, img.naturalHeight));
+        canvas.width = Math.round(img.naturalWidth * scale);
+        canvas.height = Math.round(img.naturalHeight * scale);
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
         ctx.fillStyle = "#ffffff"; // transparent PNGs get a white backdrop
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL("image/jpeg", 0.85));
-      };
-      img.src = reader.result as string;
+        const type = canvas.toDataURL("image/webp", 0.9).startsWith("data:image/webp") ? "image/webp" : "image/jpeg";
+        for (const q of [0.9, 0.85, 0.8, 0.72]) {
+          url = canvas.toDataURL(type, q);
+          if (url.length * 0.75 <= PHOTO_MAX_BYTES) return resolve(url); // base64 is ~4/3 the bytes
+        }
+      }
+      resolve(url); // a very busy photo: the smallest version tried
     };
-    reader.readAsDataURL(file);
+    img.src = src;
   });
 }
 
@@ -1566,7 +1581,7 @@ function CustomItemForm({
             inputMode="decimal"
             min="0"
             step="0.01"
-            placeholder="0.00"
+            placeholder="e.g. 12.50"
             value={price}
             onChange={(e) => setPrice(e.target.value)}
           />
@@ -1686,7 +1701,7 @@ function bundleParts(entries: BundleEntry[]): PricedPart[] {
   return entries.map((e) => ({ label: e.code ?? e.name, qty: e.quantity, each: e.price }));
 }
 
-// One listing for several products and / or cards, e.g. "Bundle: ST09 + ST02-010", at the given
+// One listing for several products and / or cards, e.g. "ST09 + ST02-010", at the given
 // total price.
 // oxlint-disable-next-line react/only-export-components -- shared with Add Card
 export function bundlePayload(entries: BundleEntry[], total: number): ItemPayload {
@@ -1696,7 +1711,7 @@ export function bundlePayload(entries: BundleEntry[], total: number): ItemPayloa
   const codes = entries.map((e) => e.code ?? e.name);
   return {
     kind: "item",
-    name: `Bundle: ${codes.join(" + ")}`,
+    name: codes.join(" + "), // no "Bundle:" in front: the card already says Bundle under the name
     color: null,
     card_type: null,
     rarity: null,
@@ -1834,7 +1849,7 @@ export function BundleBar({
               inputMode="decimal"
               min="0"
               step="0.01"
-              placeholder={allPriced ? `${pricedTotal(parts).toFixed(2)} (total of prices)` : "0.00"}
+              placeholder={allPriced ? `${pricedTotal(parts).toFixed(2)} (total of prices)` : "e.g. 12.50"}
               value={bundlePrice}
               onChange={(ev) => setBundlePrice(ev.target.value)}
               className="h-8"

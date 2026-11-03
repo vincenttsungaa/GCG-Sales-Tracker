@@ -7,6 +7,8 @@ An app for tracking a Gundam Card Game Sales. It has two parts:
 
 Some files are not included in this repository on purpose: the Python virtual environment (`venv`), the Node packages (`node_modules`), cache files (`__pycache__`) and the `.env` file with private settings. You'll create these yourself in the steps below. It only takes a few minutes.
 
+To put CardStakk online (Oracle Cloud + Cloudflare), see [deploy/DEPLOY.md](deploy/DEPLOY.md).
+
 ## Requirements
 
 Install these first:

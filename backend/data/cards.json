@@ -1,6 +1,6 @@
 {
  "source": "https://www.gundam-gcg.com/en/cards/",
- "synced_at": "2026-10-23T09:11:21.524584+00:00",
+ "synced_at": "2026-10-30T11:31:07.230954+00:00",
  "packages": [
   {
    "code": "616101",
@@ -107,7 +107,7 @@
    "name": "Promotion card"
   }
  ],
- "count": 2149,
+ "count": 2205,
  "failed": [],
  "cards": [
   {
@@ -23127,6 +23127,126 @@
    ]
   },
   {
+   "id": "GD02-129_p2",
+   "card_no": "GD02-129",
+   "name": "Argama",
+   "color": "white",
+   "card_type": "base",
+   "rarity": "R+",
+   "set_code": "GD02",
+   "set_name": "Stardust Trails",
+   "product": "Stardust Trails [GD06]",
+   "parallel": 2,
+   "level": "3",
+   "cost": "1",
+   "ap": null,
+   "hp": "5",
+   "trait": "(AEUG) (Warship)",
+   "zone": "Space Earth",
+   "link": null,
+   "source_title": "Mobile Suit Z Gundam",
+   "image": "GD02-129_p2.webp",
+   "packages": [
+    "Stardust Trails [GD06]"
+   ]
+  },
+  {
+   "id": "GD05-123_p1",
+   "card_no": "GD05-123",
+   "name": "Archangel",
+   "color": "blue",
+   "card_type": "base",
+   "rarity": "U+",
+   "set_code": "GD05",
+   "set_name": "Stardust Trails",
+   "product": "Stardust Trails [GD06]",
+   "parallel": 1,
+   "level": "2",
+   "cost": "1",
+   "ap": null,
+   "hp": "5",
+   "trait": "(Orb) (Warship)",
+   "zone": "Space Earth",
+   "link": null,
+   "source_title": "Mobile Suit Gundam SEED DESTINY",
+   "image": "GD05-123_p1.webp",
+   "packages": [
+    "Stardust Trails [GD06]"
+   ]
+  },
+  {
+   "id": "GD05-125_p1",
+   "card_no": "GD05-125",
+   "name": "Ra Cailum",
+   "color": "green",
+   "card_type": "base",
+   "rarity": "U+",
+   "set_code": "GD05",
+   "set_name": "Stardust Trails",
+   "product": "Stardust Trails [GD06]",
+   "parallel": 1,
+   "level": "3",
+   "cost": "1",
+   "ap": null,
+   "hp": "5",
+   "trait": "(Earth Federation) (Londo Bell) (Warship)",
+   "zone": "Space",
+   "link": null,
+   "source_title": "Mobile Suit Gundam: Char's Counterattack",
+   "image": "GD05-125_p1.webp",
+   "packages": [
+    "Stardust Trails [GD06]"
+   ]
+  },
+  {
+   "id": "GD05-128_p1",
+   "card_no": "GD05-128",
+   "name": "Gundam Fight",
+   "color": "red",
+   "card_type": "base",
+   "rarity": "C+",
+   "set_code": "GD05",
+   "set_name": "Stardust Trails",
+   "product": "Stardust Trails [GD06]",
+   "parallel": 1,
+   "level": "3",
+   "cost": "1",
+   "ap": null,
+   "hp": "5",
+   "trait": "(Stronghold)",
+   "zone": "Earth",
+   "link": null,
+   "source_title": "Mobile Fighter G Gundam",
+   "image": "GD05-128_p1.webp",
+   "packages": [
+    "Stardust Trails [GD06]"
+   ]
+  },
+  {
+   "id": "GD05-129_p1",
+   "card_no": "GD05-129",
+   "name": "Axis",
+   "color": "purple",
+   "card_type": "base",
+   "rarity": "R+",
+   "set_code": "GD05",
+   "set_name": "Stardust Trails",
+   "product": "Stardust Trails [GD06]",
+   "parallel": 1,
+   "level": "4",
+   "cost": "1",
+   "ap": null,
+   "hp": "6",
+   "trait": "(Neo Zeon) (Stronghold)",
+   "zone": "Space",
+   "link": null,
+   "source_title": "Mobile Suit Gundam: Char's Counterattack",
+   "image": "GD05-129_p1.webp",
+   "packages": [
+    "Stardust Trails [GD06]"
+   ]
+  },
+  {
    "id": "GD06-001",
    "card_no": "GD06-001",
    "name": "Gundam GP01Fb",
@@ -23146,6 +23266,30 @@
    "link": "[Kou Uraki]",
    "source_title": "Mobile Suit Gundam 0083",
    "image": "GD06-001.webp",
+   "packages": [
+    "Stardust Trails [GD06]"
+   ]
+  },
+  {
+   "id": "GD06-001_p1",
+   "card_no": "GD06-001",
+   "name": "Gundam GP01Fb",
+   "color": "blue",
+   "card_type": "unit",
+   "rarity": "LR+",
+   "set_code": "GD06",
+   "set_name": "Stardust Trails",
+   "product": "Stardust Trails [GD06]",
+   "parallel": 1,
+   "level": "5",
+   "cost": "4",
+   "ap": "3",
+   "hp": "5",
+   "trait": "(Earth Federation) (Albion Squad)",
+   "zone": "Space",
+   "link": "[Kou Uraki]",
+   "source_title": "Mobile Suit Gundam 0083",
+   "image": "GD06-001_p1.webp",
    "packages": [
     "Stardust Trails [GD06]"
    ]
@@ -23175,6 +23319,54 @@
    ]
   },
   {
+   "id": "GD06-002_p1",
+   "card_no": "GD06-002",
+   "name": "Infinite Justice Gundam",
+   "color": "blue",
+   "card_type": "unit",
+   "rarity": "LR+",
+   "set_code": "GD06",
+   "set_name": "Stardust Trails",
+   "product": "Stardust Trails [GD06]",
+   "parallel": 1,
+   "level": "7",
+   "cost": "6",
+   "ap": "5",
+   "hp": "5",
+   "trait": "(Orb)",
+   "zone": "Space Earth",
+   "link": "[Athrun Zala]",
+   "source_title": "Mobile Suit Gundam SEED DESTINY",
+   "image": "GD06-002_p1.webp",
+   "packages": [
+    "Stardust Trails [GD06]"
+   ]
+  },
+  {
+   "id": "GD06-002_p2",
+   "card_no": "GD06-002",
+   "name": "Infinite Justice Gundam",
+   "color": "blue",
+   "card_type": "unit",
+   "rarity": "LR++",
+   "set_code": "GD06",
+   "set_name": "Stardust Trails",
+   "product": "Stardust Trails [GD06]",
+   "parallel": 2,
+   "level": "7",
+   "cost": "6",
+   "ap": "5",
+   "hp": "5",
+   "trait": "(Orb)",
+   "zone": "Space Earth",
+   "link": "[Athrun Zala]",
+   "source_title": "Mobile Suit Gundam SEED DESTINY",
+   "image": "GD06-002_p2.webp",
+   "packages": [
+    "Stardust Trails [GD06]"
+   ]
+  },
+  {
    "id": "GD06-003",
    "card_no": "GD06-003",
    "name": "GQuuuuuuX (Omega Psycommu Released)",
@@ -23194,6 +23386,30 @@
    "link": "[Amate Yuzuriha (Machu)]",
    "source_title": "Mobile Suit Gundam GQuuuuuuX",
    "image": "GD06-003.webp",
+   "packages": [
+    "Stardust Trails [GD06]"
+   ]
+  },
+  {
+   "id": "GD06-003_p1",
+   "card_no": "GD06-003",
+   "name": "GQuuuuuuX (Omega Psycommu Released)",
+   "color": "blue",
+   "card_type": "unit",
+   "rarity": "LR+",
+   "set_code": "GD06",
+   "set_name": "Stardust Trails",
+   "product": "Stardust Trails [GD06]",
+   "parallel": 1,
+   "level": "6",
+   "cost": "4",
+   "ap": "2",
+   "hp": "5",
+   "trait": "(Alphacide)",
+   "zone": "Space Earth",
+   "link": "[Amate Yuzuriha (Machu)]",
+   "source_title": "Mobile Suit Gundam GQuuuuuuX",
+   "image": "GD06-003_p1.webp",
    "packages": [
     "Stardust Trails [GD06]"
    ]
@@ -23223,6 +23439,30 @@
    ]
   },
   {
+   "id": "GD06-004_p1",
+   "card_no": "GD06-004",
+   "name": "Gundam GP01",
+   "color": "blue",
+   "card_type": "unit",
+   "rarity": "R+",
+   "set_code": "GD06",
+   "set_name": "Stardust Trails",
+   "product": "Stardust Trails [GD06]",
+   "parallel": 1,
+   "level": "4",
+   "cost": "2",
+   "ap": "4",
+   "hp": "3",
+   "trait": "(Earth Federation) (Albion Squad)",
+   "zone": "Earth",
+   "link": "[Kou Uraki]",
+   "source_title": "Mobile Suit Gundam 0083",
+   "image": "GD06-004_p1.webp",
+   "packages": [
+    "Stardust Trails [GD06]"
+   ]
+  },
+  {
    "id": "GD06-005",
    "card_no": "GD06-005",
    "name": "Akatsuki (Shiranui)",
@@ -23247,6 +23487,30 @@
    ]
   },
   {
+   "id": "GD06-005_p1",
+   "card_no": "GD06-005",
+   "name": "Akatsuki (Shiranui)",
+   "color": "blue",
+   "card_type": "unit",
+   "rarity": "R+",
+   "set_code": "GD06",
+   "set_name": "Stardust Trails",
+   "product": "Stardust Trails [GD06]",
+   "parallel": 1,
+   "level": "6",
+   "cost": "5",
+   "ap": "5",
+   "hp": "4",
+   "trait": "(Orb)",
+   "zone": "Space Earth",
+   "link": "(Orb) Trait / [Mu La Flaga]",
+   "source_title": "Mobile Suit Gundam SEED DESTINY",
+   "image": "GD06-005_p1.webp",
+   "packages": [
+    "Stardust Trails [GD06]"
+   ]
+  },
+  {
    "id": "GD06-006",
    "card_no": "GD06-006",
    "name": "GQuuuuuuX (Omega Psycommu)",
@@ -23266,6 +23530,30 @@
    "link": "[Amate Yuzuriha (Machu)] / [Nyaan]",
    "source_title": "Mobile Suit Gundam GQuuuuuuX",
    "image": "GD06-006.webp",
+   "packages": [
+    "Stardust Trails [GD06]"
+   ]
+  },
+  {
+   "id": "GD06-006_p1",
+   "card_no": "GD06-006",
+   "name": "GQuuuuuuX (Omega Psycommu)",
+   "color": "blue",
+   "card_type": "unit",
+   "rarity": "LKR+",
+   "set_code": "GD06",
+   "set_name": "Stardust Trails",
+   "product": "Stardust Trails [GD06]",
+   "parallel": 1,
+   "level": "5",
+   "cost": "3",
+   "ap": "4",
+   "hp": "2",
+   "trait": "(Alphacide)",
+   "zone": "Space Earth",
+   "link": "[Amate Yuzuriha (Machu)] / [Nyaan]",
+   "source_title": "Mobile Suit Gundam GQuuuuuuX",
+   "image": "GD06-006_p1.webp",
    "packages": [
     "Stardust Trails [GD06]"
    ]
@@ -23338,6 +23626,30 @@
    "link": "(Albion Squad) Trait",
    "source_title": "Mobile Suit Gundam 0083",
    "image": "GD06-009.webp",
+   "packages": [
+    "Stardust Trails [GD06]"
+   ]
+  },
+  {
+   "id": "GD06-009_p1",
+   "card_no": "GD06-009",
+   "name": "GM Custom",
+   "color": "blue",
+   "card_type": "unit",
+   "rarity": "LKU+",
+   "set_code": "GD06",
+   "set_name": "Stardust Trails",
+   "product": "Stardust Trails [GD06]",
+   "parallel": 1,
+   "level": "3",
+   "cost": "2",
+   "ap": "2",
+   "hp": "4",
+   "trait": "(Earth Federation) (Albion Squad)",
+   "zone": "Space Earth",
+   "link": "(Albion Squad) Trait",
+   "source_title": "Mobile Suit Gundam 0083",
+   "image": "GD06-009_p1.webp",
    "packages": [
     "Stardust Trails [GD06]"
    ]
@@ -23559,6 +23871,30 @@
    ]
   },
   {
+   "id": "GD06-018_p1",
+   "card_no": "GD06-018",
+   "name": "Elpeo Ple's Qubeley Mk-Ⅱ",
+   "color": "green",
+   "card_type": "unit",
+   "rarity": "LR+",
+   "set_code": "GD06",
+   "set_name": "Stardust Trails",
+   "product": "Stardust Trails [GD06]",
+   "parallel": 1,
+   "level": "3",
+   "cost": "2",
+   "ap": "3",
+   "hp": "2",
+   "trait": "(Neo Zeon)",
+   "zone": "Space Earth",
+   "link": "[Elpeo Ple]",
+   "source_title": "Mobile Suit Gundam ZZ",
+   "image": "GD06-018_p1.webp",
+   "packages": [
+    "Stardust Trails [GD06]"
+   ]
+  },
+  {
    "id": "GD06-019",
    "card_no": "GD06-019",
    "name": "Turn X",
@@ -23578,6 +23914,30 @@
    "link": "[Gym Ghingnham]",
    "source_title": "∀ Gundam",
    "image": "GD06-019.webp",
+   "packages": [
+    "Stardust Trails [GD06]"
+   ]
+  },
+  {
+   "id": "GD06-019_p1",
+   "card_no": "GD06-019",
+   "name": "Turn X",
+   "color": "green",
+   "card_type": "unit",
+   "rarity": "LR+",
+   "set_code": "GD06",
+   "set_name": "Stardust Trails",
+   "product": "Stardust Trails [GD06]",
+   "parallel": 1,
+   "level": "8",
+   "cost": "7",
+   "ap": "5",
+   "hp": "6",
+   "trait": "(Ghingnham Fleet)",
+   "zone": "Space Earth",
+   "link": "[Gym Ghingnham]",
+   "source_title": "∀ Gundam",
+   "image": "GD06-019_p1.webp",
    "packages": [
     "Stardust Trails [GD06]"
    ]
@@ -23607,6 +23967,30 @@
    ]
   },
   {
+   "id": "GD06-020_p1",
+   "card_no": "GD06-020",
+   "name": "Hamma-Hamma",
+   "color": "green",
+   "card_type": "unit",
+   "rarity": "R+",
+   "set_code": "GD06",
+   "set_name": "Stardust Trails",
+   "product": "Stardust Trails [GD06]",
+   "parallel": 1,
+   "level": "3",
+   "cost": "3",
+   "ap": "3",
+   "hp": "4",
+   "trait": "(Neo Zeon)",
+   "zone": "Space Earth",
+   "link": "[Mashymre Cello]",
+   "source_title": "Mobile Suit Gundam ZZ",
+   "image": "GD06-020_p1.webp",
+   "packages": [
+    "Stardust Trails [GD06]"
+   ]
+  },
+  {
    "id": "GD06-021",
    "card_no": "GD06-021",
    "name": "Turn X (Top)",
@@ -23631,6 +24015,30 @@
    ]
   },
   {
+   "id": "GD06-021_p1",
+   "card_no": "GD06-021",
+   "name": "Turn X (Top)",
+   "color": "green",
+   "card_type": "unit",
+   "rarity": "R+",
+   "set_code": "GD06",
+   "set_name": "Stardust Trails",
+   "product": "Stardust Trails [GD06]",
+   "parallel": 1,
+   "level": "4",
+   "cost": "3",
+   "ap": "2",
+   "hp": "2",
+   "trait": "(Ghingnham Fleet)",
+   "zone": "Space Earth",
+   "link": "[Gym Ghingnham]",
+   "source_title": "∀ Gundam",
+   "image": "GD06-021_p1.webp",
+   "packages": [
+    "Stardust Trails [GD06]"
+   ]
+  },
+  {
    "id": "GD06-022",
    "card_no": "GD06-022",
    "name": "Merrybell's Bandit",
@@ -23650,6 +24058,30 @@
    "link": "(Moonrace) Trait",
    "source_title": "∀ Gundam",
    "image": "GD06-022.webp",
+   "packages": [
+    "Stardust Trails [GD06]"
+   ]
+  },
+  {
+   "id": "GD06-022_p1",
+   "card_no": "GD06-022",
+   "name": "Merrybell's Bandit",
+   "color": "green",
+   "card_type": "unit",
+   "rarity": "LKR+",
+   "set_code": "GD06",
+   "set_name": "Stardust Trails",
+   "product": "Stardust Trails [GD06]",
+   "parallel": 1,
+   "level": "6",
+   "cost": "4",
+   "ap": "4",
+   "hp": "4",
+   "trait": "(Ghingnham Fleet)",
+   "zone": "Space Earth",
+   "link": "(Moonrace) Trait",
+   "source_title": "∀ Gundam",
+   "image": "GD06-022_p1.webp",
    "packages": [
     "Stardust Trails [GD06]"
    ]
@@ -23823,6 +24255,30 @@
    ]
   },
   {
+   "id": "GD06-029_p1",
+   "card_no": "GD06-029",
+   "name": "Elpeo Ple's Qubeley Mk-Ⅱ",
+   "color": "green",
+   "card_type": "unit",
+   "rarity": "LKC+",
+   "set_code": "GD06",
+   "set_name": "Stardust Trails",
+   "product": "Stardust Trails [GD06]",
+   "parallel": 1,
+   "level": "4",
+   "cost": "3",
+   "ap": "4",
+   "hp": "3",
+   "trait": "(Neo Zeon)",
+   "zone": "Space Earth",
+   "link": "[Elpeo Ple]",
+   "source_title": "Mobile Suit Gundam ZZ",
+   "image": "GD06-029_p1.webp",
+   "packages": [
+    "Stardust Trails [GD06]"
+   ]
+  },
+  {
    "id": "GD06-030",
    "card_no": "GD06-030",
    "name": "Mahiroo",
@@ -23919,6 +24375,30 @@
    ]
   },
   {
+   "id": "GD06-033_p1",
+   "card_no": "GD06-033",
+   "name": "ZZ Gundam",
+   "color": "red",
+   "card_type": "unit",
+   "rarity": "LR+",
+   "set_code": "GD06",
+   "set_name": "Stardust Trails",
+   "product": "Stardust Trails [GD06]",
+   "parallel": 1,
+   "level": "9",
+   "cost": "8",
+   "ap": "7",
+   "hp": "7",
+   "trait": "(AEUG) (Gundam Team)",
+   "zone": "Space Earth",
+   "link": "[Judau Ashta]",
+   "source_title": "Mobile Suit Gundam ZZ",
+   "image": "GD06-033_p1.webp",
+   "packages": [
+    "Stardust Trails [GD06]"
+   ]
+  },
+  {
    "id": "GD06-034",
    "card_no": "GD06-034",
    "name": "Gundam Bael",
@@ -23938,6 +24418,54 @@
    "link": "[McGillis Fareed]",
    "source_title": "Mobile Suit Gundam IRON-BLOODED ORPHANS",
    "image": "GD06-034.webp",
+   "packages": [
+    "Stardust Trails [GD06]"
+   ]
+  },
+  {
+   "id": "GD06-034_p1",
+   "card_no": "GD06-034",
+   "name": "Gundam Bael",
+   "color": "red",
+   "card_type": "unit",
+   "rarity": "LR+",
+   "set_code": "GD06",
+   "set_name": "Stardust Trails",
+   "product": "Stardust Trails [GD06]",
+   "parallel": 1,
+   "level": "7",
+   "cost": "6",
+   "ap": "5",
+   "hp": "5",
+   "trait": "(Gjallarhorn) (Gundam Frame)",
+   "zone": "Space Earth",
+   "link": "[McGillis Fareed]",
+   "source_title": "Mobile Suit Gundam IRON-BLOODED ORPHANS",
+   "image": "GD06-034_p1.webp",
+   "packages": [
+    "Stardust Trails [GD06]"
+   ]
+  },
+  {
+   "id": "GD06-034_p2",
+   "card_no": "GD06-034",
+   "name": "Gundam Bael",
+   "color": "red",
+   "card_type": "unit",
+   "rarity": "LR++",
+   "set_code": "GD06",
+   "set_name": "Stardust Trails",
+   "product": "Stardust Trails [GD06]",
+   "parallel": 2,
+   "level": "7",
+   "cost": "6",
+   "ap": "5",
+   "hp": "5",
+   "trait": "(Gjallarhorn) (Gundam Frame)",
+   "zone": "Space Earth",
+   "link": "[McGillis Fareed]",
+   "source_title": "Mobile Suit Gundam IRON-BLOODED ORPHANS",
+   "image": "GD06-034_p2.webp",
    "packages": [
     "Stardust Trails [GD06]"
    ]
@@ -23967,6 +24495,30 @@
    ]
   },
   {
+   "id": "GD06-035_p1",
+   "card_no": "GD06-035",
+   "name": "Zeta Gundam",
+   "color": "red",
+   "card_type": "unit",
+   "rarity": "R+",
+   "set_code": "GD06",
+   "set_name": "Stardust Trails",
+   "product": "Stardust Trails [GD06]",
+   "parallel": 1,
+   "level": "5",
+   "cost": "4",
+   "ap": "4",
+   "hp": "4",
+   "trait": "(AEUG) (Gundam Team)",
+   "zone": "Space Earth",
+   "link": "(AEUG) Trait",
+   "source_title": "Mobile Suit Gundam ZZ",
+   "image": "GD06-035_p1.webp",
+   "packages": [
+    "Stardust Trails [GD06]"
+   ]
+  },
+  {
    "id": "GD06-036",
    "card_no": "GD06-036",
    "name": "Gundam Vidar",
@@ -23986,6 +24538,30 @@
    "link": "[Gaelio Bauduin]",
    "source_title": "Mobile Suit Gundam IRON-BLOODED ORPHANS",
    "image": "GD06-036.webp",
+   "packages": [
+    "Stardust Trails [GD06]"
+   ]
+  },
+  {
+   "id": "GD06-036_p1",
+   "card_no": "GD06-036",
+   "name": "Gundam Vidar",
+   "color": "red",
+   "card_type": "unit",
+   "rarity": "LKR+",
+   "set_code": "GD06",
+   "set_name": "Stardust Trails",
+   "product": "Stardust Trails [GD06]",
+   "parallel": 1,
+   "level": "4",
+   "cost": "2",
+   "ap": "3",
+   "hp": "4",
+   "trait": "(Gjallarhorn) (Gundam Frame)",
+   "zone": "Space Earth",
+   "link": "[Gaelio Bauduin]",
+   "source_title": "Mobile Suit Gundam IRON-BLOODED ORPHANS",
+   "image": "GD06-036_p1.webp",
    "packages": [
     "Stardust Trails [GD06]"
    ]
@@ -24015,6 +24591,30 @@
    ]
   },
   {
+   "id": "GD06-037_p1",
+   "card_no": "GD06-037",
+   "name": "Reginlaze Julia",
+   "color": "red",
+   "card_type": "unit",
+   "rarity": "LKR+",
+   "set_code": "GD06",
+   "set_name": "Stardust Trails",
+   "product": "Stardust Trails [GD06]",
+   "parallel": 1,
+   "level": "6",
+   "cost": "4",
+   "ap": "4",
+   "hp": "4",
+   "trait": "(Gjallarhorn)",
+   "zone": "Space Earth",
+   "link": "[Julieta Juris]",
+   "source_title": "Mobile Suit Gundam IRON-BLOODED ORPHANS",
+   "image": "GD06-037_p1.webp",
+   "packages": [
+    "Stardust Trails [GD06]"
+   ]
+  },
+  {
    "id": "GD06-038",
    "card_no": "GD06-038",
    "name": "Gundam Kimaris Vidar",
@@ -24034,6 +24634,30 @@
    "link": "[Gaelio Bauduin]",
    "source_title": "Mobile Suit Gundam IRON-BLOODED ORPHANS",
    "image": "GD06-038.webp",
+   "packages": [
+    "Stardust Trails [GD06]"
+   ]
+  },
+  {
+   "id": "GD06-038_p1",
+   "card_no": "GD06-038",
+   "name": "Gundam Kimaris Vidar",
+   "color": "red",
+   "card_type": "unit",
+   "rarity": "R+",
+   "set_code": "GD06",
+   "set_name": "Stardust Trails",
+   "product": "Stardust Trails [GD06]",
+   "parallel": 1,
+   "level": "7",
+   "cost": "6",
+   "ap": "5",
+   "hp": "5",
+   "trait": "(Gjallarhorn) (Gundam Frame)",
+   "zone": "Space Earth",
+   "link": "[Gaelio Bauduin]",
+   "source_title": "Mobile Suit Gundam IRON-BLOODED ORPHANS",
+   "image": "GD06-038_p1.webp",
    "packages": [
     "Stardust Trails [GD06]"
    ]
@@ -24082,6 +24706,30 @@
    "link": "(AEUG) Trait",
    "source_title": "Mobile Suit Gundam ZZ",
    "image": "GD06-040.webp",
+   "packages": [
+    "Stardust Trails [GD06]"
+   ]
+  },
+  {
+   "id": "GD06-040_p1",
+   "card_no": "GD06-040",
+   "name": "Gundam Mk-Ⅱ",
+   "color": "red",
+   "card_type": "unit",
+   "rarity": "LKU+",
+   "set_code": "GD06",
+   "set_name": "Stardust Trails",
+   "product": "Stardust Trails [GD06]",
+   "parallel": 1,
+   "level": "4",
+   "cost": "2",
+   "ap": "3",
+   "hp": "4",
+   "trait": "(AEUG) (Gundam Team)",
+   "zone": "Space Earth",
+   "link": "(AEUG) Trait",
+   "source_title": "Mobile Suit Gundam ZZ",
+   "image": "GD06-040_p1.webp",
    "packages": [
     "Stardust Trails [GD06]"
    ]
@@ -24303,6 +24951,30 @@
    ]
   },
   {
+   "id": "GD06-049_p1",
+   "card_no": "GD06-049",
+   "name": "Gundam GP02A",
+   "color": "purple",
+   "card_type": "unit",
+   "rarity": "LR+",
+   "set_code": "GD06",
+   "set_name": "Stardust Trails",
+   "product": "Stardust Trails [GD06]",
+   "parallel": 1,
+   "level": "5",
+   "cost": "4",
+   "ap": "4",
+   "hp": "3",
+   "trait": "(Zeon) (Delaz Fleet)",
+   "zone": "Space Earth",
+   "link": "[Anavel Gato]",
+   "source_title": "Mobile Suit Gundam 0083",
+   "image": "GD06-049_p1.webp",
+   "packages": [
+    "Stardust Trails [GD06]"
+   ]
+  },
+  {
    "id": "GD06-050",
    "card_no": "GD06-050",
    "name": "Legend Gundam",
@@ -24322,6 +24994,30 @@
    "link": "[Rey Za Burrel]",
    "source_title": "Mobile Suit Gundam SEED DESTINY",
    "image": "GD06-050.webp",
+   "packages": [
+    "Stardust Trails [GD06]"
+   ]
+  },
+  {
+   "id": "GD06-050_p1",
+   "card_no": "GD06-050",
+   "name": "Legend Gundam",
+   "color": "purple",
+   "card_type": "unit",
+   "rarity": "LR+",
+   "set_code": "GD06",
+   "set_name": "Stardust Trails",
+   "product": "Stardust Trails [GD06]",
+   "parallel": 1,
+   "level": "6",
+   "cost": "5",
+   "ap": "4",
+   "hp": "5",
+   "trait": "(ZAFT) (Minerva Squad)",
+   "zone": "Space Earth",
+   "link": "[Rey Za Burrel]",
+   "source_title": "Mobile Suit Gundam SEED DESTINY",
+   "image": "GD06-050_p1.webp",
    "packages": [
     "Stardust Trails [GD06]"
    ]
@@ -24351,6 +25047,30 @@
    ]
   },
   {
+   "id": "GD06-051_p1",
+   "card_no": "GD06-051",
+   "name": "GFreD",
+   "color": "purple",
+   "card_type": "unit",
+   "rarity": "LR+",
+   "set_code": "GD06",
+   "set_name": "Stardust Trails",
+   "product": "Stardust Trails [GD06]",
+   "parallel": 1,
+   "level": "6",
+   "cost": "5",
+   "ap": "5",
+   "hp": "4",
+   "trait": "(Zeon) (Alphacide)",
+   "zone": "Space Earth",
+   "link": "[Nyaan]",
+   "source_title": "Mobile Suit Gundam GQuuuuuuX",
+   "image": "GD06-051_p1.webp",
+   "packages": [
+    "Stardust Trails [GD06]"
+   ]
+  },
+  {
    "id": "GD06-052",
    "card_no": "GD06-052",
    "name": "Val Walo",
@@ -24370,6 +25090,30 @@
    "link": "[Kelley Layzner]",
    "source_title": "Mobile Suit Gundam 0083",
    "image": "GD06-052.webp",
+   "packages": [
+    "Stardust Trails [GD06]"
+   ]
+  },
+  {
+   "id": "GD06-052_p1",
+   "card_no": "GD06-052",
+   "name": "Val Walo",
+   "color": "purple",
+   "card_type": "unit",
+   "rarity": "R+",
+   "set_code": "GD06",
+   "set_name": "Stardust Trails",
+   "product": "Stardust Trails [GD06]",
+   "parallel": 1,
+   "level": "5",
+   "cost": "4",
+   "ap": "4",
+   "hp": "4",
+   "trait": "(Zeon) (Civilian)",
+   "zone": "Space",
+   "link": "[Kelley Layzner]",
+   "source_title": "Mobile Suit Gundam 0083",
+   "image": "GD06-052_p1.webp",
    "packages": [
     "Stardust Trails [GD06]"
    ]
@@ -24399,6 +25143,30 @@
    ]
   },
   {
+   "id": "GD06-053_p1",
+   "card_no": "GD06-053",
+   "name": "Xavier's Gyan Hakuji-Packs (GQ)",
+   "color": "purple",
+   "card_type": "unit",
+   "rarity": "R+",
+   "set_code": "GD06",
+   "set_name": "Stardust Trails",
+   "product": "Stardust Trails [GD06]",
+   "parallel": 1,
+   "level": "5",
+   "cost": "3",
+   "ap": "4",
+   "hp": "4",
+   "trait": "(Zeon)",
+   "zone": "Space Earth",
+   "link": "[Xavier Olivette]",
+   "source_title": "Mobile Suit Gundam GQuuuuuuX",
+   "image": "GD06-053_p1.webp",
+   "packages": [
+    "Stardust Trails [GD06]"
+   ]
+  },
+  {
    "id": "GD06-054",
    "card_no": "GD06-054",
    "name": "GFreD",
@@ -24423,6 +25191,30 @@
    ]
   },
   {
+   "id": "GD06-054_p1",
+   "card_no": "GD06-054",
+   "name": "GFreD",
+   "color": "purple",
+   "card_type": "unit",
+   "rarity": "LKR+",
+   "set_code": "GD06",
+   "set_name": "Stardust Trails",
+   "product": "Stardust Trails [GD06]",
+   "parallel": 1,
+   "level": "7",
+   "cost": "6",
+   "ap": "6",
+   "hp": "5",
+   "trait": "(Zeon) (Alphacide)",
+   "zone": "Space Earth",
+   "link": "[Nyaan]",
+   "source_title": "Mobile Suit Gundam GQuuuuuuX",
+   "image": "GD06-054_p1.webp",
+   "packages": [
+    "Stardust Trails [GD06]"
+   ]
+  },
+  {
    "id": "GD06-055",
    "card_no": "GD06-055",
    "name": "Gundam GP02A",
@@ -24442,6 +25234,30 @@
    "link": "[Anavel Gato]",
    "source_title": "Mobile Suit Gundam 0083",
    "image": "GD06-055.webp",
+   "packages": [
+    "Stardust Trails [GD06]"
+   ]
+  },
+  {
+   "id": "GD06-055_p1",
+   "card_no": "GD06-055",
+   "name": "Gundam GP02A",
+   "color": "purple",
+   "card_type": "unit",
+   "rarity": "LKU+",
+   "set_code": "GD06",
+   "set_name": "Stardust Trails",
+   "product": "Stardust Trails [GD06]",
+   "parallel": 1,
+   "level": "4",
+   "cost": "2",
+   "ap": "4",
+   "hp": "3",
+   "trait": "(Zeon) (Delaz Fleet)",
+   "zone": "Space Earth",
+   "link": "[Anavel Gato]",
+   "source_title": "Mobile Suit Gundam 0083",
+   "image": "GD06-055_p1.webp",
    "packages": [
     "Stardust Trails [GD06]"
    ]
@@ -24663,6 +25479,30 @@
    ]
   },
   {
+   "id": "GD06-064_p1",
+   "card_no": "GD06-064",
+   "name": "Altron Gundam (EW)",
+   "color": "white",
+   "card_type": "unit",
+   "rarity": "LR+",
+   "set_code": "GD06",
+   "set_name": "Stardust Trails",
+   "product": "Stardust Trails [GD06]",
+   "parallel": 1,
+   "level": "3",
+   "cost": "3",
+   "ap": "3",
+   "hp": "4",
+   "trait": "(G Team) (Mariemaia Army)",
+   "zone": "Space Earth",
+   "link": "[Chang Wufei]",
+   "source_title": "Mobile Suit Gundam Wing: Endless Waltz",
+   "image": "GD06-064_p1.webp",
+   "packages": [
+    "Stardust Trails [GD06]"
+   ]
+  },
+  {
    "id": "GD06-065",
    "card_no": "GD06-065",
    "name": "SUMO Gold Type",
@@ -24687,6 +25527,30 @@
    ]
   },
   {
+   "id": "GD06-065_p1",
+   "card_no": "GD06-065",
+   "name": "SUMO Gold Type",
+   "color": "white",
+   "card_type": "unit",
+   "rarity": "LR+",
+   "set_code": "GD06",
+   "set_name": "Stardust Trails",
+   "product": "Stardust Trails [GD06]",
+   "parallel": 1,
+   "level": "6",
+   "cost": "4",
+   "ap": "4",
+   "hp": "5",
+   "trait": "(Dianna Counter)",
+   "zone": "Space Earth",
+   "link": "[Harry Ord]",
+   "source_title": "∀ Gundam",
+   "image": "GD06-065_p1.webp",
+   "packages": [
+    "Stardust Trails [GD06]"
+   ]
+  },
+  {
    "id": "GD06-066",
    "card_no": "GD06-066",
    "name": "Shadow Gundam",
@@ -24706,6 +25570,30 @@
    "link": "(Gundam Fighter) Trait",
    "source_title": "Mobile Fighter G Gundam",
    "image": "GD06-066.webp",
+   "packages": [
+    "Stardust Trails [GD06]"
+   ]
+  },
+  {
+   "id": "GD06-066_p1",
+   "card_no": "GD06-066",
+   "name": "Shadow Gundam",
+   "color": "white",
+   "card_type": "unit",
+   "rarity": "R+",
+   "set_code": "GD06",
+   "set_name": "Stardust Trails",
+   "product": "Stardust Trails [GD06]",
+   "parallel": 1,
+   "level": "6",
+   "cost": "4",
+   "ap": "5",
+   "hp": "4",
+   "trait": "(MF)",
+   "zone": "Space Earth",
+   "link": "(Gundam Fighter) Trait",
+   "source_title": "Mobile Fighter G Gundam",
+   "image": "GD06-066_p1.webp",
    "packages": [
     "Stardust Trails [GD06]"
    ]
@@ -24759,6 +25647,30 @@
    ]
   },
   {
+   "id": "GD06-068_p1",
+   "card_no": "GD06-068",
+   "name": "Gundam Heavyarms Custom (EW)",
+   "color": "white",
+   "card_type": "unit",
+   "rarity": "R+",
+   "set_code": "GD06",
+   "set_name": "Stardust Trails",
+   "product": "Stardust Trails [GD06]",
+   "parallel": 1,
+   "level": "4",
+   "cost": "3",
+   "ap": "4",
+   "hp": "3",
+   "trait": "(G Team)",
+   "zone": "Space Earth",
+   "link": "[Trowa Barton]",
+   "source_title": "Mobile Suit Gundam Wing: Endless Waltz",
+   "image": "GD06-068_p1.webp",
+   "packages": [
+    "Stardust Trails [GD06]"
+   ]
+  },
+  {
    "id": "GD06-069",
    "card_no": "GD06-069",
    "name": "SUMO Silver Type",
@@ -24783,6 +25695,30 @@
    ]
   },
   {
+   "id": "GD06-069_p1",
+   "card_no": "GD06-069",
+   "name": "SUMO Silver Type",
+   "color": "white",
+   "card_type": "unit",
+   "rarity": "LKR+",
+   "set_code": "GD06",
+   "set_name": "Stardust Trails",
+   "product": "Stardust Trails [GD06]",
+   "parallel": 1,
+   "level": "4",
+   "cost": "3",
+   "ap": "4",
+   "hp": "3",
+   "trait": "(Dianna Counter)",
+   "zone": "Space Earth",
+   "link": "(Moonrace) Trait",
+   "source_title": "∀ Gundam",
+   "image": "GD06-069_p1.webp",
+   "packages": [
+    "Stardust Trails [GD06]"
+   ]
+  },
+  {
    "id": "GD06-070",
    "card_no": "GD06-070",
    "name": "Eagail",
@@ -24802,6 +25738,30 @@
    "link": "[Corin Nander]",
    "source_title": "∀ Gundam",
    "image": "GD06-070.webp",
+   "packages": [
+    "Stardust Trails [GD06]"
+   ]
+  },
+  {
+   "id": "GD06-070_p1",
+   "card_no": "GD06-070",
+   "name": "Eagail",
+   "color": "white",
+   "card_type": "unit",
+   "rarity": "LKR+",
+   "set_code": "GD06",
+   "set_name": "Stardust Trails",
+   "product": "Stardust Trails [GD06]",
+   "parallel": 1,
+   "level": "6",
+   "cost": "5",
+   "ap": "5",
+   "hp": "3",
+   "trait": "(Dianna Counter)",
+   "zone": "Space Earth",
+   "link": "[Corin Nander]",
+   "source_title": "∀ Gundam",
+   "image": "GD06-070_p1.webp",
    "packages": [
     "Stardust Trails [GD06]"
    ]
@@ -24850,6 +25810,30 @@
    "link": "[Duo Maxwell]",
    "source_title": "Mobile Suit Gundam Wing: Endless Waltz",
    "image": "GD06-072.webp",
+   "packages": [
+    "Stardust Trails [GD06]"
+   ]
+  },
+  {
+   "id": "GD06-072_p1",
+   "card_no": "GD06-072",
+   "name": "Gundam Deathscythe Hell (EW)",
+   "color": "white",
+   "card_type": "unit",
+   "rarity": "LKU+",
+   "set_code": "GD06",
+   "set_name": "Stardust Trails",
+   "product": "Stardust Trails [GD06]",
+   "parallel": 1,
+   "level": "5",
+   "cost": "3",
+   "ap": "5",
+   "hp": "3",
+   "trait": "(G Team)",
+   "zone": "Space Earth",
+   "link": "[Duo Maxwell]",
+   "source_title": "Mobile Suit Gundam Wing: Endless Waltz",
+   "image": "GD06-072_p1.webp",
    "packages": [
     "Stardust Trails [GD06]"
    ]
@@ -25047,6 +26031,30 @@
    ]
   },
   {
+   "id": "GD06-080_p1",
+   "card_no": "GD06-080",
+   "name": "Kou Uraki",
+   "color": "blue",
+   "card_type": "pilot",
+   "rarity": "R+",
+   "set_code": "GD06",
+   "set_name": "Stardust Trails",
+   "product": "Stardust Trails [GD06]",
+   "parallel": 1,
+   "level": "4",
+   "cost": "1",
+   "ap": "+2",
+   "hp": "+1",
+   "trait": "(Earth Federation) (Albion Squad)",
+   "zone": null,
+   "link": null,
+   "source_title": "Mobile Suit Gundam 0083",
+   "image": "GD06-080_p1.webp",
+   "packages": [
+    "Stardust Trails [GD06]"
+   ]
+  },
+  {
    "id": "GD06-081",
    "card_no": "GD06-081",
    "name": "Amate Yuzuriha (Machu)",
@@ -25066,6 +26074,30 @@
    "link": null,
    "source_title": "Mobile Suit Gundam GQuuuuuuX",
    "image": "GD06-081.webp",
+   "packages": [
+    "Stardust Trails [GD06]"
+   ]
+  },
+  {
+   "id": "GD06-081_p1",
+   "card_no": "GD06-081",
+   "name": "Amate Yuzuriha (Machu)",
+   "color": "blue",
+   "card_type": "pilot",
+   "rarity": "R+",
+   "set_code": "GD06",
+   "set_name": "Stardust Trails",
+   "product": "Stardust Trails [GD06]",
+   "parallel": 1,
+   "level": "4",
+   "cost": "1",
+   "ap": "+1",
+   "hp": "+2",
+   "trait": "(Alphacide) (Newtype)",
+   "zone": null,
+   "link": null,
+   "source_title": "Mobile Suit Gundam GQuuuuuuX",
+   "image": "GD06-081_p1.webp",
    "packages": [
     "Stardust Trails [GD06]"
    ]
@@ -25138,6 +26170,30 @@
    "link": null,
    "source_title": "Mobile Suit Gundam ZZ",
    "image": "GD06-084.webp",
+   "packages": [
+    "Stardust Trails [GD06]"
+   ]
+  },
+  {
+   "id": "GD06-084_p1",
+   "card_no": "GD06-084",
+   "name": "Elpeo Ple",
+   "color": "green",
+   "card_type": "pilot",
+   "rarity": "R+",
+   "set_code": "GD06",
+   "set_name": "Stardust Trails",
+   "product": "Stardust Trails [GD06]",
+   "parallel": 1,
+   "level": "3",
+   "cost": "1",
+   "ap": "+2",
+   "hp": "+0",
+   "trait": "(Neo Zeon) (Newtype)",
+   "zone": null,
+   "link": null,
+   "source_title": "Mobile Suit Gundam ZZ",
+   "image": "GD06-084_p1.webp",
    "packages": [
     "Stardust Trails [GD06]"
    ]
@@ -25234,6 +26290,30 @@
    "link": null,
    "source_title": "Mobile Suit Gundam ZZ",
    "image": "GD06-088.webp",
+   "packages": [
+    "Stardust Trails [GD06]"
+   ]
+  },
+  {
+   "id": "GD06-088_p1",
+   "card_no": "GD06-088",
+   "name": "Judau Ashta",
+   "color": "red",
+   "card_type": "pilot",
+   "rarity": "R+",
+   "set_code": "GD06",
+   "set_name": "Stardust Trails",
+   "product": "Stardust Trails [GD06]",
+   "parallel": 1,
+   "level": "5",
+   "cost": "1",
+   "ap": "+2",
+   "hp": "+2",
+   "trait": "(AEUG) (Gundam Team) (Newtype)",
+   "zone": null,
+   "link": null,
+   "source_title": "Mobile Suit Gundam ZZ",
+   "image": "GD06-088_p1.webp",
    "packages": [
     "Stardust Trails [GD06]"
    ]
@@ -25359,6 +26439,30 @@
    ]
   },
   {
+   "id": "GD06-093_p1",
+   "card_no": "GD06-093",
+   "name": "Anavel Gato",
+   "color": "purple",
+   "card_type": "pilot",
+   "rarity": "R+",
+   "set_code": "GD06",
+   "set_name": "Stardust Trails",
+   "product": "Stardust Trails [GD06]",
+   "parallel": 1,
+   "level": "4",
+   "cost": "1",
+   "ap": "+2",
+   "hp": "+1",
+   "trait": "(Zeon) (Delaz Fleet)",
+   "zone": null,
+   "link": null,
+   "source_title": "Mobile Suit Gundam 0083",
+   "image": "GD06-093_p1.webp",
+   "packages": [
+    "Stardust Trails [GD06]"
+   ]
+  },
+  {
    "id": "GD06-094",
    "card_no": "GD06-094",
    "name": "Nyaan",
@@ -25378,6 +26482,30 @@
    "link": null,
    "source_title": "Mobile Suit Gundam GQuuuuuuX",
    "image": "GD06-094.webp",
+   "packages": [
+    "Stardust Trails [GD06]"
+   ]
+  },
+  {
+   "id": "GD06-094_p1",
+   "card_no": "GD06-094",
+   "name": "Nyaan",
+   "color": "purple",
+   "card_type": "pilot",
+   "rarity": "R+",
+   "set_code": "GD06",
+   "set_name": "Stardust Trails",
+   "product": "Stardust Trails [GD06]",
+   "parallel": 1,
+   "level": "4",
+   "cost": "1",
+   "ap": "+2",
+   "hp": "+1",
+   "trait": "(Zeon) (Alphacide) (Newtype)",
+   "zone": null,
+   "link": null,
+   "source_title": "Mobile Suit Gundam GQuuuuuuX",
+   "image": "GD06-094_p1.webp",
    "packages": [
     "Stardust Trails [GD06]"
    ]
@@ -25450,6 +26578,30 @@
    "link": null,
    "source_title": "∀ Gundam",
    "image": "GD06-097.webp",
+   "packages": [
+    "Stardust Trails [GD06]"
+   ]
+  },
+  {
+   "id": "GD06-097_p1",
+   "card_no": "GD06-097",
+   "name": "Harry Ord",
+   "color": "white",
+   "card_type": "pilot",
+   "rarity": "R+",
+   "set_code": "GD06",
+   "set_name": "Stardust Trails",
+   "product": "Stardust Trails [GD06]",
+   "parallel": 1,
+   "level": "5",
+   "cost": "1",
+   "ap": "+2",
+   "hp": "+2",
+   "trait": "(Dianna Counter) (Moonrace)",
+   "zone": null,
+   "link": null,
+   "source_title": "∀ Gundam",
+   "image": "GD06-097_p1.webp",
    "packages": [
     "Stardust Trails [GD06]"
    ]
@@ -25647,6 +26799,30 @@
    ]
   },
   {
+   "id": "GD06-105_p1",
+   "card_no": "GD06-105",
+   "name": "Grace Under Pressure",
+   "color": "green",
+   "card_type": "command",
+   "rarity": "R+",
+   "set_code": "GD06",
+   "set_name": "Stardust Trails",
+   "product": "Stardust Trails [GD06]",
+   "parallel": 1,
+   "level": "5",
+   "cost": "3",
+   "ap": null,
+   "hp": null,
+   "trait": null,
+   "zone": null,
+   "link": null,
+   "source_title": "Mobile Suit Gundam the Witch from Mercury",
+   "image": "GD06-105_p1.webp",
+   "packages": [
+    "Stardust Trails [GD06]"
+   ]
+  },
+  {
    "id": "GD06-106",
    "card_no": "GD06-106",
    "name": "Presence Detected",
@@ -25762,6 +26938,30 @@
    "link": null,
    "source_title": "Mobile Suit Gundam ZZ",
    "image": "GD06-110.webp",
+   "packages": [
+    "Stardust Trails [GD06]"
+   ]
+  },
+  {
+   "id": "GD06-110_p1",
+   "card_no": "GD06-110",
+   "name": "Familial Love",
+   "color": "red",
+   "card_type": "command",
+   "rarity": "R+",
+   "set_code": "GD06",
+   "set_name": "Stardust Trails",
+   "product": "Stardust Trails [GD06]",
+   "parallel": 1,
+   "level": "2",
+   "cost": "1",
+   "ap": null,
+   "hp": null,
+   "trait": null,
+   "zone": null,
+   "link": null,
+   "source_title": "Mobile Suit Gundam ZZ",
+   "image": "GD06-110_p1.webp",
    "packages": [
     "Stardust Trails [GD06]"
    ]
@@ -25954,6 +27154,30 @@
    "link": null,
    "source_title": "∀ Gundam",
    "image": "GD06-118.webp",
+   "packages": [
+    "Stardust Trails [GD06]"
+   ]
+  },
+  {
+   "id": "GD06-118_p1",
+   "card_no": "GD06-118",
+   "name": "Infinite Variations",
+   "color": "white",
+   "card_type": "command",
+   "rarity": "R+",
+   "set_code": "GD06",
+   "set_name": "Stardust Trails",
+   "product": "Stardust Trails [GD06]",
+   "parallel": 1,
+   "level": "5",
+   "cost": "2",
+   "ap": null,
+   "hp": null,
+   "trait": null,
+   "zone": null,
+   "link": null,
+   "source_title": "∀ Gundam",
+   "image": "GD06-118_p1.webp",
    "packages": [
     "Stardust Trails [GD06]"
    ]
@@ -49599,6 +50823,54 @@
    ]
   },
   {
+   "id": "GD05-049_p3",
+   "card_no": "GD05-049",
+   "name": "Sazabi",
+   "color": "purple",
+   "card_type": "unit",
+   "rarity": "LR",
+   "set_code": "GD05",
+   "set_name": "Newtype Challenge 2026 Mission 5",
+   "product": "Newtype Challenge 2026 Mission 5",
+   "parallel": 3,
+   "level": "7",
+   "cost": "5",
+   "ap": "5",
+   "hp": "5",
+   "trait": "(Neo Zeon)",
+   "zone": "Space Earth",
+   "link": "[Char Aznable]",
+   "source_title": "Mobile Suit Gundam: Char's Counterattack",
+   "image": "GD05-049_p3.webp",
+   "packages": [
+    "Promotion card"
+   ]
+  },
+  {
+   "id": "GD05-057_p1",
+   "card_no": "GD05-057",
+   "name": "Gyunei's Jagd Doga",
+   "color": "purple",
+   "card_type": "unit",
+   "rarity": "U",
+   "set_code": "GD05",
+   "set_name": "Newtype Challenge 2026 Mission 5",
+   "product": "Newtype Challenge 2026 Mission 5",
+   "parallel": 1,
+   "level": "4",
+   "cost": "3",
+   "ap": "4",
+   "hp": "3",
+   "trait": "(Neo Zeon)",
+   "zone": "Space Earth",
+   "link": "[Gyunei Guss]",
+   "source_title": "Mobile Suit Gundam: Char's Counterattack",
+   "image": "GD05-057_p1.webp",
+   "packages": [
+    "Promotion card"
+   ]
+  },
+  {
    "id": "GD05-069_p1",
    "card_no": "GD05-069",
    "name": "Gundam Maxter",
@@ -49642,6 +50914,30 @@
    "link": "[Chibodee Crocket]",
    "source_title": "Mobile Fighter G Gundam",
    "image": "GD05-069_p2.webp",
+   "packages": [
+    "Promotion card"
+   ]
+  },
+  {
+   "id": "GD05-093_p2",
+   "card_no": "GD05-093",
+   "name": "Char Aznable",
+   "color": "purple",
+   "card_type": "pilot",
+   "rarity": "R",
+   "set_code": "GD05",
+   "set_name": "Newtype Challenge 2026 Mission 5",
+   "product": "Newtype Challenge 2026 Mission 5",
+   "parallel": 2,
+   "level": "5",
+   "cost": "1",
+   "ap": "+2",
+   "hp": "+2",
+   "trait": "(Neo Zeon) (Newtype)",
+   "zone": null,
+   "link": null,
+   "source_title": "Mobile Suit Gundam: Char's Counterattack",
+   "image": "GD05-093_p2.webp",
    "packages": [
     "Promotion card"
    ]
@@ -49834,6 +51130,54 @@
    "link": null,
    "source_title": "Mobile Fighter G Gundam",
    "image": "GD05-120_p1.webp",
+   "packages": [
+    "Promotion card"
+   ]
+  },
+  {
+   "id": "GD06-029_p2",
+   "card_no": "GD06-029",
+   "name": "Elpeo Ple's Qubeley Mk-Ⅱ",
+   "color": "green",
+   "card_type": "unit",
+   "rarity": "C",
+   "set_code": "GD06",
+   "set_name": "Booster Pack Stardust Trails [GD06] Release Event Commemorative Items for Participants",
+   "product": "Booster Pack Stardust Trails [GD06] Release Event Commemorative Items for Participants",
+   "parallel": 2,
+   "level": "4",
+   "cost": "3",
+   "ap": "4",
+   "hp": "3",
+   "trait": "(Neo Zeon)",
+   "zone": "Space Earth",
+   "link": "[Elpeo Ple]",
+   "source_title": "Mobile Suit Gundam ZZ",
+   "image": "GD06-029_p2.webp",
+   "packages": [
+    "Promotion card"
+   ]
+  },
+  {
+   "id": "GD06-084_p2",
+   "card_no": "GD06-084",
+   "name": "Elpeo Ple",
+   "color": "green",
+   "card_type": "pilot",
+   "rarity": "R",
+   "set_code": "GD06",
+   "set_name": "Booster Pack Stardust Trails [GD06] Release Event Commemorative Items for Participants",
+   "product": "Booster Pack Stardust Trails [GD06] Release Event Commemorative Items for Participants",
+   "parallel": 2,
+   "level": "3",
+   "cost": "1",
+   "ap": "+2",
+   "hp": "+0",
+   "trait": "(Neo Zeon) (Newtype)",
+   "zone": null,
+   "link": null,
+   "source_title": "Mobile Suit Gundam ZZ",
+   "image": "GD06-084_p2.webp",
    "packages": [
     "Promotion card"
    ]

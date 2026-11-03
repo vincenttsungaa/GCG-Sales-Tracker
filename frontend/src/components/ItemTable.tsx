@@ -12,6 +12,10 @@ import {
 import { ColorBadge, KindBadge, RarityBadge, StatusBadge, bundleKind } from "@/components/badges";
 import { COLOR_TRIM_CLASS, formatAud, formatDate } from "@/lib/format";
 import { bundleLineTotal, cardCopies, saleProfit, saleTotal, type CollectionItem } from "@/lib/types";
+
+// sleeves in different designs share a name: the design goes in the button labels
+const ariaName = (item: CollectionItem) =>
+  (item.sleeve_designs ?? []).length > 0 ? `${item.name} (${(item.sleeve_designs ?? []).join(", ")})` : item.name;
 import { useMediaQuery } from "@/lib/useMediaQuery";
 import { CalendarDays, DollarSign, FolderInput, FolderMinus, Lock, Pencil, Tag, Trash2, Undo2, User } from "lucide-react";
 import { SelectBox, selectOnClick, type ItemActionProps } from "@/components/ItemCard";
@@ -83,7 +87,7 @@ function IconActions({ item, actions }: { item: CollectionItem; actions: Actions
             <Button
               variant="ghost"
               size="icon-xs"
-              aria-label={`Mark ${item.name} as pending`}
+              aria-label={`Mark ${ariaName(item)} as pending`}
               title="Mark as Pending"
               data-testid={`item-pending-${item.id}`}
               onClick={() => actions.onMarkPending(item)}
@@ -94,7 +98,7 @@ function IconActions({ item, actions }: { item: CollectionItem; actions: Actions
           <Button
             variant="ghost"
             size="icon-xs"
-            aria-label={`Mark ${item.name} as sold`}
+            aria-label={`Mark ${ariaName(item)} as sold`}
             title="Mark Sold"
             data-testid={`item-sell-${item.id}`}
             onClick={() => actions.onSell(item)}
@@ -108,7 +112,7 @@ function IconActions({ item, actions }: { item: CollectionItem; actions: Actions
         <Button
           variant="ghost"
           size="icon-xs"
-          aria-label={`Move ${item.name} to storage`}
+          aria-label={`Move ${ariaName(item)} to storage`}
           title="Move to Storage"
           data-testid={`item-hold-${item.id}`}
           onClick={() => actions.onHold(item)}
@@ -121,7 +125,7 @@ function IconActions({ item, actions }: { item: CollectionItem; actions: Actions
         <Button
           variant="ghost"
           size="icon-xs"
-          aria-label={`Move ${item.name} to a Stakk`}
+          aria-label={`Move ${ariaName(item)} to a Stakk`}
           title="Move to Stakk"
           data-testid={`item-stack-move-${item.id}`}
           onClick={() => actions.onStack?.(item)}
@@ -134,7 +138,7 @@ function IconActions({ item, actions }: { item: CollectionItem; actions: Actions
         <Button
           variant="ghost"
           size="icon-xs"
-          aria-label={`Remove ${item.name} from the Stakk ${actions.stackName(item)}`}
+          aria-label={`Remove ${ariaName(item)} from the Stakk ${actions.stackName(item)}`}
           title="Remove from Stakk"
           data-testid={`item-unstack-${item.id}`}
           onClick={() => actions.onUnstack?.(item)}
@@ -147,7 +151,7 @@ function IconActions({ item, actions }: { item: CollectionItem; actions: Actions
         <Button
           variant="ghost"
           size="icon-xs"
-          aria-label={`Move ${item.name} back to for sale`}
+          aria-label={`Move ${ariaName(item)} back to for sale`}
           title="Back to For Sale"
           data-testid={`item-unmark-${item.id}`}
           onClick={() => actions.onUnmark(item)}
@@ -158,7 +162,7 @@ function IconActions({ item, actions }: { item: CollectionItem; actions: Actions
       <Button
         variant="ghost"
         size="icon-xs"
-        aria-label={`Edit ${item.name}`}
+        aria-label={`Edit ${ariaName(item)}`}
         title="Edit"
         data-testid={`item-edit-${item.id}`}
         onClick={() => actions.onEdit(item)}
@@ -169,7 +173,7 @@ function IconActions({ item, actions }: { item: CollectionItem; actions: Actions
         <Button
           variant="ghost"
           size="icon-xs"
-          aria-label={`Restore ${item.name} to inventory`}
+          aria-label={`Restore ${ariaName(item)} to inventory`}
           title="Restore to inventory"
           data-testid={`item-restore-${item.id}`}
           onClick={() => actions.onRestore(item)}
@@ -180,7 +184,7 @@ function IconActions({ item, actions }: { item: CollectionItem; actions: Actions
       <Button
         variant="ghost"
         size="icon-xs"
-        aria-label={`Delete ${item.name}`}
+        aria-label={`Delete ${ariaName(item)}`}
         title="Delete permanently"
         data-testid={`item-delete-${item.id}`}
         onClick={() => actions.onDelete(item)}
@@ -340,7 +344,7 @@ function TouchActions({ item, actions }: { item: CollectionItem; actions: Action
             size="sm"
             variant="outline"
             className={btn}
-            aria-label={`Mark ${item.name} as pending`}
+            aria-label={`Mark ${ariaName(item)} as pending`}
             data-testid={`item-pending-${item.id}`}
             onClick={() => actions.onMarkPending(item)}
           >
@@ -352,7 +356,7 @@ function TouchActions({ item, actions }: { item: CollectionItem; actions: Action
             size="sm"
             variant="outline"
             className={btn}
-            aria-label={`Move ${item.name} to storage`}
+            aria-label={`Move ${ariaName(item)} to storage`}
             data-testid={`item-hold-${item.id}`}
             onClick={() => actions.onHold(item)}
           >
@@ -364,7 +368,7 @@ function TouchActions({ item, actions }: { item: CollectionItem; actions: Action
             size="sm"
             variant="outline"
             className={btn}
-            aria-label={`Move ${item.name} to a Stakk`}
+            aria-label={`Move ${ariaName(item)} to a Stakk`}
             data-testid={`item-stack-move-${item.id}`}
             onClick={() => actions.onStack?.(item)}
           >
@@ -376,7 +380,7 @@ function TouchActions({ item, actions }: { item: CollectionItem; actions: Action
             size="sm"
             variant="outline"
             className={btn}
-            aria-label={`Remove ${item.name} from the Stakk ${actions.stackName(item)}`}
+            aria-label={`Remove ${ariaName(item)} from the Stakk ${actions.stackName(item)}`}
             data-testid={`item-unstack-${item.id}`}
             onClick={() => actions.onUnstack?.(item)}
           >
@@ -388,7 +392,7 @@ function TouchActions({ item, actions }: { item: CollectionItem; actions: Action
             size="sm"
             variant="outline"
             className={btn}
-            aria-label={`Move ${item.name} back to for sale`}
+            aria-label={`Move ${ariaName(item)} back to for sale`}
             data-testid={`item-unmark-${item.id}`}
             onClick={() => actions.onUnmark(item)}
           >
@@ -398,8 +402,8 @@ function TouchActions({ item, actions }: { item: CollectionItem; actions: Action
         {!isSold && item.status !== "on_hold" && (
           <Button
             size="sm"
-            className={btn}
-            aria-label={`Mark ${item.name} as sold`}
+            className={`${btn} bg-emerald-600 text-white hover:bg-emerald-500`}
+            aria-label={`Mark ${ariaName(item)} as sold`}
             data-testid={`item-sell-${item.id}`}
             onClick={() => actions.onSell(item)}
           >
@@ -411,7 +415,7 @@ function TouchActions({ item, actions }: { item: CollectionItem; actions: Action
             size="sm"
             variant="outline"
             className={btn}
-            aria-label={`Restore ${item.name} to inventory`}
+            aria-label={`Restore ${ariaName(item)} to inventory`}
             data-testid={`item-restore-${item.id}`}
             onClick={() => actions.onRestore(item)}
           >
@@ -422,7 +426,7 @@ function TouchActions({ item, actions }: { item: CollectionItem; actions: Action
       <Button
         variant="ghost"
         size="icon-lg"
-        aria-label={`Edit ${item.name}`}
+        aria-label={`Edit ${ariaName(item)}`}
         title="Edit"
         data-testid={`item-edit-${item.id}`}
         onClick={() => actions.onEdit(item)}
@@ -432,7 +436,7 @@ function TouchActions({ item, actions }: { item: CollectionItem; actions: Action
       <Button
         variant="ghost"
         size="icon-lg"
-        aria-label={`Delete ${item.name}`}
+        aria-label={`Delete ${ariaName(item)}`}
         title="Delete permanently"
         data-testid={`item-delete-${item.id}`}
         onClick={() => actions.onDelete(item)}

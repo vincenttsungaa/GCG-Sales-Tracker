@@ -62,6 +62,8 @@ export function CatalogSyncPanel({ kind, compact = false }: { kind: CatalogKind;
   });
   const s = status.data;
   const running = s?.running ?? false;
+  // only the site owner can download / update the databases (the server refuses everyone else)
+  const isOwner = queryClient.getQueryData<{ is_admin?: boolean } | null>(["me"])?.is_admin ?? false;
   const wasRunning = useRef(false);
 
   // When a sync finishes (running → done), refresh everything read from that database —
@@ -98,17 +100,19 @@ export function CatalogSyncPanel({ kind, compact = false }: { kind: CatalogKind;
           Database: {s?.catalog_count ?? 0} {copy.noun}
           {s?.synced_at ? ` · updated ${formatDate(new Date(s.synced_at).toLocaleDateString("en-CA"))}` : ""}
         </span>
-        <Button
-          variant="link"
-          size="xs"
-          className="h-auto px-0 text-xs"
-          data-testid={`${copy.testId}-button`}
-          onClick={() => start.mutate()}
-          disabled={start.isPending}
-        >
-          <RefreshCw className="size-3" /> Update database
-        </Button>
-        {s?.error && <span className="text-red-400">Last update failed: {s.error}</span>}
+        {isOwner && (
+          <Button
+            variant="link"
+            size="xs"
+            className="h-auto px-0 text-xs"
+            data-testid={`${copy.testId}-button`}
+            onClick={() => start.mutate()}
+            disabled={start.isPending}
+          >
+            <RefreshCw className="size-3" /> Update database
+          </Button>
+        )}
+        {isOwner && s?.error && <span className="text-red-400">Last update failed: {s.error}</span>}
       </p>
     );
   }
@@ -116,11 +120,17 @@ export function CatalogSyncPanel({ kind, compact = false }: { kind: CatalogKind;
   return (
     <div className="space-y-3 rounded-lg border border-dashed border-slate-700 px-4 py-6 text-center">
       <p className="font-heading text-base font-bold uppercase tracking-tight text-slate-200">{copy.emptyTitle}</p>
-      <p className="text-sm text-slate-400">{copy.emptyText}</p>
-      {s?.error && <p className="text-sm text-red-400">Last attempt failed: {s.error}</p>}
-      <Button data-testid={`${copy.testId}-button`} onClick={() => start.mutate()} disabled={start.isPending}>
-        <RefreshCw className="size-4" /> {copy.download}
-      </Button>
+      {isOwner ? (
+        <>
+          <p className="text-sm text-slate-400">{copy.emptyText}</p>
+          {s?.error && <p className="text-sm text-red-400">Last attempt failed: {s.error}</p>}
+          <Button data-testid={`${copy.testId}-button`} onClick={() => start.mutate()} disabled={start.isPending}>
+            <RefreshCw className="size-4" /> {copy.download}
+          </Button>
+        </>
+      ) : (
+        <p className="text-sm text-slate-400">It isn&apos;t ready yet. Check back soon, or add it by hand for now.</p>
+      )}
     </div>
   );
 }

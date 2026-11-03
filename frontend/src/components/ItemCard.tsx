@@ -1,4 +1,6 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
+import { createPortal } from "react-dom";
+import { useMediaQuery } from "@/lib/useMediaQuery";
 import { Button } from "@/components/ui/button";
 import { StatusBadge, bundleKind, categoryClass, rarityClass } from "@/components/badges";
 import { COLOR_DOT_CLASS, formatAud, formatDate } from "@/lib/format";
@@ -20,7 +22,7 @@ import { PriceLines } from "@/components/PriceLines";
 import { HoverZoom, OverflowTip } from "@/components/InfoTip";
 import { cutoutPhoto } from "@/lib/cutout";
 import { Menu } from "@base-ui/react/menu";
-import { CalendarDays, ChevronDown, Ellipsis, FolderInput, FolderMinus, Layers, Package, Lock, Pencil, Tag, Trash2, Undo2, User } from "lucide-react";
+import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Ellipsis, FolderInput, FolderMinus, Layers, Package, Lock, Pencil, Tag, Trash2, Undo2, User, X } from "lucide-react";
 
 // rows in the card's ⋯ menu (same look as the Stacks menu)
 const menuItem = "flex cursor-default items-center gap-2 rounded px-2 py-1.5 text-sm outline-none select-none data-[highlighted]:bg-slate-800";
@@ -60,7 +62,7 @@ export function SelectBox({ item, actions }: { item: CollectionItem; actions: It
       type="checkbox"
       checked={actions.isSelected?.(item) ?? false}
       onChange={() => actions.onToggleSelect?.(item)}
-      aria-label={`Select ${item.name}`}
+      aria-label={`Select ${ariaName(item)}`}
       data-testid={`item-select-${item.id}`}
       className="size-4 shrink-0 cursor-pointer accent-sky-500"
     />
@@ -93,16 +95,77 @@ export function useCutout(src: string | null | undefined, enabled: boolean): str
   return result?.src === src ? result.url : "pending";
 }
 
-// One product in a bundle's collage, cut out to float on the hex backdrop like a single listing.
+// One picture in a bundle's grid: a card (or your own photo) fills its square from the top so the art
+// shows; a product is cut out and centred on the hex backdrop like a single listing.
 function BundleThumb({ src, alt }: { src: string; alt: string }) {
-  const cutout = useCutout(src, true);
+  const card = isCardPicture(src);
+  const cutout = useCutout(src, !card);
   return (
     <img
       src={cutout && cutout !== "pending" ? cutout : src}
       alt={alt}
       loading="lazy"
-      className={`aspect-square w-full object-contain p-1 drop-shadow-[0_6px_8px_rgba(0,0,0,0.45)] ${cutout === "pending" ? "opacity-0" : ""}`}
+      className={`size-full ${
+        card ? "object-cover object-top" : "object-contain p-[8%] drop-shadow-[0_6px_8px_rgba(0,0,0,0.45)]"
+      } ${cutout === "pending" ? "opacity-0" : ""}`}
     />
+  );
+}
+
+// A bundle's pictures: a 2×2 grid. Just 1 fills the frame; 2 or 3 keep the grid's square size and sit in
+// the middle (3: two on top, one below). 5 or more: 4 at a time, with arrows to page through the rest.
+function BundleCollage({ id, pics }: { id: string; pics: { src: string | null | undefined; alt: string }[] }) {
+  const [page, setPage] = useState(0);
+  const pages = Math.ceil(pics.length / 4);
+  const from = page * 4;
+  const shown = pics.slice(from, from + 4);
+  // the arrows only change the picture: they don't open or select the listing
+  const turn = (e: MouseEvent, step: number) => {
+    e.stopPropagation();
+    setPage((p) => Math.min(pages - 1, Math.max(0, p + step)));
+  };
+  // dark plate set inline: dialogs (an open Stakk) repaint bg-[#…] classes in the panel colour
+  const arrow = "absolute top-1/2 z-10 grid size-8 -translate-y-1/2 place-items-center border border-white/50 text-white hover:brightness-150 focus-visible:outline-2 focus-visible:outline-sky-400";
+  const plate = { backgroundColor: "rgb(20 24 32 / 0.8)" };
+  return (
+    <div data-testid={`item-photo-${id}`} className="item-photo-backdrop relative aspect-[63/88] overflow-hidden rounded-md border border-slate-800/80">
+      <div className="absolute inset-0 flex flex-wrap content-center justify-center gap-0.5">
+        {shown.map((e, i) => (
+          <div key={from + i} className={shown.length === 1 ? "size-full" : "h-[calc(50%-1px)] w-[calc(50%-1px)] overflow-hidden"}>
+            {e.src ? (
+              <BundleThumb src={e.src} alt={e.alt} />
+            ) : (
+              <div className="flex size-full items-center justify-center text-slate-600">
+                <Package className="size-6" aria-hidden />
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+      {pages > 1 && (
+        <>
+          {page > 0 && (
+            <button type="button" className={`${arrow} left-1.5`} style={plate} aria-label="Previous items in this bundle" onClick={(e) => turn(e, -1)} data-testid={`bundle-prev-${id}`}>
+              <ChevronLeft className="size-4" />
+            </button>
+          )}
+          {page < pages - 1 && (
+            <button type="button" className={`${arrow} right-1.5`} style={plate} aria-label="Next items in this bundle" onClick={(e) => turn(e, 1)} data-testid={`bundle-next-${id}`}>
+              <ChevronRight className="size-4" />
+            </button>
+          )}
+          {/* which page: dots along the top, between the status badge and the quantity */}
+          <div className="pointer-events-none absolute inset-x-0 top-2.5 flex justify-center gap-1" aria-hidden>
+            {Array.from({ length: pages }, (_, i) => (
+              <span key={i} className={`size-1.5 rounded-full ${i === page ? "bg-white" : "bg-white/45"}`} />
+            ))}
+          </div>
+          <span className="sr-only" aria-live="polite">
+            Showing items {from + 1}–{from + shown.length} of {pics.length}
+          </span>
+        </>
+      )}
+    </div>
   );
 }
 
@@ -111,11 +174,14 @@ function BundleThumb({ src, alt }: { src: string; alt: string }) {
 const SLEEVE_DESIGN_RE = /\/api\/product-images\/(sleeve0[123]|ev03|evx06|evx12)-sleeves\.svg\?designs=([a-z0-9-]+)$/;
 const PART_SLEEVES_RE = /\/api\/product-images\/(pb0[123]-part-sleeves(?:-blue|-green)?)\.svg/;
 const CARD_DESIGN_RE = /-sleeves\.svg\?designs=(?:ex[a-z]*-\d|rp-\d|gd\d|st\d)[a-z0-9_-]*$/; // one card picked from a set's contents
+// card pictures, a card picked from a set, a cut-out design, or your own uploaded photo (treated as a card)
+function isCardPicture(url: string): boolean {
+  return url.startsWith("/api/card-images/") || url.startsWith("/cutouts/") || url.startsWith("data:") || CARD_DESIGN_RE.test(url);
+}
 function flatImage(item: CollectionItem): string | null {
   const url = item.image_url;
   if (item.kind !== "item" || !url || (item.bundle_items ?? []).length > 1) return null;
-  // card images, a card picked from a set, or a sleeve design picture from Add Item (already cut out)
-  if (url.startsWith("/api/card-images/") || url.startsWith("/cutouts/") || CARD_DESIGN_RE.test(url)) return url;
+  if (isCardPicture(url)) return url;
   const sleeve = SLEEVE_DESIGN_RE.exec(url);
   if (sleeve) return `/cutouts/${sleeve[1]}-${sleeve[2]}.webp`;
   const part = PART_SLEEVES_RE.exec(url);
@@ -128,7 +194,7 @@ export function FolderThumb({ item }: { item: CollectionItem }) {
   const flat = flatImage(item);
   const bundle = item.bundle_items ?? [];
   const src = flat ?? (bundle.length > 1 ? bundle[0].image_url : null) ?? item.image_url;
-  const product = item.kind === "item" && !flat;
+  const product = item.kind === "item" && !flat && !(src && isCardPicture(src)); // a bundle of cards shows its first card like a card
   const cutout = useCutout(src, product && !!src);
   if (!src) return null;
   if (!product) return <img src={src} alt="" loading="lazy" className="size-full object-cover object-top" />;
@@ -164,10 +230,20 @@ export const CARD_CORNERS = { borderRadius: "4.6% / 3.3%" };
 
 // The dark fade behind a listing's name: eased (many stops) so it melts into the picture with no visible
 // top edge, and in fixed colours so it stays dark in the light themes.
+// Listings that share a product name (sleeves in different designs) need the design in their
+// button labels, or a screen reader hears the same "Official Matte Sleeves EX" for each one.
+const ariaName = (item: CollectionItem) =>
+  (item.sleeve_designs ?? []).length > 0 ? `${item.name} (${(item.sleeve_designs ?? []).join(", ")})` : item.name;
+
 const NAME_FADE = {
   background:
     "linear-gradient(to top, rgba(11,15,23,0.95) 0%, rgba(11,15,23,0.9) 22%, rgba(11,15,23,0.78) 40%, rgba(11,15,23,0.58) 56%, rgba(11,15,23,0.36) 70%, rgba(11,15,23,0.18) 82%, rgba(11,15,23,0.06) 92%, rgba(11,15,23,0) 100%)",
 };
+
+// Chips on the name fade: dark like the fade in every theme. Set inline so the light-theme
+// panel colour for dialogs (index.css) doesn't turn them white inside an open Stakk folder.
+const CHIP_BG = { backgroundColor: "rgb(11 15 23 / 0.6)" };
+const CHIP_STAKK = { backgroundColor: "rgb(30 34 42 / 0.85)", borderColor: "var(--rt-amber)" }; // edged in the theme's accent
 
 // Card art in the real card ratio (63 × 88 mm). Falls back to an icon if there is no image.
 function CardArt({ item }: { item: CollectionItem }) {
@@ -194,31 +270,7 @@ function CardArt({ item }: { item: CollectionItem }) {
       : kitSlugs && kitSlugs.length > 1
         ? kitSlugs.map((s) => ({ src: `/api/product-images/${kitBundle?.[1]}-part-${s}.svg`, alt: s }))
         : null;
-  if (collage) {
-    // A bundle of products (e.g. ST09 + ST01) or kits: a collage of their pictures (up to 4; "+N" for the rest).
-    const shown = collage.length > 4 ? collage.slice(0, 3) : collage;
-    return (
-      <div
-        data-testid={`item-photo-${item.id}`}
-        className="item-photo-backdrop grid aspect-[63/88] grid-cols-2 content-center gap-1 overflow-hidden rounded-md border border-slate-800/80 p-1"
-      >
-        {shown.map((e, i) =>
-          e.src ? (
-            <BundleThumb key={i} src={e.src} alt={e.alt} />
-          ) : (
-            <div key={i} className="flex aspect-square items-center justify-center rounded text-slate-600">
-              <Package className="size-6" aria-hidden />
-            </div>
-          ),
-        )}
-        {collage.length > 4 && (
-          <div className="flex aspect-square items-center justify-center rounded font-mono text-sm text-slate-300">
-            +{collage.length - 3}
-          </div>
-        )}
-      </div>
-    );
-  }
+  if (collage) return <BundleCollage id={item.id} pics={collage} />;
   // a product photo on the hex backdrop (or as is, when it has no background to remove)
   const photo = (
     <img
@@ -298,11 +350,86 @@ function Detail({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
+// "N items" and "Price breakdown" open in a panel over the page instead of growing the card, so the other
+// cards in the row keep their size. Computers: under the toggle (above it when there's no room below);
+// phones: a sheet from the bottom. Clicking anywhere else, Escape, scrolling the page or × closes it.
+function DetailsPanel({ anchor, title, footer, onClose, testId, children }: { anchor: HTMLElement; title: string; footer?: ReactNode; onClose: () => void; testId: string; children: ReactNode }) {
+  const phone = useMediaQuery("(max-width: 639px)");
+  const ref = useRef<HTMLDivElement>(null);
+  // inside an open Stakk (a dialog) it goes into that dialog, so clicks in it don't close the dialog
+  const host = (anchor.closest('[role="dialog"]') as HTMLElement | null) ?? document.body;
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+  useLayoutEffect(() => {
+    if (phone || !ref.current) return;
+    const a = anchor.getBoundingClientRect();
+    const { offsetWidth: w, offsetHeight: h } = ref.current;
+    const below = a.bottom + 6 + h <= window.innerHeight || a.top - 6 - h < 0;
+    const top = below ? a.bottom + 6 : a.top - 6 - h;
+    const left = Math.max(8, Math.min(a.left, window.innerWidth - w - 8));
+    // screen position -> position inside the host (the page, or the dialog and how far it's scrolled)
+    const inDialog = host !== document.body;
+    const box = (inDialog ? host : document.documentElement).getBoundingClientRect();
+    setPos({ left: left - box.left + (inDialog ? host.scrollLeft : 0), top: top - box.top + (inDialog ? host.scrollTop : 0) });
+  }, [anchor, host, phone]);
+  useEffect(() => {
+    ref.current?.focus();
+    const outside = (e: Event) => {
+      const t = e.target as Node;
+      if (!ref.current?.contains(t) && !anchor.contains(t)) onClose();
+    };
+    const key = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.stopPropagation(); // close just the panel, not an open Stakk around it
+      onClose();
+      anchor.focus();
+    };
+    document.addEventListener("pointerdown", outside, true);
+    document.addEventListener("keydown", key, true);
+    window.addEventListener("scroll", outside, true);
+    window.addEventListener("resize", onClose);
+    return () => {
+      document.removeEventListener("pointerdown", outside, true);
+      document.removeEventListener("keydown", key, true);
+      window.removeEventListener("scroll", outside, true);
+      window.removeEventListener("resize", onClose);
+    };
+  }, [anchor, onClose]);
+  return createPortal(
+    <>
+      {phone && <div className="fixed inset-0 z-[69] bg-black/45" aria-hidden />}
+      <div
+        ref={ref}
+        role="dialog"
+        aria-label={title}
+        tabIndex={-1}
+        data-testid={testId}
+        onClick={(e) => e.stopPropagation()} // not a click on the listing (Select mode)
+        className={`z-[70] flex flex-col overflow-hidden border border-slate-700 bg-[var(--rt-panel)] text-slate-200 shadow-2xl outline-none ${
+          phone ? "fixed inset-x-0 bottom-0 max-h-[70vh] rounded-t-xl" : "absolute max-h-80 w-72 rounded-md"
+        }`}
+        style={phone ? undefined : { left: pos?.left ?? 0, top: pos?.top ?? 0, visibility: pos ? "visible" : "hidden" }}
+      >
+        {phone && <span className="mx-auto mt-1.5 h-1 w-9 shrink-0 rounded-full bg-slate-600" aria-hidden />}
+        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-slate-800 px-3 py-2 text-xs font-semibold">
+          {title}
+          <button type="button" aria-label="Close" onClick={onClose} className="text-slate-400 hover:text-slate-100">
+            <X className="size-4" />
+          </button>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-3 py-2">{children}</div>
+        {footer && <div className="shrink-0 border-t border-slate-800 px-3 py-2">{footer}</div>}
+      </div>
+    </>,
+    host,
+  );
+}
+
 export default function ItemCard({ item, ...actions }: ItemCardProps) {
-  // The per-item price breakdown is folded away until asked for ("Price breakdown ▾").
-  const [showPrices, setShowPrices] = useState(false);
-  // The list of items / cards in a listing is folded to one summary line until opened.
-  const [showItems, setShowItems] = useState(false);
+  // The list of items / cards and the per-item price breakdown open in a floating panel (one at a time).
+  const [panel, setPanel] = useState<"items" | "prices" | null>(null);
+  const itemsToggle = useRef<HTMLButtonElement>(null);
+  const pricesToggle = useRef<HTMLButtonElement>(null);
+  const closePanel = useCallback(() => setPanel(null), []);
   const isSold = item.status === "sold";
   const profit = isSold ? saleProfit(item) : null;
   // a bundle of one kind of product is of type "Bundle"; of different kinds (or products and cards), "Other"
@@ -334,6 +461,15 @@ export default function ItemCard({ item, ...actions }: ItemCardProps) {
       ? []
       : [...physicalParts(bundlePartNames(item.part), item.part_prices), ...cardParts(item.card_quantities, item.card_prices)];
   const hasBreakdown = bundleItems.length > 1 || cardPriceParts.length > 0;
+  const priceLabel = isSold
+    ? "Sold for"
+    : bundleItems.length > 1
+      ? bundleItems.every((e) => e.price != null) && bundleItems.reduce((s, e) => s + (bundleLineTotal(e) ?? 0), 0).toFixed(2) === item.price.toFixed(2)
+        ? "Total"
+        : "Bundle price"
+      : isBundle
+        ? "Per bundle"
+        : "Asking";
   // Foldable list: the products in a bundle, or the cards / designs picked (2 or more).
   const pickedCopies = Object.values(item.card_quantities ?? {}).reduce((sum, n) => sum + n, 0);
   const pickNoun = (item.sleeve_designs ?? []).length > 0 ? "items" : "cards";
@@ -365,6 +501,7 @@ export default function ItemCard({ item, ...actions }: ItemCardProps) {
   return (
     <article
       data-testid={`item-card-${item.id}`}
+      data-details-open={panel ? "" : undefined}
       onClick={selectOnClick(item, actions)}
       className={`flex flex-col gap-2.5 rounded-xl border bg-[#10151F] p-2.5 transition-colors duration-200 hover:border-sky-500/40 ${
         actions.selecting ? "cursor-pointer select-none" : ""
@@ -413,13 +550,13 @@ export default function ItemCard({ item, ...actions }: ItemCardProps) {
           <div className="absolute inset-x-0 bottom-0 px-2 pt-12 pb-1.5" style={NAME_FADE}>
             {/* room for the name and two rows of tags, so names sit at the same height on every card
                 (a card with one row of tags no longer has its name lower) */}
-            <div className="min-h-[62px]">
+            <div className="min-h-[62px] max-sm:min-h-[82px]">
             {/* name: one line, then "…"; hovering a cut-off name shows all of it */}
             <div className="pointer-events-auto">
               <OverflowTip text={item.name}>
                 <h3
                   data-testid={`item-name-${item.id}`}
-                  className="line-clamp-1 font-heading text-base leading-tight font-bold text-white [text-shadow:0_1px_2px_rgb(0_0_0/0.8)]"
+                  className="line-clamp-1 font-heading text-base leading-tight font-bold text-white [text-shadow:0_1px_2px_rgb(0_0_0/0.8)] max-sm:line-clamp-2"
                 >
                   {item.name}
                 </h3>
@@ -428,7 +565,8 @@ export default function ItemCard({ item, ...actions }: ItemCardProps) {
             <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1 text-xs text-[#e2e8f0]">
               {item.color && (
                 <span className="flex items-center gap-1" data-testid={`color-badge-${item.color}`}>
-                  <span className={`size-2 rounded-full ${COLOR_DOT_CLASS[item.color]}`} aria-hidden />
+                  {/* on the dark fade a white card gets a true white dot (light themes turn the usual grey dark) */}
+                  <span className={`size-2 rounded-full ${item.color === "white" ? "bg-white" : COLOR_DOT_CLASS[item.color]}`} aria-hidden />
                   {labelize(item.color)}
                 </span>
               )}
@@ -438,23 +576,28 @@ export default function ItemCard({ item, ...actions }: ItemCardProps) {
                   {item.set_code}
                 </span>
               )}
+              {/* Stakk name: one line, then "…"; hovering shows the whole name */}
               {actions.stackName?.(item) && (
-                <span className="rounded-full border border-[#4b5563] bg-[#1e222a]/80 px-1.5 text-[#f1f5f9]" data-testid={`item-stack-${item.id}`}>
-                  {actions.stackName(item)}
-                </span>
+                <div className="pointer-events-auto max-w-full min-w-0">
+                  <OverflowTip text={actions.stackName(item) ?? ""}>
+                    <span className="block max-w-full truncate rounded-full border px-2 py-px text-[10px] leading-4 font-medium tracking-wide text-[#f1f5f9]" style={CHIP_STAKK} data-testid={`item-stack-${item.id}`}>
+                      {actions.stackName(item)}
+                    </span>
+                  </OverflowTip>
+                </div>
               )}
               {/* parts: one line, then "…"; hovering shows the whole list */}
               {partChip && (
                 <div className="pointer-events-auto max-w-full min-w-0">
                   <OverflowTip text={partChip}>
-                    <span className="block max-w-full truncate rounded border border-sky-400/60 bg-[#0b0f17]/60 px-1 text-sky-200" data-testid={`item-part-${item.id}`}>
+                    <span className="block max-w-full truncate rounded border border-sky-400/60 px-1 text-sky-200" style={CHIP_BG} data-testid={`item-part-${item.id}`}>
                       {partChip}
                     </span>
                   </OverflowTip>
                 </div>
               )}
               {item.edition && (
-                <span className="rounded border border-amber-400/60 bg-[#0b0f17]/60 px-1 text-amber-200" data-testid={`item-edition-${item.id}`}>
+                <span className="rounded border border-amber-400/60 px-1 text-amber-200" style={CHIP_BG} data-testid={`item-edition-${item.id}`}>
                   {item.edition}
                 </span>
               )}
@@ -479,21 +622,30 @@ export default function ItemCard({ item, ...actions }: ItemCardProps) {
       {foldList && (
         <button
           type="button"
-          aria-expanded={showItems}
+          ref={itemsToggle}
+          aria-expanded={panel === "items"}
+          aria-haspopup="dialog"
           data-testid={`item-list-toggle-${item.id}`}
-          onClick={() => setShowItems((v) => !v)}
+          onClick={() => setPanel((p) => (p === "items" ? null : "items"))}
           className="flex w-full items-center justify-between gap-2 text-left font-mono text-[0.65rem] leading-relaxed text-slate-300 hover:text-slate-100"
         >
           <span className="min-w-0 truncate">{listSummary}</span>
-          <ChevronDown className={`size-3.5 shrink-0 text-slate-500 transition-transform ${showItems ? "rotate-180" : ""}`} aria-hidden />
+          <ChevronDown className={`size-3.5 shrink-0 text-slate-500 transition-transform ${panel === "items" ? "rotate-180" : ""}`} aria-hidden />
         </button>
       )}
+      {panel === "items" && itemsToggle.current && (
+        <DetailsPanel
+          anchor={itemsToggle.current}
+          title={bundleItems.length > 1 ? `${bundleItems.length} items in this bundle` : "Cards in this listing"}
+          onClose={closePanel}
+          testId={`item-list-panel-${item.id}`}
+        >
 
-      {/* Bundle of products: what's in it, one line per product (its edition / parts / cards) */}
-      {showItems && bundleItems.length > 1 && (
-        <div className="space-y-0.5 font-mono text-[0.65rem] leading-relaxed text-slate-300" data-testid={`item-bundle-items-${item.id}`}>
+          {/* Bundle of products: what's in it, one line per product (its edition / parts / cards) */}
+          {bundleItems.length > 1 && (
+        <div className="divide-y divide-dashed divide-slate-800 font-mono text-xs leading-relaxed text-slate-300" data-testid={`item-bundle-items-${item.id}`}>
           {bundleItems.map((e, i) => (
-            <p key={i} className="line-clamp-2" title={e.detail ? `${e.name} · ${e.detail}` : e.name}>
+            <p key={i} className="py-1" title={e.detail ? `${e.name} · ${e.detail}` : e.name}>
               {e.code ?? e.name} ({e.quantity}x)
               {e.detail && <span className="text-slate-400"> · {e.detail}</span>}
             </p>
@@ -501,11 +653,13 @@ export default function ItemCard({ item, ...actions }: ItemCardProps) {
         </div>
       )}
 
-      {/* the unfolded list of picked cards / designs (a single one sits in the header instead) */}
-      {bundleItems.length <= 1 && foldList && showItems && (
-      <p className="font-mono text-[0.65rem] leading-relaxed text-slate-300" data-testid={`item-copies-${item.id}`}>
-        {copiesText}
-      </p>
+          {/* the list of picked cards / designs (a single one sits in the header instead) */}
+          {bundleItems.length <= 1 && (
+            <p className="font-mono text-xs leading-relaxed text-slate-300" data-testid={`item-copies-${item.id}`}>
+              {copiesText}
+            </p>
+          )}
+        </DetailsPanel>
       )}
 
       {!hasCopies && item.alt_art_cards.length > 0 && (
@@ -526,17 +680,31 @@ export default function ItemCard({ item, ...actions }: ItemCardProps) {
         {hasBreakdown && (
           <button
             type="button"
-            aria-expanded={showPrices}
+            ref={pricesToggle}
+            aria-expanded={panel === "prices"}
+            aria-haspopup="dialog"
             data-testid={`item-price-toggle-${item.id}`}
-            onClick={() => setShowPrices((v) => !v)}
+            onClick={() => setPanel((p) => (p === "prices" ? null : "prices"))}
             className="flex w-full items-center justify-between gap-2 text-xs text-slate-500 hover:text-slate-300"
           >
             Price breakdown
-            <ChevronDown className={`size-3.5 transition-transform ${showPrices ? "rotate-180" : ""}`} aria-hidden />
+            <ChevronDown className={`size-3.5 transition-transform ${panel === "prices" ? "rotate-180" : ""}`} aria-hidden />
           </button>
         )}
+        {panel === "prices" && pricesToggle.current && (
+          <DetailsPanel
+            anchor={pricesToggle.current}
+            title="Price breakdown"
+            onClose={closePanel}
+            testId={`item-price-panel-${item.id}`}
+            footer={
+              <Detail label={priceLabel}>
+                <span className="font-mono font-semibold tabular-nums text-sky-300">{formatAud(isSold ? saleTotal(item) : item.price)}</span>
+              </Detail>
+            }
+          >
         {/* Bundle: each product's price (and its cards' prices), then what the rest shares / a discount */}
-        {showPrices && bundleItems.length > 1 && (
+        {bundleItems.length > 1 && (
           <div className="space-y-0.5" data-testid={`item-bundle-prices-${item.id}`}>
             {bundleItems.map((e, i) => {
               const line = bundleLineTotal(e);
@@ -578,22 +746,12 @@ export default function ItemCard({ item, ...actions }: ItemCardProps) {
           </div>
         )}
         {/* Cards / designs priced one by one (and, in a part bundle, the parts sharing the rest) */}
-        {showPrices && bundleItems.length <= 1 && cardPriceParts.length > 0 && (
+        {bundleItems.length <= 1 && cardPriceParts.length > 0 && (
           <PriceLines lines={priceBreakdown(cardPriceParts, item.price)} />
         )}
-        <Detail
-          label={
-            isSold
-              ? "Sold for"
-              : bundleItems.length > 1
-                ? bundleItems.every((e) => e.price != null) && bundleItems.reduce((s, e) => s + (bundleLineTotal(e) ?? 0), 0).toFixed(2) === item.price.toFixed(2)
-                  ? "Total"
-                  : "Bundle price"
-                : isBundle
-                  ? "Per bundle"
-                  : "Asking"
-          }
-        >
+          </DetailsPanel>
+        )}
+        <Detail label={priceLabel}>
           <span data-testid={`item-price-${item.id}`} className="font-mono font-semibold tabular-nums text-sky-300">
             {formatAud(isSold ? saleTotal(item) : item.price)}
           </span>
@@ -654,7 +812,7 @@ export default function ItemCard({ item, ...actions }: ItemCardProps) {
             variant="outline"
             size="sm"
             className="h-8 flex-1"
-            aria-label={`Restore ${item.name} to inventory`}
+            aria-label={`Restore ${ariaName(item)} to inventory`}
             data-testid={`item-restore-${item.id}`}
             onClick={() => actions.onRestore(item)}
           >
@@ -665,7 +823,7 @@ export default function ItemCard({ item, ...actions }: ItemCardProps) {
             variant="outline"
             size="sm"
             className="h-8 flex-1"
-            aria-label={`Move ${item.name} back to for sale`}
+            aria-label={`Move ${ariaName(item)} back to for sale`}
             data-testid={`item-unmark-${item.id}`}
             onClick={() => actions.onUnmark(item)}
           >
@@ -675,7 +833,7 @@ export default function ItemCard({ item, ...actions }: ItemCardProps) {
           <Button
             size="sm"
             className="h-8 flex-1 bg-emerald-600 font-semibold tracking-wide text-white hover:bg-emerald-500"
-            aria-label={`Mark ${item.name} as sold`}
+            aria-label={`Mark ${ariaName(item)} as sold`}
             data-testid={`item-sell-${item.id}`}
             onClick={() => actions.onSell(item)}
           >
@@ -685,7 +843,7 @@ export default function ItemCard({ item, ...actions }: ItemCardProps) {
         <Menu.Root>
           <Menu.Trigger
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-slate-700 text-slate-400 hover:bg-slate-800 hover:text-slate-200 data-[popup-open]:bg-slate-800 data-[popup-open]:text-slate-200"
-            aria-label={`More options for ${item.name}`}
+            aria-label={`More options for ${ariaName(item)}`}
             title="More options"
             data-testid={`item-menu-${item.id}`}
           >
@@ -729,7 +887,7 @@ export default function ItemCard({ item, ...actions }: ItemCardProps) {
         <Button
           variant="ghost"
           size="icon-sm"
-          aria-label={`Delete ${item.name}`}
+          aria-label={`Delete ${ariaName(item)}`}
           title="Delete permanently"
           data-testid={`item-delete-${item.id}`}
           onClick={() => actions.onDelete(item)}

@@ -1,6 +1,8 @@
 """Card catalog: search, card images, and the sync job that scrapes the official site."""
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
+
+from lib.auth import require_admin
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
@@ -110,7 +112,7 @@ def sync_status():
     }
 
 
-@router.post("/cards/sync", status_code=202)
+@router.post("/cards/sync", status_code=202, dependencies=[Depends(require_admin)])
 def start_sync(body: SyncRequest | None = None):
     """Re-scrape gundam-gcg.com (GD01 … Promotion card) into data/cards.json + data/card_images."""
     job.start(images=(body or SyncRequest()).images)

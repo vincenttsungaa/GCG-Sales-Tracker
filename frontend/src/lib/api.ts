@@ -36,6 +36,8 @@ async function request<T>(method: string, path: string, body?: JsonBody): Promis
 
   // FastAPI reports request-validation failures as 422 with a {detail: [...]} body.
   if (!res.ok) {
+    // signed out (expired, or logged out in another tab): App shows the landing page again
+    if (res.status === 401 && !path.startsWith("/auth/")) window.dispatchEvent(new Event("cardstakk:signed-out"));
     const errBody = await res.json().catch(() => null);
     throw new ApiError(res.status, errBody);
   }

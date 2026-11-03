@@ -227,8 +227,13 @@ export default function ItemFormDialog({ state, onClose, onSubmit, pending, onAd
     );
   };
 
+  // Escape, the × or a click outside with unsaved edits asks first (Cancel still just discards)
+  const snapshot = JSON.stringify([name, color, cardType, rarity, category, price, purchase, imageUrl, quantity, notes, salePrice, buyer, dealDate, inside, paid, qtys]);
+  const [initial] = useState(snapshot);
+  const [confirmLeave, setConfirmLeave] = useState(false);
+
   return (
-    <Dialog open onOpenChange={(open) => !open && onClose()}>
+    <Dialog open onOpenChange={(open) => !open && (snapshot !== initial ? setConfirmLeave(true) : onClose())}>
       <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-lg" data-testid="item-form-dialog">
         <DialogHeader>
           <DialogTitle className="font-heading uppercase tracking-tight">
@@ -553,6 +558,23 @@ export default function ItemFormDialog({ state, onClose, onSubmit, pending, onAd
           )}
         </div>
 
+        {confirmLeave && (
+          <div
+            role="alert"
+            className="sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-500/60 bg-popover px-3 py-2 text-sm"
+            data-testid="item-form-discard"
+          >
+            <span>You have unsaved changes.</span>
+            <span className="flex gap-2">
+              <Button size="sm" variant="outline" autoFocus onClick={() => setConfirmLeave(false)} data-testid="item-form-keep">
+                Keep editing
+              </Button>
+              <Button size="sm" variant="destructive" onClick={onClose} data-testid="item-form-discard-confirm">
+                Discard
+              </Button>
+            </span>
+          </div>
+        )}
         <DialogFooter>
           {/* add more cards / items to this listing: it becomes (or grows as) a bundle */}
           {editing && !sold && onAddMore && (

@@ -7,8 +7,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
-from lib.db import db
-from models.item import CollectionItem, StatusUpdate, normalise_doc, utcnow
+from lib.auth import mine as db  # the signed-in user's own listings / Stakks only
+from models.item import CollectionItem, StatusUpdate, no_emoji, normalise_doc, utcnow
 
 router = APIRouter(tags=["stacks"])
 
@@ -24,7 +24,7 @@ class StackIn(BaseModel):
     @field_validator("name")
     @classmethod
     def _trimmed(cls, v: str) -> str:
-        v = " ".join(v.split())
+        v = no_emoji(v) or ""  # emojis are removed, like everywhere users type
         if not v:
             raise ValueError("enter a name")
         return v

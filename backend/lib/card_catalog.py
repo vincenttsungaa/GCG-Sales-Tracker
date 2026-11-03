@@ -333,6 +333,11 @@ TYPE_KEYWORDS: dict[str, set[str]] = {
     "unittokens": {"unit token"},
     "token": {"unit token", *_EX_TOKENS},
     "tokens": {"unit token", *_EX_TOKENS},
+    # every Unit / every Pilot (a name with the word in it, e.g. "Aspiring Pilot", is found by more of its name)
+    "unit": {"unit"},
+    "units": {"unit"},
+    "pilot": {"pilot"},
+    "pilots": {"pilot"},
 }
 
 

@@ -49,6 +49,15 @@ export default function StatsStrip({ items }: { items: CollectionItem[] }) {
     .reduce((sum, i) => sum + i.quantity, 0);
   const realized = sold.reduce((sum, i) => sum + saleTotal(i), 0);
   const profit = sold.reduce((sum, i) => sum + (saleProfit(i) ?? 0), 0);
+  // profit only counts sales with a purchase price; say so instead of showing a made-up A$0.00
+  const costed = sold.filter((i) => saleProfit(i) != null).length;
+  const profitText =
+    costed === 0
+      ? "add what you paid to see profit"
+      : `${formatAud(Math.abs(profit))} ${profit >= 0 ? "profit" : "loss"} after costs`;
+  // sales with no bought price count as A$0 cost, so profit may read high: say how many
+  const noCost = sold.length - costed;
+  const noCostText = costed > 0 && noCost > 0 ? ` · ${noCost} without a bought price` : "";
 
   return (
     <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:grid-cols-1 lg:gap-2">
@@ -57,7 +66,7 @@ export default function StatsStrip({ items }: { items: CollectionItem[] }) {
         label="Collection Value"
         short="Value"
         value={formatAud(collectionValue)}
-        sub="Active items at list price (AUD)"
+        sub="Everything not sold, Storage included, at asking price"
         accent="text-slate-100"
       />
       <StatTile
@@ -65,7 +74,7 @@ export default function StatsStrip({ items }: { items: CollectionItem[] }) {
         label="Realized Sales"
         short="Sales"
         value={formatAud(realized)}
-        sub={`${formatAud(Math.abs(profit))} ${profit >= 0 ? "profit" : "loss"} after costs · ${sold.length} sold`}
+        sub={`${sold.length} sold · ${profitText}${noCostText}`}
         accent="text-emerald-300"
       />
       <StatTile
@@ -73,7 +82,7 @@ export default function StatsStrip({ items }: { items: CollectionItem[] }) {
         label="Cards & Items"
         short="Items"
         value={`${cardCount + itemCount}`}
-        sub={`${cardCount} card${cardCount === 1 ? "" : "s"} · ${itemCount} item${itemCount === 1 ? "" : "s"}`}
+        sub={`${cardCount} card${cardCount === 1 ? "" : "s"} · ${itemCount} item${itemCount === 1 ? "" : "s"} (copies, Storage included)`}
         accent="text-sky-300"
       />
     </div>

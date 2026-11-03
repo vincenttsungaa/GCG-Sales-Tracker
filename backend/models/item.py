@@ -1,6 +1,7 @@
 """Pydantic models for the unified collection inventory (cards + general items)."""
 
 import re
+from decimal import ROUND_HALF_UP, Decimal
 from datetime import date, datetime, timezone
 from typing import Annotated, Literal
 from uuid import uuid4
@@ -121,9 +122,30 @@ class CollectionItem(BaseModel):
 # saved by an older version is never hidden for breaking a newer rule.
 Copies = dict[str, Annotated[int, Field(ge=1)]]
 Prices = dict[str, Annotated[float, Field(ge=0)]]
-ImageUrl = Annotated[str | None, Field(default=None, pattern=r"^(https?://|/|data:image/)")]  # web, app, or uploaded photo
+# web, app, or uploaded photo (compressed in the browser to ~200 KB; the cap stops oversized uploads)
+ImageUrl = Annotated[str | None, Field(default=None, max_length=600_000, pattern=r"^(https?://|/|data:image/)")]
 ShortText = Annotated[str | None, Field(default=None, max_length=200)]
 LongText = Annotated[str | None, Field(default=None, max_length=5000)]
+
+
+def cents(v: float | None) -> float | None:
+    """Money to the cent, rounding half up on the decimal value (1.005 → 1.01, not 1.00)."""
+    return None if v is None else float(Decimal(str(v)).quantize(Decimal("0.01"), ROUND_HALF_UP))
+
+
+# Emojis aren't allowed in what users type (names, buyers, notes, Stakks): they're removed.
+# ★ ☆ © ® ™ stay (card names use them); text like :) stays as plain text.
+_EMOJI = re.compile(
+    "[\u231a-\u23ff\u24c2\u25aa-\u25fe\u2600-\u2604\u2607-\u2712\u2714-\u27bf\u2934\u2935\u2b05-\u2b55"
+    "\u3030\u303d\u3297\u3299\U0001F000-\U0001FAFF\ufe0f\u20e3\u200d]"
+)
+
+
+def no_emoji(v: str | None, one_line: bool = True) -> str | None:
+    if v is None:
+        return None
+    v = _EMOJI.sub("", v)
+    return " ".join(v.split()) if one_line else v.strip()
 
 
 class BundleEntryIn(BundleEntry):
@@ -131,6 +153,16 @@ class BundleEntryIn(BundleEntry):
     card_quantities: Copies = Field(default_factory=dict)
     card_prices: Prices = Field(default_factory=dict)
     part_prices: Prices = Field(default_factory=dict)
+
+    @field_validator("price", "purchase_price")
+    @classmethod
+    def _cents(cls, v: float | None) -> float | None:
+        return cents(v)  # kept to the cent, like the listing's own prices
+
+    @field_validator("name", "detail")
+    @classmethod
+    def _no_emoji(cls, v: str | None) -> str | None:
+        return no_emoji(v)
 
 
 class ItemCreate(BaseModel):
@@ -161,6 +193,21 @@ class ItemCreate(BaseModel):
     condition: ShortText
     notes: LongText
 
+    @field_validator("price", "purchase_price")
+    @classmethod
+    def _cents(cls, v: float | None) -> float | None:
+        return cents(v)  # money is kept to the cent (0.005 → 0.01)
+
+    @field_validator("name", "condition", "edition", "part")
+    @classmethod
+    def _no_emoji(cls, v: str | None) -> str | None:
+        return no_emoji(v)
+
+    @field_validator("notes")
+    @classmethod
+    def _notes_no_emoji(cls, v: str | None) -> str | None:
+        return no_emoji(v, one_line=False)  # notes keep their line breaks
+
 
 class ItemUpdate(ItemCreate):
     # Sold listings only: fix the deal (a typo in the sold price, buyer or date). Ignored otherwise.
@@ -179,6 +226,16 @@ class ItemUpdate(ItemCreate):
             date.fromisoformat(v)
         return v
 
+    @field_validator("sale_price")
+    @classmethod
+    def _sale_cents(cls, v: float | None) -> float | None:
+        return cents(v)
+
+    @field_validator("buyer_name")
+    @classmethod
+    def _buyer_no_emoji(cls, v: str | None) -> str | None:
+        return no_emoji(v)
+
 
 class StatusUpdate(BaseModel):
     status: Status
@@ -193,6 +250,16 @@ class StatusUpdate(BaseModel):
         if v is not None:
             date.fromisoformat(v)  # 2026-13-45 matches the pattern but isn't a date → 422
         return v
+
+    @field_validator("sale_price")
+    @classmethod
+    def _sale_cents(cls, v: float | None) -> float | None:
+        return cents(v)
+
+    @field_validator("buyer_name")
+    @classmethod
+    def _buyer_no_emoji(cls, v: str | None) -> str | None:
+        return no_emoji(v)
 
 
 def _resource_listing_image(doc: dict) -> str | None:
