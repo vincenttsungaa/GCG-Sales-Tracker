@@ -11,6 +11,7 @@ __pycache__/
 # Secrets
 .env
 backend/beta-accounts.csv
+backend/backups/
 
 # OS / editor files
 .DS_Store

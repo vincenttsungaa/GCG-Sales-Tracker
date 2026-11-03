@@ -111,6 +111,9 @@ def hash_password(password: str) -> str:
 
 def check_password(password: str, stored: str | None) -> bool:
     if not stored:
+        # no account (or no password): still do the slow check, so the answer takes as long and nobody
+        # can tell from the timing which emails have accounts
+        hashlib.scrypt(password.encode(), salt=b"cardstakk-no-user", n=_N, r=_R, p=_P, dklen=32)
         return False
     try:
         _, n, r, p, salt, digest = stored.split("$")
@@ -124,9 +127,15 @@ def check_password(password: str, stored: str | None) -> bool:
 
 # ponytail: in-memory, per server process; a shared store (Mongo / Redis) if it ever runs on several
 _fails: dict[str, list[float]] = {}
-_WINDOW, _MAX_FAILS = 15 * 60, 8  # sign-ups, emails: 8 per 15 minutes
-LOGIN_TRIES = 5  # incorrect passwords before log-in locks for 15 minutes
+_WINDOW, _MAX_FAILS = 15 * 60, 8  # emails to one address: 8 per 15 minutes
+LOGIN_TRIES = 5  # incorrect passwords for ONE account before its log-in locks for 15 minutes
 LOCKED = "Too many incorrect attempts. Log-in is locked for 15 minutes — try again later, or reset your password."
+# One network (an IP) is shared by everyone on the same Wi-Fi, so it gets a much higher limit: enough for a
+# card shop or market full of people, low enough to stop someone trying passwords across many accounts.
+NETWORK_TRIES = 30  # incorrect passwords from one network, any accounts, per 15 minutes
+NETWORK_LOCKED = "Too many incorrect log-ins from this network. Try again in 15 minutes."
+NETWORK_SIGNUPS = 20  # new accounts from one network per 15 minutes
+NETWORK_EMAILS = 20  # "forgot password" emails asked for from one network per 15 minutes
 
 
 def _recent(key: str) -> list[float]:

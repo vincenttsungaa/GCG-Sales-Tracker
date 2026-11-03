@@ -71,12 +71,12 @@ async def _send_verify(request: Request, user: dict) -> None:
 @router.post("/signup", status_code=201)
 async def signup(body: SignupIn, request: Request, response: Response):
     email = auth.norm_email(body.email)
-    auth.check_rate(f"signup:{auth.client_ip(request)}")
+    auth.check_rate(f"signup:{auth.client_ip(request)}", limit=auth.NETWORK_SIGNUPS)
     if await db.users.find_one({"email": email}):
         raise HTTPException(status_code=409, detail="An account with this email already exists — log in instead.")
     user = auth.new_user(email, name=(body.name or "").strip() or None, password_hash=await asyncio.to_thread(auth.hash_password, body.password))
     await db.users.insert_one(dict(user))
-    auth.note_fail(f"signup:{auth.client_ip(request)}")  # at most 8 sign-ups per 15 minutes from one place
+    auth.note_fail(f"signup:{auth.client_ip(request)}")  # at most NETWORK_SIGNUPS per 15 minutes from one network
     await _send_verify(request, user)
     await auth.start_session(response, user)
     return public_user(user)
@@ -85,18 +85,20 @@ async def signup(body: SignupIn, request: Request, response: Response):
 @router.post("/login")
 async def login(body: LoginIn, request: Request, response: Response):
     email = auth.norm_email(body.email)
-    keys = (f"ip:{auth.client_ip(request)}", f"email:{email}")
-    auth.check_rate(*keys, limit=auth.LOGIN_TRIES, detail=auth.LOCKED)
+    # each account: 5 wrong passwords lock it; each network (shared Wi-Fi): 30 wrong passwords, any accounts
+    account, network = f"email:{email}", f"login-ip:{auth.client_ip(request)}"
+    auth.check_rate(account, limit=auth.LOGIN_TRIES, detail=auth.LOCKED)
+    auth.check_rate(network, limit=auth.NETWORK_TRIES, detail=auth.NETWORK_LOCKED)
     user = await db.users.find_one({"email": email}, {"_id": 0})
     ok = await asyncio.to_thread(auth.check_password, body.password, user.get("password_hash") if user else None)
     if not user or not ok:
-        auth.note_fail(*keys)
-        left = auth.tries_left(*keys, limit=auth.LOGIN_TRIES)
+        auth.note_fail(account, network)
+        left = auth.tries_left(account, limit=auth.LOGIN_TRIES)
         if not left:
             raise HTTPException(status_code=429, detail=auth.LOCKED)
         tries = "1 try" if left == 1 else f"{left} tries"
         raise HTTPException(status_code=401, detail=f"{WRONG} {tries} left before log-in is locked for 15 minutes.")
-    auth.clear_fails(keys[1])  # logged in: this account's count starts again (the address's count doesn't)
+    auth.clear_fails(account)  # logged in: this account's count starts again (the network's count doesn't)
     await auth.claim_unowned(user)
     await auth.start_session(response, user)
     return public_user(user)
@@ -133,8 +135,10 @@ async def resend_verification(request: Request, user: dict = Depends(current_use
 async def forgot(body: ForgotIn, request: Request):
     """Always the same answer, so nobody can find out which emails have accounts."""
     email = auth.norm_email(body.email)
-    auth.check_rate(f"forgot:{email}", f"ip:{auth.client_ip(request)}")
-    auth.note_fail(f"forgot:{email}")
+    network = f"forgot-ip:{auth.client_ip(request)}"
+    auth.check_rate(f"forgot:{email}")
+    auth.check_rate(network, limit=auth.NETWORK_EMAILS)
+    auth.note_fail(f"forgot:{email}", network)
     user = await db.users.find_one({"email": email}, {"_id": 0})
     if user:
         token = await auth.make_link_token(user, "reset", auth.RESET_HOURS)

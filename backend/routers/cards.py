@@ -82,6 +82,10 @@ def card_image(filename: str):
     print_id = filename[: -len(".webp")]
     if not cc.PRINT_ID_RE.match(print_id):
         raise HTTPException(status_code=404, detail="not found")
+    # only cards in the catalog are fetched from the official site: made-up ids would make this server
+    # send a request (and store a file) for each one anyone asks for
+    if not cc.image_path(print_id).exists() and not cc.get_card(print_id):
+        raise HTTPException(status_code=404, detail="not found")
     if not cc.download_image(print_id):
         raise HTTPException(status_code=404, detail="image not available")
     return FileResponse(
