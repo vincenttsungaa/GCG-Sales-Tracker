@@ -12,7 +12,7 @@ export default defineConfig({
   // refuse the self-signed certificate. Scan's camera then only works on this computer.
   plugins: [react(), tailwindcss(), ...(process.env.NO_SSL ? [] : [basicSsl()])],
   resolve: {
-    alias: { "@": path.resolve(__dirname, "./src") },
+    alias: { "@": path.resolve(import.meta.dirname, "./src") },
   },
   server: {
     // Listen on the local network so phones on the same Wi-Fi can open https://<PC-IP>:3000.
