@@ -38,6 +38,10 @@ import {
   type Rarity,
 } from "@/lib/types";
 
+// the same limits as the server (backend/models/item.py)
+const MAX_QTY = 9999;
+const MAX_PRICE = 1_000_000;
+
 export type FormState =
   | { type: "add"; kind: ItemKind }
   | { type: "edit"; item: CollectionItem };
@@ -114,7 +118,7 @@ export default function ItemFormDialog({ state, onClose, onSubmit, pending, onAd
   );
   const qtyLocked = (i: number) => Object.keys(entries[i].card_quantities ?? {}).length > 0;
   const entryQty = (i: number) => (qtyLocked(i) ? entries[i].quantity : Number(qtys[String(i)] || 0));
-  const badQty = bundled && entries.some((_, i) => !Number.isInteger(entryQty(i)) || entryQty(i) < 1);
+  const badQty = bundled && entries.some((_, i) => !Number.isInteger(entryQty(i)) || entryQty(i) < 1 || entryQty(i) > MAX_QTY);
   const badPaid = bundled && entries.some((_, i) => {
     const n = paidNum(String(i));
     return n != null && (Number.isNaN(n) || n < 0);
@@ -157,8 +161,12 @@ export default function ItemFormDialog({ state, onClose, onSubmit, pending, onAd
       setError("Enter a price of zero or more.");
       return;
     }
+    if (priceNum > MAX_PRICE || (purchaseNum ?? 0) > MAX_PRICE) {
+      setError(`Prices can be at most A$${MAX_PRICE.toLocaleString()}.`);
+      return;
+    }
     if (badQty) {
-      setError("Each quantity inside the bundle must be a whole number of 1 or more.");
+      setError(`Each quantity inside the bundle must be a whole number from 1 to ${MAX_QTY.toLocaleString()}.`);
       return;
     }
     if (badInside || badPaid) {
@@ -169,8 +177,8 @@ export default function ItemFormDialog({ state, onClose, onSubmit, pending, onAd
     const bundleCost = entries.every((_, i) => paidNum(String(i)) != null)
       ? Math.round(entries.reduce((sum, _, i) => sum + (paidNum(String(i)) ?? 0) * entryQty(i), 0) * 100) / 100
       : null;
-    if (!bundled && (!Number.isInteger(qtyNum) || qtyNum < 1)) {
-      setError("Quantity must be a whole number of 1 or more.");
+    if (!bundled && (!Number.isInteger(qtyNum) || qtyNum < 1 || qtyNum > MAX_QTY)) {
+      setError(`Quantity must be a whole number from 1 to ${MAX_QTY.toLocaleString()}.`);
       return;
     }
     const saleNum = salePrice.trim() === "" ? null : Number(salePrice);

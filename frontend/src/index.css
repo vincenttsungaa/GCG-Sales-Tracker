@@ -732,3 +732,7 @@ nav[data-testid="pagination-bottom"] { overflow-anchor: none; }
     font-size: max(16px, 1em) !important;
   }
 }
+
+/* Ash Crimson (dark): its crimson is too dark for small text on the grey panels (3.8:1, under the 4.5:1 minimum).
+   Links and accent words on Account settings ("Send the link again") use a lighter crimson there (5.4:1). */
+:root[data-theme-preview="ash-dark"] [data-testid="account-page"] [class*="text-[var(--rt-amber)]"] { color: #ff6b71; }

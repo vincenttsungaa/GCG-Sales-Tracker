@@ -211,7 +211,8 @@ export default function Legal({ page }: { page: "privacy" | "terms" }) {
               Terms
             </a>
             <a href="/" className="inline-flex min-h-9 items-center rounded-lg bg-[#8a1c1a] px-3 font-semibold whitespace-nowrap sm:px-3.5 text-white hover:bg-[#6e1513]">
-              Back to CardStakk
+              {/* very narrow phones (Galaxy Fold): "Back" alone, so the bar fits */}
+              <span className="max-[380px]:hidden">Back to&nbsp;</span>CardStakk
             </a>
           </nav>
         </div>

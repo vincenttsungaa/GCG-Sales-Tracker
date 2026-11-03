@@ -120,8 +120,10 @@ class CollectionItem(BaseModel):
 
 # Input-only limits: the read models (CollectionItem, BundleEntry) stay lenient, so a listing
 # saved by an older version is never hidden for breaking a newer rule.
-Copies = dict[str, Annotated[int, Field(ge=1)]]
-Prices = dict[str, Annotated[float, Field(ge=0)]]
+MAX_QTY = 9999  # copies in one listing or deal (1,000,000,000 used to be accepted and broke the totals)
+MAX_PRICE = 1_000_000  # A$, per unit
+Copies = dict[str, Annotated[int, Field(ge=1, le=MAX_QTY)]]
+Prices = dict[str, Annotated[float, Field(ge=0, le=MAX_PRICE)]]
 # web, app, or uploaded photo (compressed in the browser to ~200 KB; the cap stops oversized uploads)
 ImageUrl = Annotated[str | None, Field(default=None, max_length=600_000, pattern=r"^(https?://|/|data:image/)")]
 ShortText = Annotated[str | None, Field(default=None, max_length=200)]
@@ -150,6 +152,9 @@ def no_emoji(v: str | None, one_line: bool = True) -> str | None:
 
 class BundleEntryIn(BundleEntry):
     image_url: ImageUrl
+    quantity: int = Field(default=1, ge=1, le=MAX_QTY)
+    price: float | None = Field(default=None, ge=0, le=MAX_PRICE)
+    purchase_price: float | None = Field(default=None, ge=0, le=MAX_PRICE)
     card_quantities: Copies = Field(default_factory=dict)
     card_prices: Prices = Field(default_factory=dict)
     part_prices: Prices = Field(default_factory=dict)
@@ -186,12 +191,20 @@ class ItemCreate(BaseModel):
     card_prices: Prices = Field(default_factory=dict)
     part_prices: Prices = Field(default_factory=dict)
     bundle_items: list[BundleEntryIn] = Field(default_factory=list)
-    price: float = Field(default=0.0, ge=0)
-    purchase_price: float | None = Field(default=None, ge=0)
+    price: float = Field(default=0.0, ge=0, le=MAX_PRICE)
+    purchase_price: float | None = Field(default=None, ge=0, le=MAX_PRICE)
     image_url: ImageUrl
-    quantity: int = Field(default=1, ge=1)
+    quantity: int = Field(default=1, ge=1, le=MAX_QTY)
     condition: ShortText
     notes: LongText
+
+    @field_validator("name", mode="after")
+    @classmethod
+    def _name_given(cls, v: str) -> str:
+        v = no_emoji(v) or ""
+        if not v:
+            raise ValueError("enter a name")  # "   " (or only emojis) used to save as an empty name
+        return v
 
     @field_validator("price", "purchase_price")
     @classmethod
@@ -211,7 +224,7 @@ class ItemCreate(BaseModel):
 
 class ItemUpdate(ItemCreate):
     # Sold listings only: fix the deal (a typo in the sold price, buyer or date). Ignored otherwise.
-    sale_price: float | None = Field(default=None, ge=0)  # AUD, per unit
+    sale_price: float | None = Field(default=None, ge=0, le=MAX_PRICE)  # AUD, per unit
     buyer_name: ShortText
     deal_date: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
     # What the edit form saw when it opened: if the listing has changed since (a sale, a move to
@@ -241,8 +254,8 @@ class StatusUpdate(BaseModel):
     status: Status
     buyer_name: ShortText
     deal_date: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
-    sale_price: float | None = Field(default=None, ge=0)  # AUD, per unit
-    quantity_sold: int | None = Field(default=None, ge=1)  # units in this deal (pending or sold); fewer than owned splits them off
+    sale_price: float | None = Field(default=None, ge=0, le=MAX_PRICE)  # AUD, per unit
+    quantity_sold: int | None = Field(default=None, ge=1, le=MAX_QTY)  # units in this deal (pending or sold); fewer than owned splits them off
 
     @field_validator("deal_date")
     @classmethod

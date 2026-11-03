@@ -64,17 +64,14 @@ export default function DealDialog({ state, today, onClose, onConfirm, pending }
   // a blank field is "not entered", never 0 / 1
   const priceNum = salePrice.trim() === "" ? Number.NaN : Number(salePrice);
   const qtyNum = qty.trim() === "" ? Number.NaN : Number(qty);
-  const expectedProfit =
-    selling && item.purchase_price != null && !Number.isNaN(priceNum) && !Number.isNaN(qtyNum)
-      ? (priceNum - item.purchase_price) * qtyNum
-      : null;
-
   const qtyTooMany = splittable && qtyNum > item.quantity;
-  // what the buyer pays in all: 2 × A$30.00
+  const units = splittable ? qtyNum : item.quantity;
+  // what the buyer pays in all: 2 × A$30.00 — only for numbers that could be saved (no total from −3 or 2.5 copies)
   const dealTotal =
     selling && !Number.isNaN(priceNum) && priceNum >= 0 && (!splittable || (Number.isInteger(qtyNum) && qtyNum >= 1 && !qtyTooMany))
-      ? priceNum * (splittable ? qtyNum : item.quantity)
+      ? priceNum * units
       : null;
+  const expectedProfit = dealTotal != null && item.purchase_price != null ? dealTotal - item.purchase_price * units : null;
 
   const handleConfirm = () => {
     if (selling && !buyer.trim()) return fail("buyer", "Enter the buyer's name to mark this as sold.");
