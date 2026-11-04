@@ -28,7 +28,7 @@ const C = {
 };
 const DOT: Record<GundamColor, string> = { red: "#dc2626", white: "#94a3b8", blue: "#2563eb", green: "#16a34a", purple: "#9333ea" };
 const RANK = ["#e0b04a", "#c3ccd8", "#d1915e"]; // 1st gold, 2nd silver, 3rd bronze (solid)
-const AVATAR = ["#4a6a94", "#2f8a5f", "#9a6a00", "#7c4dbd", "#b4532a"];
+const AVATAR = ["#4a6a94", "#2d845b", "#9a6a00", "#7c4dbd", "#b4532a"];
 const STATUS: Record<string, [string, string, string]> = {
   for_sale: ["For Sale", "var(--st-acc-bg)", "var(--st-acc-text)"],
   pending: ["Pending", "var(--st-warn-bg)", "var(--st-warn)"],

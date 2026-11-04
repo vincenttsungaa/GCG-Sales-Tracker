@@ -1268,12 +1268,12 @@ export default function Dashboard({
           {view === "grid" &&
             (touch ? (
               arranging && (
-                <p className="text-xs text-slate-500" data-testid="my-order-hint">
+                <p className="text-xs text-slate-400" data-testid="my-order-hint">
                   Use the arrows on the left of a card or folder to move it — the order is saved (“Custom”).
                 </p>
               )
             ) : (
-              <p className="text-xs text-slate-500" data-testid="my-order-hint">
+              <p className="text-xs text-slate-400" data-testid="my-order-hint">
                 Drag the grip on the left of a card or folder to rearrange them — the order is saved (“Custom”).
               </p>
             ))}

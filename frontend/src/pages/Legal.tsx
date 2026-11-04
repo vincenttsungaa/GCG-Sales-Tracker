@@ -22,7 +22,7 @@ function L({ items }: { items: ReactNode[] }) {
   );
 }
 const Mail = () => (
-  <a href={`mailto:${CONTACT_EMAIL}`} className="font-medium text-[#4a6a94] underline-offset-2 hover:underline">
+  <a href={`mailto:${CONTACT_EMAIL}`} className="font-medium break-all text-[#4a6a94] underline-offset-2 hover:underline">
     {CONTACT_EMAIL}
   </a>
 );

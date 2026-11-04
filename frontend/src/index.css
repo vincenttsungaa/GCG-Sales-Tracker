@@ -490,7 +490,7 @@ nav[data-testid^="pagination"] [class*="text-xs"] { font-size: 10px !important; 
 :root[data-theme-preview="pearl"] {
   color-scheme: light;
   --rt-bg: #eef1f5; --rt-panel: #ffffff; --rt-panel-2: #f7f8fa; --rt-plate: #ffffff; --rt-line: #d5dbe3;
-  --rt-text: #1f2630; --rt-label: #6b7480; --rt-amber: #4a6a94; --rt-silver: #dfe5ee; --rt-cta-ink: #1f2630; --rt-slate: #c3ccd8;
+  --rt-text: #1f2630; --rt-label: #646c78; --rt-amber: #4a6a94; --rt-silver: #dfe5ee; --rt-cta-ink: #1f2630; --rt-slate: #c3ccd8;
   --foreground: #1f2630; --card-foreground: #1f2630; --popover-foreground: #1f2630; --secondary-foreground: #1f2630; --accent-foreground: #1f2630;
   --secondary: #eceff3; --muted: #eceff3; --accent: #eceff3;
   --border: rgba(31, 38, 48, 0.14); --input: rgba(31, 38, 48, 0.2);
@@ -756,7 +756,7 @@ nav[data-testid="pagination-bottom"] { overflow-anchor: none; }
   --st-profit: #2f8a5f; --st-good: #1f6f43; --st-good-bg: #e4f4ea;
   --st-bad: #b42318; --st-bad-bg: #fdecec; --st-bad-line: #f3c2c2; --st-bad-ink: #5b2020;
   --st-warn: #8a5a00; --st-warn-ink: #5c3d00; --st-warn-bg: #fdf0d8; --st-warn-bg2: #fff4dc; --st-warn-line: #efc56b;
-  --st-orange: #c27c0e; --st-on-orange: #ffffff; --st-purple: #7c4dbd; --st-purple-bg: #ede7f8; --st-purple-ink: #5b3a9c;
+  --st-orange: #a3680c; --st-on-orange: #ffffff; --st-purple: #7c4dbd; --st-purple-bg: #ede7f8; --st-purple-ink: #5b3a9c;
   --st-grid: color-mix(in srgb, var(--rt-amber) 7%, transparent); --st-grid-2: color-mix(in srgb, var(--rt-amber) 10%, transparent);
   --st-vignette: color-mix(in srgb, var(--rt-bg) 85%, transparent);
 }
@@ -772,5 +772,14 @@ nav[data-testid="pagination-bottom"] { overflow-anchor: none; }
   --st-grid: rgba(255, 255, 255, 0.035); --st-grid-2: rgba(255, 255, 255, 0.05);
 }
 /* accent words in small text: Frost's cyan a shade deeper, Ash Crimson (dark)'s crimson a shade lighter (4.5:1) */
-:root[data-theme-preview="frost"] [data-testid="stats-page"] { --st-acc-text: #0b7592; }
-:root[data-theme-preview="ash-dark"] [data-testid="stats-page"] { --st-acc-text: #ff6b71; --st-chip: #111214; } /* its plate is crimson: too dark-red for text on chips */
+:root[data-theme-preview="frost"] [data-testid="stats-page"] { --st-acc-text: #0b7592; --st-on-acc: #06141b; }
+:root[data-theme-preview="ash-dark"] [data-testid="stats-page"] { --st-acc-text: #ff6b71; --st-chip: #111214; --st-on-acc: #111214; } /* its plate is crimson: too dark-red for text on chips */
+
+/* Text on the accent colour at 4.5:1 or better: Frost's cyan and Ash Crimson (dark)'s red take dark ink
+   (white was 3.75:1 and 3.91:1). Ash Crimson (light) gets a deeper amber for warnings; Overdrive (dark) a
+   lighter pink for accent words on Statistics' tinted chips. */
+:root[data-theme-preview="frost"] [data-testid="account-page"] { --acc-on-accent: #06141b; }
+:root[data-theme-preview="ash-dark"] [data-testid="account-page"] { --acc-on-accent: #111214; }
+:root[data-theme-preview="ash"] [data-testid="account-page"] { --acc-warn: #7d5200; }
+:root[data-theme-preview="ash"] [data-testid="stats-page"] { --st-warn: #7d5200; }
+:root[data-theme-preview="overdrive"] [data-testid="stats-page"] { --st-acc-text: #ff8fc0; }
