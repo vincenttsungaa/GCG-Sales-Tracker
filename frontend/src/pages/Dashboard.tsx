@@ -471,7 +471,18 @@ export default function Dashboard({
     const hasAll = found.some((t) => t.id === "all");
     return found.filter((t) => !(hasAll && (t.id === "for_sale" || t.id === "pending")));
   }, [stackFilter, stackSet, filters, items, stackById, tab]);
-  const folderItems = folderMode && openFolder ? visible.filter((i) => i.stack_id === openFolder) : [];
+  const folderLive = folderMode && openFolder ? visible.filter((i) => i.stack_id === openFolder) : [];
+  // what the folder showed when it opened: those listings stay in it while it's open, with their new status
+  // (sold, pending, storage…) instead of leaving for another tab. Reopening shows the tab's listings again.
+  const [folderPinned, setFolderPinned] = useState<string[] | null>(null);
+  useEffect(() => {
+    setFolderPinned(openFolder ? folderLive.map((i) => i.id) : null);  // only when a folder opens or closes
+  }, [openFolder]);
+  const folderItems = useMemo(() => {
+    if (!folderPinned || !openFolder) return folderLive;
+    const byId = new Map(items.map((i) => [i.id, i]));
+    return folderPinned.map((id) => byId.get(id)).filter((i): i is CollectionItem => !!i && i.stack_id === openFolder);
+  }, [folderPinned, folderLive, items, openFolder]);
   const fq = folderQuery.trim().toLowerCase();
   const folderShown = fq
     ? folderItems.filter((i) => [i.name, i.card_no, i.set_code].some((v) => v?.toLowerCase().includes(fq)))
