@@ -34,7 +34,7 @@ export function StacksPanel({
   onShowMany,
 }: {
   stacks: Stack[];
-  counts: Record<string, number>; // listings per stack id (and NO_STACK): For Sale, Pending and Storage
+  counts: Record<string, number>; // listings per stack id, sold included (NO_STACK: only those not sold)
   forSale: Record<string, number>; // per stack: For Sale listings (can go to Storage together)
   stored: Record<string, number>; // per stack: listings in Storage (can come back together)
   selected: string | null;
@@ -421,8 +421,9 @@ export function StackDialog({
 // four pictures, the name on a dark fade, its value (Collector and up) and Open. Click anywhere to open it.
 // It's an <article> like a listing, so every theme gives it the same panel, border and cut corners.
 const FOLDER_FADE = { background: "linear-gradient(to top, rgba(11,15,23,0.95), rgba(11,15,23,0.75) 45%, rgba(11,15,23,0))" };
-export function StackFolder({ name, items, value, onOpen }: { name: string; items: CollectionItem[]; value: number | null; onOpen: () => void }) {
-  const count = `${items.length} ${items.length === 1 ? "listing" : "listings"}`;
+// total: everything in the Stakk, sold included (the tile itself shows the current tab's listings)
+export function StackFolder({ name, items, total, value, onOpen }: { name: string; items: CollectionItem[]; total: number; value: number | null; onOpen: () => void }) {
+  const count = `${total} ${total === 1 ? "listing" : "listings"}`;
   return (
     <article
       data-testid="stack-folder"
@@ -451,7 +452,7 @@ export function StackFolder({ name, items, value, onOpen }: { name: string; item
       </span>
       <span className="flex items-center justify-between gap-2 rounded-md border border-slate-800/60 bg-slate-950/40 px-2 py-1.5 text-xs">
         <span className="text-slate-500">{value === null ? "Listings" : "Value"}</span>
-        <span className="font-mono font-semibold tabular-nums text-sky-300">{value === null ? items.length : formatAud(value)}</span>
+        <span className="font-mono font-semibold tabular-nums text-sky-300">{value === null ? total : formatAud(value)}</span>
       </span>
       <Button
         size="sm"

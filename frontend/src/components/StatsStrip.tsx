@@ -63,8 +63,8 @@ export default function StatsStrip({ items }: { items: CollectionItem[] }) {
     <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:grid-cols-1 lg:gap-2">
       <StatTile
         testId="stat-collection-value"
-        label="Collection Value"
-        short="Value"
+        label="Listed Value"
+        short="Listed"
         value={formatAud(collectionValue)}
         sub="Everything not sold, Storage included, at asking price"
         accent="text-slate-100"

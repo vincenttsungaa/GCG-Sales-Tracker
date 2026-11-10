@@ -2,11 +2,12 @@
 
 from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
+from lib.auth import PLANS, current_user, effective_tier
 from lib.auth import mine as db  # the signed-in user's own listings / Stakks only
 from models.item import CollectionItem, StatusUpdate, no_emoji, normalise_doc, utcnow
 
@@ -67,7 +68,14 @@ async def _next_order() -> int:
 
 
 @router.post("/stacks", response_model=Stack, status_code=201)
-async def create_stack(body: StackIn):
+async def create_stack(body: StackIn, user: dict = Depends(current_user)):
+    # each plan has room for so many Stakks; an account already over (after a downgrade) keeps them all
+    plan = PLANS[effective_tier(user)]
+    if plan["max_stakks"] is not None and await db.stacks.count_documents({}) >= plan["max_stakks"]:
+        raise HTTPException(
+            status_code=403,
+            detail=f"You've reached the {plan['max_stakks']}-Stakk limit on the {plan['name']} plan. Delete a Stakk you don't need, or see the Support page for more.",
+        )
     if await _name_taken(body.name):
         raise HTTPException(status_code=409, detail=f"there's already a stack called “{body.name}”")
     stack = {"id": str(uuid4()), "name": body.name, "created_at": utcnow(), "order": await _next_order()}  # new ones go last

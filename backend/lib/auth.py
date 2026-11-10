@@ -69,7 +69,7 @@ def is_admin(user: dict) -> bool:
 
 # ---- plans: Free / Collector / Dealer (supporter memberships) ---------------------------------
 
-# max_listings counts listings that aren't sold (a ×3 listing is one); None = unlimited
+# max_listings counts listings that aren't sold (a ×3 listing is one); max_stakks counts Stakks; None = unlimited
 # price: A$ a month, paid as a Buy Me a Coffee membership (routers/bmc.py switches the plan on and off)
 # Closed beta: no new accounts (testers use the beta accounts from beta_accounts.py). Set to False to open
 # sign-ups again, together with CLOSED_BETA in frontend/src/pages/Landing.tsx. CLOSED_BETA=false in
@@ -77,9 +77,9 @@ def is_admin(user: dict) -> bool:
 CLOSED_BETA = os.environ.get("CLOSED_BETA", "").strip().lower() != "false"
 
 PLANS = {
-    0: {"name": "Free", "max_listings": 100, "price": 0},
-    1: {"name": "Collector", "max_listings": 250, "price": 10},
-    2: {"name": "Dealer", "max_listings": None, "price": 15},
+    0: {"name": "Free", "max_listings": 100, "max_stakks": 15, "price": 0},
+    1: {"name": "Collector", "max_listings": 250, "max_stakks": 30, "price": 10},
+    2: {"name": "Dealer", "max_listings": None, "max_stakks": None, "price": 15},
 }
 
 

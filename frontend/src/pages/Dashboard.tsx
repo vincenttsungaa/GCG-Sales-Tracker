@@ -395,10 +395,14 @@ export default function Dashboard({
 
   // the filters and the picked Stakk (everything but the tab)
   const passes = (item: CollectionItem) => {
-    const q = filters.search.trim().toLowerCase();
-    const buyer = filters.buyer.trim().toLowerCase();
     if (stackFilter === NO_STACK ? !!item.stack_id : stackFilter !== null && item.stack_id !== stackFilter) return false;
     if (stackSet && !stackSet.includes(item.stack_id ?? "")) return false;
+    return passesFilters(item);
+  };
+  // just the search box and filters
+  const passesFilters = (item: CollectionItem) => {
+    const q = filters.search.trim().toLowerCase();
+    const buyer = filters.buyer.trim().toLowerCase();
     if (q && !item.name.toLowerCase().includes(q)) return false;
     if (filters.color !== "all" && item.color !== filters.color) return false;
     if (filters.cardType !== "all" && item.card_type !== filters.cardType) return false;
@@ -625,14 +629,15 @@ export default function Dashboard({
   };
 
   // ---- stacks --------------------------------------------------------------------------
-  // per stack: all its listings (For Sale, Pending, Storage), and how many are For Sale / in Storage
+  // per stack: everything in it, sold included (each sale is its own record), and how many are For Sale / in
+  // Storage. "Not in a Stakk" counts only listings that aren't sold, so old sales don't pile up there.
   const stackCounts = useMemo(() => {
     const total: Record<string, number> = {};
     const forSale: Record<string, number> = {};
     const stored: Record<string, number> = {};
     for (const item of items) {
-      if (item.status === "sold") continue;
       const key = item.stack_id && stackById.has(item.stack_id) ? item.stack_id : NO_STACK;
+      if (item.status === "sold" && key === NO_STACK) continue;
       total[key] = (total[key] ?? 0) + 1;
       if (item.status === "for_sale") forSale[key] = (forSale[key] ?? 0) + 1;
       if (item.status === "on_hold") stored[key] = (stored[key] ?? 0) + 1;
@@ -1051,9 +1056,6 @@ export default function Dashboard({
         >
           <div className="order-1 lg:order-none">
             <StatsStrip items={items} />
-            <a href="/stats" data-testid="stats-link" className="mt-2 hidden text-xs font-semibold text-[var(--rt-text)] underline underline-offset-2 lg:inline-block">
-              See full stats →
-            </a>
           </div>
           <div className="order-2 lg:order-none">
             <FilterBar filters={filters} onChange={setFilters} showBuyer={showBuyer} />
@@ -1096,9 +1098,24 @@ export default function Dashboard({
                       onUnstore={(s) => stackStatusMut.mutate({ id: s.id, status: "for_sale" })}
                       selected={stackFilter ?? (stackSet ? "several" : null)}
                       onSelect={(id) => {
-                        setStackFilter(id);
                         setStackSet(null);
                         setStacksOpen(false);
+                        if (id === null || id === NO_STACK) return setStackFilter(id);
+                        // a Stakk opens as its folder (its listings, value, sales, profit and sold cards), like
+                        // clicking its tile: on this tab if it has listings here, else the first tab that does
+                        setStackFilter(null);
+                        const order: TabId[] = [tab, "all", "on_hold", "archive"];
+                        const has = (t: TabId, filtered: boolean) =>
+                          items.some((i) => i.stack_id === id && inTab(i, t) && (!filtered || passesFilters(i)));
+                        let to = order.find((t) => has(t, true));
+                        if (!to) {
+                          to = order.find((t) => has(t, false)); // the filters hide all of it: clear them
+                          if (to) setFilters(EMPTY_FILTERS);
+                        }
+                        if (!to) return toast("This Stakk is empty — move listings into it first.");
+                        setTab(to);
+                        setView("grid");
+                        setOpenFolder(id);
                       }}
                       items={items}
                       onShowMany={(ids) => {
@@ -1434,6 +1451,7 @@ export default function Dashboard({
                       <StackFolder
                         name={stackById.get(e.folder) ?? "Stakk"}
                         items={e.items}
+                        total={stackCounts.total[e.folder] ?? e.items.length}
                         // same as the Value box inside the folder: everything in it that isn't sold (every plan)
                         value={items.filter((i) => i.stack_id === e.folder && i.status !== "sold").reduce((t, i) => t + i.price * i.quantity, 0)}
                         onOpen={() => setOpenFolder(e.folder)}

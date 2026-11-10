@@ -17,7 +17,8 @@ const RECOMMENDED =
 type Cell = boolean | string;
 const ROWS: [string, Cell, Cell, Cell][] = [
   ["Listings (not counting sold)", "100", "250", "Unlimited"],
-  ["Stakks: folders, card count, filter, move to Storage", true, true, true],
+  ["Stakks (folders for your listings)", "15", "30", "Unlimited"],
+  ["Stakks: card count, filter, move to Storage", true, true, true],
   ["Each Stakk's value, sales and profit", true, true, true],
   ["Excel export: one sheet of listings and sales", false, true, true],
   ["Excel export: full workbook, by Stakk, send by email", false, false, true],
@@ -28,7 +29,7 @@ const ROWS: [string, Cell, Cell, Cell][] = [
 // not built yet: listed under the table, not in it, so no one pays for a promise
 const COMING: [string, string][] = [
   ["Trading tracker", "cards traded and received, plus cash, profit after cost · Dealer"],
-  ["Personal collection", "track your chase cards and what you paid for each, keep a wishlist, see what's missing from a set, and move any card to For Sale in one tap · every plan, Free included"],
+  ["Personal collection", "track your chase cards and what you paid for each, keep a wishlist, see what's missing from a set, and move any card to For Sale in one tap · Collector and Dealer"],
 ];
 
 function Mark({ v }: { v: Cell }) {

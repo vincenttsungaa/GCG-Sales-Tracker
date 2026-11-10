@@ -254,7 +254,7 @@ export default function Account({ user }: { user: User }) {
         <main className="min-w-0 space-y-4">
           <div>
             <h1 className="text-3xl font-extrabold">Account</h1>
-            <p className="mt-1 text-sm text-[var(--rt-label)]">Your log-in, look, plan and data.</p>
+            <p className="mt-1 text-sm text-[var(--rt-label)]">Your log-in, look, membership and data.</p>
           </div>
 
           <Section id="account" title="Account" hint="How you sign in to CardStakk.">
