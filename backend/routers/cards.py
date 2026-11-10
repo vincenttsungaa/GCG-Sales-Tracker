@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from lib.auth import require_admin
 from fastapi.responses import FileResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from lib import card_catalog as cc
 from lib.sync_job import SyncJob
@@ -34,17 +34,6 @@ class CatalogCard(BaseModel):
 
 def _out(card: dict) -> CatalogCard:
     return CatalogCard(**{**card, "art": cc.resource_art(card), "image_url": f"/api/card-images/{card['id']}.webp"})
-
-
-class ScanText(BaseModel):
-    text: str = Field(max_length=5000)
-    codes: list[str] = Field(default_factory=list, max_length=40)  # codes read from the photo
-
-
-@router.post("/cards/match", response_model=list[CatalogCard])
-def match_cards(body: ScanText):
-    """Cards that fit the text read from a photo (Scan), by name, pilot, traits and stats."""
-    return [_out(c) for c in cc.match_text(body.text, body.codes)]
 
 
 @router.get("/cards", response_model=list[CatalogCard])

@@ -119,7 +119,6 @@ export interface SubmitOptions {
 }
 
 interface AddItemDialogProps {
-  initialProduct?: CatalogProduct | null; // already picked (e.g. from Scan)
   onClose: () => void;
   onSubmit: (payload: ItemPayload, options?: SubmitOptions) => void;
   pending: boolean;
@@ -1879,7 +1878,6 @@ export function BundleBar({
 /* ---------------- dialog ---------------- */
 
 export default function AddItemDialog({
-  initialProduct,
   onClose,
   onSubmit,
   pending,
@@ -1889,7 +1887,7 @@ export default function AddItemDialog({
   onAddCard,
   bundleSaveLabel,
 }: AddItemDialogProps) {
-  const [product, setProduct] = useState<CatalogProduct | null>(initialProduct ?? null);
+  const [product, setProduct] = useState<CatalogProduct | null>(null);
   // "Custom item": something not in the product database, entered by hand.
   const [custom, setCustom] = useState(false);
 

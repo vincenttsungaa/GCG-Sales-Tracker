@@ -12,7 +12,6 @@ import ItemFormDialog, { type FormState } from "@/components/ItemFormDialog";
 import DealDialog, { type DealState } from "@/components/DealDialog";
 import AddCardDialog from "@/components/AddCardDialog";
 import AddItemDialog from "@/components/AddItemDialog";
-import ScanDialog from "@/components/ScanDialog";
 import { Menu } from "@base-ui/react/menu";
 import { CLOSED_BETA, type User } from "@/pages/Landing";
 import BetaFeedbackDialog from "@/components/BetaFeedback";
@@ -45,7 +44,6 @@ import {
   Package,
   Plus,
   RefreshCw,
-  ScanLine,
   Search,
   Table2,
   LayoutGrid,
@@ -68,7 +66,7 @@ import {
 import { formatAud } from "@/lib/format";
 import { useMediaQuery } from "@/lib/useMediaQuery";
 import { avatarUrl, initialsOf } from "@/lib/avatars";
-import { isBundle, saleProfit, saleTotal, type BundleEntry, type CatalogCard, type CatalogProduct, type CollectionItem, type Stack, type ItemPayload, type StatusPayload, type TabId } from "@/lib/types";
+import { isBundle, saleProfit, saleTotal, type BundleEntry, type CollectionItem, type Stack, type ItemPayload, type StatusPayload, type TabId } from "@/lib/types";
 
 const TABS: { id: TabId; label: string; testId: string }[] = [
   { id: "all", label: "All Items", testId: "tab-all" },
@@ -172,7 +170,6 @@ export default function Dashboard({
   const [formState, setFormState] = useState<FormState | null>(null);
   const [addCardOpen, setAddCardOpen] = useState(false);
   const [addItemOpen, setAddItemOpen] = useState(false);
-  const [scanOpen, setScanOpen] = useState(false);
   // Stacks: named groups of For Sale / Pending listings; null = all, NO_STACK = not in a stack
   const [stackFilter, setStackFilter] = useState<string | null>(null);
   const [stackSet, setStackSet] = useState<string[] | null>(null); // Combine → "Show their listings": several Stakks at once
@@ -181,16 +178,6 @@ export default function Dashboard({
   const [openFolder, setOpenFolder] = useState<string | null>(null); // Storage: the stack folder shown open
   const [folderQuery, setFolderQuery] = useState(""); // search inside the open folder (name, card number, set)
   const [stackDialog, setStackDialog] = useState<CollectionItem[] | null>(null); // listings being moved
-  // what Scan found, opened in Add Card / Add Item with it already picked
-  const [scannedCard, setScannedCard] = useState<CatalogCard | null>(null);
-  const [scannedProduct, setScannedProduct] = useState<CatalogProduct | null>(null);
-  // forget it once that dialog closes (saved, cancelled or switched), so the next Add starts empty
-  useEffect(() => {
-    if (!addCardOpen) setScannedCard(null);
-  }, [addCardOpen]);
-  useEffect(() => {
-    if (!addItemOpen) setScannedProduct(null);
-  }, [addItemOpen]);
   // A bundle being built in Add Item / Add Card (products and cards), listed as one item.
   const [bundle, setBundle] = useState<BundleEntry[]>([]);
   // Edit → "Add cards / items": the listing that the bundle being built will be saved back into
@@ -911,7 +898,7 @@ export default function Dashboard({
       <p className="sr-only" aria-live="polite">
         {moveNote}
       </p>
-      {/* HUD top bar: the name on an angled plate with an amber edge (like a cockpit display), and Scan / Add Item / Add Card joined into one control. Styles in index.css. */}
+      {/* HUD top bar: the name on an angled plate with an amber edge (like a cockpit display), and Add Item / Add Card joined into one control. Styles in index.css. */}
       <header className="sticky top-0 z-40">
         <div className="mx-auto flex min-h-[60px] max-w-[1600px] items-stretch gap-1 pr-3 sm:gap-4 sm:pr-6">
           <div className="hud-plate flex shrink-0 items-center gap-2 pr-6 pl-3 sm:gap-2.5 sm:pr-10 sm:pl-6" data-testid="hud-plate">
@@ -925,11 +912,7 @@ export default function Dashboard({
             </div>
           </div>
           <span className="flex-1" />
-          <div className="hud-seg flex shrink-0 self-center" role="group" aria-label="Scan or add">
-            {/* Scan is on hold: hidden for now (it also made the header too wide for phones) */}
-            <Button variant="outline" aria-label="Scan" data-testid="scan-button" className="hidden" onClick={() => setScanOpen(true)}>
-              <ScanLine className="size-4" /> <span className="hidden sm:inline">Scan</span>
-            </Button>
+          <div className="hud-seg flex shrink-0 self-center" role="group" aria-label="Add">
             <Button
               variant="outline"
               aria-label="Add Item"
@@ -1681,29 +1664,9 @@ export default function Dashboard({
         />
       )}
 
-      {scanOpen && (
-        <ScanDialog
-          onClose={() => setScanOpen(false)}
-          onPickCard={(card) => {
-            setScanOpen(false);
-            setScannedCard(card);
-            setAddCardOpen(true);
-          }}
-          onPickProduct={(product) => {
-            setScanOpen(false);
-            setScannedProduct(product);
-            setAddItemOpen(true);
-          }}
-        />
-      )}
-
       {addCardOpen && (
         <AddCardDialog
-          initialCard={scannedCard}
-          onClose={() => {
-            setAddCardOpen(false);
-            setScannedCard(null);
-          }}
+          onClose={() => setAddCardOpen(false)}
           onSubmit={(payload) => create(payload)}
           onManual={() => {
             setAddCardOpen(false);
@@ -1723,11 +1686,7 @@ export default function Dashboard({
 
       {addItemOpen && (
         <AddItemDialog
-          initialProduct={scannedProduct}
-          onClose={() => {
-            setAddItemOpen(false);
-            setScannedProduct(null);
-          }}
+          onClose={() => setAddItemOpen(false)}
           onSubmit={(payload, options) => {
             keepAddItemOpen.current = !!options?.keepOpen;
             create(payload, {

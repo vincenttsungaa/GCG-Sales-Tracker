@@ -24,7 +24,6 @@ import { HoverZoom } from "@/components/InfoTip";
 import { CARD_CORNERS } from "@/components/ItemCard";
 
 interface AddCardDialogProps {
-  initialCard?: CatalogCard | null; // already picked (e.g. from Scan)
   onClose: () => void;
   onSubmit: (payload: ItemPayload) => void;
   onManual: () => void; // fall back to the free-form card form
@@ -508,7 +507,6 @@ function CardDetailsForm({
 /* ---------------- dialog ---------------- */
 
 export default function AddCardDialog({
-  initialCard,
   onClose,
   onSubmit,
   onManual,
@@ -519,7 +517,7 @@ export default function AddCardDialog({
   onAddItem,
   bundleSaveLabel,
 }: AddCardDialogProps) {
-  const [card, setCard] = useState<CatalogCard | null>(initialCard ?? null);
+  const [card, setCard] = useState<CatalogCard | null>(null);
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>

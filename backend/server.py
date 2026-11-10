@@ -75,7 +75,7 @@ async def security(request: Request, call_next):
     h.setdefault("X-Content-Type-Options", "nosniff")
     h.setdefault("X-Frame-Options", "DENY")
     h.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
-    h.setdefault("Permissions-Policy", "camera=(self), microphone=(), geolocation=(), payment=()")
+    h.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()")
     kind = h.get("content-type", "")
     if kind.startswith("image/svg+xml"):
         h.setdefault("Content-Security-Policy", CSP_SVG)

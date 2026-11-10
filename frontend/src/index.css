@@ -259,8 +259,7 @@
 }
 /* top bar and toolbar buttons: 2px smaller than their default size */
 [data-testid="sort-select"] { font-size: 12px !important; }
-/* top bar Scan / Add Item / Add Card: another 2px smaller */
-[data-testid="scan-button"],
+/* top bar Add Item / Add Card: another 2px smaller */
 [data-testid="add-item-button"],
 [data-testid="add-card-button"] { font-size: 10px !important; }
 [data-testid="export-open"],
