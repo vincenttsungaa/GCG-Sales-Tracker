@@ -471,16 +471,17 @@ export default function Dashboard({
     const hasAll = found.some((t) => t.id === "all");
     return found.filter((t) => !(hasAll && (t.id === "for_sale" || t.id === "pending")));
   }, [stackFilter, stackSet, filters, items, stackById, tab]);
-  // an open folder shows everything in the Stakk, whatever its status (For Sale, Pending, Storage, Sold), so a
-  // listing whose status changes stays in it with its new status; newest first
+  // an open folder follows the tab: All Items shows everything in the Stakk, whatever its status (so a listing
+  // whose status changes stays, with its new status); For Sale, Pending, Storage and Sold show only that status.
+  // Newest first.
   const folderItems = useMemo(
     () =>
       folderMode && openFolder
         ? items
-            .filter((i) => i.stack_id === openFolder)
+            .filter((i) => i.stack_id === openFolder && (tab === "all" || inTab(i, tab)))
             .sort((a, b) => (Date.parse(b.created_at) || 0) - (Date.parse(a.created_at) || 0))
         : [],
-    [folderMode, openFolder, items],
+    [folderMode, openFolder, items, tab],
   );
   const fq = folderQuery.trim().toLowerCase();
   const folderShown = fq
