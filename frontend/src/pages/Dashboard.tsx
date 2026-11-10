@@ -471,18 +471,17 @@ export default function Dashboard({
     const hasAll = found.some((t) => t.id === "all");
     return found.filter((t) => !(hasAll && (t.id === "for_sale" || t.id === "pending")));
   }, [stackFilter, stackSet, filters, items, stackById, tab]);
-  const folderLive = folderMode && openFolder ? visible.filter((i) => i.stack_id === openFolder) : [];
-  // what the folder showed when it opened: those listings stay in it while it's open, with their new status
-  // (sold, pending, storage…) instead of leaving for another tab. Reopening shows the tab's listings again.
-  const [folderPinned, setFolderPinned] = useState<string[] | null>(null);
-  useEffect(() => {
-    setFolderPinned(openFolder ? folderLive.map((i) => i.id) : null);  // only when a folder opens or closes
-  }, [openFolder]);
-  const folderItems = useMemo(() => {
-    if (!folderPinned || !openFolder) return folderLive;
-    const byId = new Map(items.map((i) => [i.id, i]));
-    return folderPinned.map((id) => byId.get(id)).filter((i): i is CollectionItem => !!i && i.stack_id === openFolder);
-  }, [folderPinned, folderLive, items, openFolder]);
+  // an open folder shows everything in the Stakk, whatever its status (For Sale, Pending, Storage, Sold), so a
+  // listing whose status changes stays in it with its new status; newest first
+  const folderItems = useMemo(
+    () =>
+      folderMode && openFolder
+        ? items
+            .filter((i) => i.stack_id === openFolder)
+            .sort((a, b) => (Date.parse(b.created_at) || 0) - (Date.parse(a.created_at) || 0))
+        : [],
+    [folderMode, openFolder, items],
+  );
   const fq = folderQuery.trim().toLowerCase();
   const folderShown = fq
     ? folderItems.filter((i) => [i.name, i.card_no, i.set_code].some((v) => v?.toLowerCase().includes(fq)))
@@ -1489,7 +1488,6 @@ export default function Dashboard({
             <DialogTitle>{stackById.get(openFolder ?? "") ?? "Stakk"}</DialogTitle>
             <DialogDescription>
               {folderItems.length} {folderItems.length === 1 ? "listing" : "listings"}
-              {tab === "on_hold" ? " in storage" : tab === "for_sale" ? " for sale" : tab === "pending" ? " pending" : tab === "archive" ? " sold" : ""}
             </DialogDescription>
           </DialogHeader>
           {stakkMoney &&
