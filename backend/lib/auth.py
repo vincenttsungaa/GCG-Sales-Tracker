@@ -71,10 +71,9 @@ def is_admin(user: dict) -> bool:
 
 # max_listings counts listings that aren't sold (a ×3 listing is one); max_stakks counts Stakks; None = unlimited
 # price: A$ a month, paid as a Buy Me a Coffee membership (routers/bmc.py switches the plan on and off)
-# Closed beta: no new accounts (testers use the beta accounts from beta_accounts.py). Set to False to open
-# sign-ups again, together with CLOSED_BETA in frontend/src/pages/Landing.tsx. CLOSED_BETA=false in
-# backend/.env opens them on that server only (e.g. a local test database for QA); the page still hides the buttons.
-CLOSED_BETA = os.environ.get("CLOSED_BETA", "").strip().lower() != "false"
+# Sign-ups are open. CLOSED_BETA=true in backend/.env closes them again (no new accounts), together with
+# CLOSED_BETA in frontend/src/pages/Landing.tsx, which hides the sign-up buttons.
+CLOSED_BETA = os.environ.get("CLOSED_BETA", "").strip().lower() == "true"
 
 PLANS = {
     0: {"name": "Free", "max_listings": 100, "max_stakks": 15, "price": 0},
@@ -306,8 +305,6 @@ def public_user(user: dict) -> dict:
         "founding": bool(user.get("founding")) and effective_tier(user) > 0,
         "tier_until": user["tier_until"].isoformat() + "Z" if user.get("tier_until") else None,
         "created_at": user["created_at"].isoformat() + "Z" if user.get("created_at") else None,  # shown as "Joined …"
-        # beta tester accounts (beta_accounts.py) see a welcome window once, until they close it
-        "beta_welcome": bool(user.get("beta")) and not user.get("beta_welcomed"),  # the beta form then asks about bugs only
     }
 
 

@@ -23,11 +23,10 @@ export interface User {
   tier_until: string | null; // when a membership ends (ISO), if it does
   created_at?: string | null; // when the account was made (ISO); very old accounts may not have it
   founding?: boolean; // Founding Supporter (gold badge), while on a paid plan
-  beta_welcome?: boolean; // a beta tester account that hasn't closed the welcome window yet
 }
 
-// Closed beta: sign-ups and memberships are paused (keep in step with CLOSED_BETA in backend/lib/auth.py)
-export const CLOSED_BETA = true;
+// Closed beta: sign-ups paused (keep in step with CLOSED_BETA in backend/lib/auth.py). Memberships: MEMBERSHIPS_PAUSED in Support.tsx
+export const CLOSED_BETA = false;
 
 // signup → the email first, then "password" asks for the password (one less field up front)
 type Mode = "signup" | "password" | "login" | "forgot" | "reset";

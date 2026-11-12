@@ -4,6 +4,9 @@ import { Check, ExternalLink, Loader2, Minus } from "lucide-react";
 import { apiPost, errorText } from "@/lib/api";
 import { Backdrop, CLOSED_BETA, type User } from "@/pages/Landing";
 
+// Buy Me a Coffee memberships are paused: set to false (and switch the BMC membership levels back on) to reopen them
+const MEMBERSHIPS_PAUSED = true;
+
 // /support — the plans (Free / Collector / Dealer), your current plan, joining on Buy Me a Coffee, and for the
 // site owner a tool to set someone's plan by hand (a member who paid with another email, or testing). Prices in A$ per month.
 const TIERS = [
@@ -286,7 +289,7 @@ function TransferTool() {
 
 function BecomeSupporter({ user }: { user: User | null }) {
   const paid = !!user && !user.is_admin && user.tier > 0;
-  if (CLOSED_BETA)
+  if (MEMBERSHIPS_PAUSED)
     return (
       <section className="mt-6 border border-[#d5dbe3] bg-white p-5" data-testid="become-supporter">
         <h2 className="font-bold">Memberships</h2>

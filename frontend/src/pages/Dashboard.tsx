@@ -13,8 +13,7 @@ import DealDialog, { type DealState } from "@/components/DealDialog";
 import AddCardDialog from "@/components/AddCardDialog";
 import AddItemDialog from "@/components/AddItemDialog";
 import { Menu } from "@base-ui/react/menu";
-import { CLOSED_BETA, type User } from "@/pages/Landing";
-import BetaWelcomeDialog from "@/components/BetaWelcome";
+import type { User } from "@/pages/Landing";
 import { NO_STACK, StackDialog, StackFolder, StackSales, StacksPanel } from "@/components/Stacks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1607,7 +1606,6 @@ export default function Dashboard({
 
       {/* a name is required: asked for once, right after sign-up (or for an older account without one) */}
       {!user.name?.trim() && <NameRequiredDialog onSaved={(u) => queryClient.setQueryData(["me"], u)} />}
-      {CLOSED_BETA && user.beta_welcome && !!user.name?.trim() && <BetaWelcomeDialog />}
       {aboutOpen && (
         <Dialog open onOpenChange={(open) => !open && setAboutOpen(false)}>
           <DialogContent className="sm:max-w-lg" data-testid="about-dialog">
