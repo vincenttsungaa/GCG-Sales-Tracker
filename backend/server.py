@@ -112,7 +112,7 @@ async def root():
     """Health check — confirms the API is up."""
     return {"status": "ok"}
 
-@api_router.get("/health")
+@api_router.api_route("/health", methods=["GET", "HEAD"])  # HEAD: what uptime monitors like UptimeRobot send
 async def health():
     """For an uptime monitor: 200 when the server AND the database answer, 503 when the database doesn't."""
     await db.command("ping")  # ConnectionFailure -> 503 (handler above)
