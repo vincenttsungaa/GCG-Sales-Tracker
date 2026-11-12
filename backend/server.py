@@ -6,6 +6,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
+from pymongo.errors import ConnectionFailure
 import os
 import logging
 import mimetypes
@@ -16,7 +17,7 @@ ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
 # MongoDB connection
-from lib.db import client, ensure_indexes
+from lib.db import client, db, ensure_indexes
 from lib.dates import today_iso
 from routers.items import router as items_router
 from routers.cards import router as cards_router
@@ -91,6 +92,16 @@ async def _validation_error(request: Request, exc: RequestValidationError):
     return JSONResponse(status_code=422, content={"detail": jsonable_encoder(errors)})
 
 
+# The database can't be reached (Atlas paused, network down): a short, readable 503 instead of a bare 500
+DB_DOWN = "CardStakk is having trouble connecting right now. Please try again in a minute."
+
+
+@app.exception_handler(ConnectionFailure)
+async def _db_down(request: Request, exc: ConnectionFailure):
+    logging.getLogger("server").error("Database unreachable on %s %s: %s", request.method, request.url.path, exc)
+    return JSONResponse(status_code=503, content={"detail": DB_DOWN})
+
+
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
@@ -100,6 +111,12 @@ api_router = APIRouter(prefix="/api")
 async def root():
     """Health check — confirms the API is up."""
     return {"status": "ok"}
+
+@api_router.get("/health")
+async def health():
+    """For an uptime monitor: 200 when the server AND the database answer, 503 when the database doesn't."""
+    await db.command("ping")  # ConnectionFailure -> 503 (handler above)
+    return {"status": "ok", "database": "ok"}
 
 @api_router.get("/today")
 async def get_today():

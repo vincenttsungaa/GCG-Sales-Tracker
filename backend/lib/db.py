@@ -11,7 +11,8 @@ from pymongo import ASCENDING, DESCENDING, IndexModel
 load_dotenv(Path(__file__).parent.parent / ".env")
 
 mongo_url = os.environ["MONGO_URL"]
-client = AsyncIOMotorClient(mongo_url)
+# give up on an unreachable database after 8 s (default 30 s): the page then says so instead of hanging
+client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=8000, connectTimeoutMS=8000)
 db = client[os.environ["DB_NAME"]]
 
 logger = logging.getLogger(__name__)

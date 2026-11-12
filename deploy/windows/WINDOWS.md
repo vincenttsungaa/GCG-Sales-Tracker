@@ -77,6 +77,16 @@ A window called **CardStakk live** opens. Minimise it, but don't close it. To ch
 
 On a laptop, also set **closing the lid** to **Do nothing** when plugged in. You'll find it in Control Panel → Power Options → "Choose what closing the lid does".
 
+**After Windows updates restart the PC:** the site only starts once you're logged in. So that it comes back by itself, go to **Settings → Accounts → Sign-in options** and turn on **Use my sign-in info to automatically finish setting up after an update**.
+
+## 6. Get told when the site is down
+
+`https://cardstakkgcgsalestracker.com/api/health` answers `{"status":"ok","database":"ok"}` when the site and the database are both working, and an error when either isn't.
+
+1. Make a free account at [UptimeRobot](https://uptimerobot.com) (or any uptime checker).
+2. Add an **HTTP(s)** monitor for that address, every 5 minutes.
+3. It emails you when the site stops answering, and again when it's back.
+
 ## Daily database backup
 
 The free Atlas cluster keeps no backups, so CardStakk saves its own copy to `backend\backups` (the newest 30 are kept).
@@ -84,7 +94,7 @@ The free Atlas cluster keeps no backups, so CardStakk saves its own copy to `bac
 **Once now,** to check it works:
 
 ```bat
-cd %USERPROFILE%\Downloads\CardStakk
+cd C:\CardStakk
 deploy\windows\backup.bat
 ```
 
@@ -93,7 +103,7 @@ It prints `Saved cardstakk-….json.gz: … users, … items, …`.
 **Every day at 3 am,** in Command Prompt:
 
 ```bat
-schtasks /create /tn "CardStakk backup" /sc daily /st 03:00 /tr "\"%USERPROFILE%\Downloads\CardStakk\deploy\windows\backup.bat\""
+schtasks /create /tn "CardStakk backup" /sc daily /st 03:00 /tr "\"C:\CardStakk\deploy\windows\backup.bat\""
 ```
 
 It runs while you're logged in and the PC is on, the same as the site itself.
@@ -105,7 +115,7 @@ The files hold members' emails and password hashes, so never share them.
 **To put a backup back** (replaces what's in the database; it saves the current state first and asks you to type `restore`):
 
 ```bat
-cd %USERPROFILE%\Downloads\CardStakk\backend
+cd C:\CardStakk\backend
 venv\Scripts\python backup_db.py restore backups\cardstakk-2026-11-03-030000.json.gz
 ```
 
