@@ -14,7 +14,6 @@ import AddCardDialog from "@/components/AddCardDialog";
 import AddItemDialog from "@/components/AddItemDialog";
 import { Menu } from "@base-ui/react/menu";
 import { CLOSED_BETA, type User } from "@/pages/Landing";
-import BetaFeedbackDialog from "@/components/BetaFeedback";
 import BetaWelcomeDialog from "@/components/BetaWelcome";
 import { NO_STACK, StackDialog, StackFolder, StackSales, StacksPanel } from "@/components/Stacks";
 import { Button } from "@/components/ui/button";
@@ -61,7 +60,6 @@ import {
   ChartColumn,
   Library,
   Settings,
-  MessageSquareText,
 } from "lucide-react";
 import { formatAud } from "@/lib/format";
 import { useMediaQuery } from "@/lib/useMediaQuery";
@@ -260,7 +258,6 @@ export default function Dashboard({
   }, [addCardOpen, addItemOpen, bundleTarget]);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
-  const [betaOpen, setBetaOpen] = useState(false);
   const [dealState, setDealState] = useState<DealState | null>(null);
   const [confirmState, setConfirmState] = useState<ConfirmState | null>(null); // the in-app "Are you sure?" box
   // Select mode: tick several listings and delete them together.
@@ -1002,11 +999,6 @@ export default function Dashboard({
                     <Menu.Item className={MENU_ITEM} onClick={() => setExportOpen(true)} data-testid="menu-export">
                       <FileSpreadsheet className="size-4" /> Export to Excel
                     </Menu.Item>
-                    {CLOSED_BETA && (
-                      <Menu.Item className={MENU_ITEM} onClick={() => setBetaOpen(true)} data-testid="menu-beta-feedback">
-                        <MessageSquareText className="size-4" /> Beta feedback
-                      </Menu.Item>
-                    )}
                   </div>
                   <div className="border-t border-slate-700 py-1">
                     <Menu.Item className={MENU_ITEM} onClick={() => window.location.assign("/account")} data-testid="menu-account">
@@ -1616,7 +1608,6 @@ export default function Dashboard({
       {/* a name is required: asked for once, right after sign-up (or for an older account without one) */}
       {!user.name?.trim() && <NameRequiredDialog onSaved={(u) => queryClient.setQueryData(["me"], u)} />}
       {CLOSED_BETA && user.beta_welcome && !!user.name?.trim() && <BetaWelcomeDialog />}
-      {CLOSED_BETA && <BetaFeedbackDialog open={betaOpen} onOpenChange={setBetaOpen} email={user.email} done={!!user.beta_feedback_sent} />}
       {aboutOpen && (
         <Dialog open onOpenChange={(open) => !open && setAboutOpen(false)}>
           <DialogContent className="sm:max-w-lg" data-testid="about-dialog">

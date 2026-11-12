@@ -23,7 +23,6 @@ export interface User {
   tier_until: string | null; // when a membership ends (ISO), if it does
   created_at?: string | null; // when the account was made (ISO); very old accounts may not have it
   founding?: boolean; // Founding Supporter (gold badge), while on a paid plan
-  beta_feedback_sent?: boolean; // sent the beta questionnaire: the form then asks about bugs only
   beta_welcome?: boolean; // a beta tester account that hasn't closed the welcome window yet
 }
 

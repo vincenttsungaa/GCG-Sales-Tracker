@@ -1,7 +1,6 @@
 """Sign up, log in (email + password), log out, confirm email, reset password."""
 
 import asyncio
-import base64
 import os
 import smtplib
 from datetime import datetime
@@ -326,10 +325,8 @@ FEEDBACK_TOPICS = (
 
 
 class FeedbackIn(BaseModel):
-    topic: Literal[FEEDBACK_TOPICS + ("Beta feedback",)]  # type: ignore[valid-type]  # the beta questionnaire, not in the topic list
+    topic: Literal[FEEDBACK_TOPICS]  # type: ignore[valid-type]
     message: str = Field(min_length=10, max_length=3000)
-    # optional screenshot, shrunk in the browser (~1 MB at most), emailed to the owner as an attachment
-    screenshot: str | None = Field(default=None, max_length=2_000_000, pattern=r"^data:image/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$")
 
 
 def _feedback_inbox() -> str | None:
@@ -353,14 +350,6 @@ async def send_feedback(body: FeedbackIn, user: dict = Depends(current_user)):
     inbox = _feedback_inbox()
     if not inbox:
         raise HTTPException(status_code=503, detail="Feedback isn't set up yet — try again later.")
-    image = None
-    if body.screenshot:
-        kind, data = body.screenshot[len("data:image/"):].split(";base64,", 1)
-        try:
-            image = (base64.b64decode(data, validate=True), kind)
-        except ValueError:
-            raise HTTPException(status_code=422, detail="That screenshot couldn't be read — try another picture.")
-        message += "\n\n(Screenshot attached.)"
     confirmed = "confirmed" if user.get("email_verified") else "NOT confirmed — check before replying"
     text = (
         f"Topic: {body.topic}\n"
@@ -383,12 +372,10 @@ async def send_feedback(body: FeedbackIn, user: dict = Depends(current_user)):
         why="Sent from the Feedback form in CardStakk. Reply to this email to answer them.",
     )
     try:  # sent now (not in the background) so the person knows whether it went through
-        await asyncio.to_thread(auth._send, inbox, f"[CardStakk feedback] {body.topic} — {user['email']}", text, user["email"], html, image)
+        await asyncio.to_thread(auth._send, inbox, f"[CardStakk feedback] {body.topic} — {user['email']}", text, user["email"], html)
     except (smtplib.SMTPException, OSError):
         raise HTTPException(status_code=502, detail="Couldn't send your feedback right now — please try again later.")
     auth.note_fail(key)  # counts toward the 5-per-15-minutes limit
-    if body.topic == "Beta feedback":
-        await db.users.update_one({"id": user["id"]}, {"$set": {"beta_feedback_sent": True}})
     return {"sent": True, "reply_to": user["email"]}
 
 

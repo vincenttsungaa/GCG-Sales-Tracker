@@ -3,7 +3,6 @@ import { Backdrop } from "@/pages/Landing";
 
 // /privacy and /terms — plain-English pages, open to everyone (signed in or not).
 // A sensible starting point written for a small, free, fan-made site — not legal advice.
-export const CONTACT_EMAIL = "gcgsalestrackeradmin.au@gmail.com";
 const UPDATED = "3 November 2026";
 
 function H({ children }: { children: ReactNode }) {
@@ -21,9 +20,10 @@ function L({ items }: { items: ReactNode[] }) {
     </ul>
   );
 }
-const Mail = () => (
-  <a href={`mailto:${CONTACT_EMAIL}`} className="font-medium break-all text-[#4a6a94] underline-offset-2 hover:underline">
-    {CONTACT_EMAIL}
+// contact goes through the Feedback form in Account settings (it emails the owner, with Reply-To set to the account)
+const Feedback = () => (
+  <a href="/account#feedback" className="font-medium text-[#4a6a94] underline-offset-2 hover:underline">
+    Feedback form
   </a>
 );
 
@@ -97,7 +97,7 @@ function Privacy() {
 
       <H>Contact</H>
       <P>
-        Questions about your privacy: <Mail />.
+        Questions about your privacy? Sign in and use the <Feedback /> in Account settings.
       </P>
     </>
   );
@@ -133,7 +133,7 @@ function Terms() {
           "Use a real email address you can access, and keep your password private.",
           "One person per account. You're responsible for what's done with your account.",
           <>
-            Tell us at <Mail /> if you think someone else has used your account.
+            Tell us through the <Feedback /> in Account settings if you think someone else has used your account.
           </>,
         ]}
       />
@@ -178,7 +178,7 @@ function Terms() {
 
       <H>Contact</H>
       <P>
-        Questions: <Mail />.
+        Questions? Sign in and use the <Feedback /> in Account settings.
       </P>
     </>
   );

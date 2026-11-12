@@ -4,8 +4,7 @@ import { Loader2 } from "lucide-react";
 import ThemePicker from "@/components/ThemePreview";
 import { apiDelete, apiGet, apiPatch, apiPost, apiPut, errorText } from "@/lib/api";
 import type { CollectionItem } from "@/lib/types";
-import { CLOSED_BETA, type User } from "@/pages/Landing";
-import BetaFeedbackDialog from "@/components/BetaFeedback";
+import type { User } from "@/pages/Landing";
 import { AVATARS, avatarUrl, initialsOf } from "@/lib/avatars";
 
 // /account — your log-in (name, email, password, devices), colour theme, plan and usage, and
@@ -189,7 +188,6 @@ export default function Account({ user }: { user: User }) {
   const [topic, setTopic] = useState("");
   const [message, setMessage] = useState("");
   const [fbMsg, setFbMsg] = useState<Msg>(null);
-  const [betaOpen, setBetaOpen] = useState(false);
   const sendFeedback = async (e: FormEvent) => {
     e.preventDefault();
     if (!topic) return setFbMsg({ ok: false, text: "Choose a topic." });
@@ -424,15 +422,6 @@ export default function Account({ user }: { user: User }) {
           </Section>
 
           <Section id="feedback" title="Feedback" hint="Found a bug, have a question or an idea? Send it here.">
-            {CLOSED_BETA && (
-              <div className="mt-4 flex flex-wrap items-center gap-3 border border-[var(--rt-line)] bg-[var(--rt-panel-2)] p-3 text-sm">
-                <span className="min-w-0 flex-1">Testing the beta? The beta feedback form asks a few quick questions about each part of CardStakk.</span>
-                <button type="button" onClick={() => setBetaOpen(true)} className={PRIMARY} data-testid="open-beta-feedback">
-                  Beta feedback form
-                </button>
-                <BetaFeedbackDialog open={betaOpen} onOpenChange={setBetaOpen} email={user.email} done={!!user.beta_feedback_sent} />
-              </div>
-            )}
             <form onSubmit={sendFeedback} className="mt-4 space-y-3" data-testid="feedback-form">
               <label className="block text-xs font-semibold text-[var(--rt-label)]">
                 Topic

@@ -53,10 +53,10 @@ export default function BetaWelcomeDialog() {
           <p>Feel free to enter made-up listings. Nothing you add is public; only you can see your account.</p>
           <p className="pt-1 font-semibold text-slate-100">Feedback</p>
           <p>
-            When you&apos;ve had a play, open the menu at your profile picture (top right) → <b className="text-slate-100">Beta feedback</b>. It&apos;s a
-            short form with a few ratings and questions.
+            When you&apos;ve had a play, open the menu at your profile picture (top right) → <b className="text-slate-100">Account settings</b> →{" "}
+            <b className="text-slate-100">Feedback</b>, and tell me what you think.
           </p>
-          <p>If something breaks, a quick note about what you were doing (and a screenshot if you can) helps a lot.</p>
+          <p>If something breaks, a quick note about what you were doing helps a lot.</p>
           <p>
             Thanks again,
             <br />

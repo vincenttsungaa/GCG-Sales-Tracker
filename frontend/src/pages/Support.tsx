@@ -291,7 +291,7 @@ function BecomeSupporter({ user }: { user: User | null }) {
       <section className="mt-6 border border-[#d5dbe3] bg-white p-5" data-testid="become-supporter">
         <h2 className="font-bold">Memberships</h2>
         <p className="mt-1 max-w-[44em] text-sm text-[#5b6470]">
-          Memberships are paused while CardStakk is in closed beta. Beta testers have every Dealer feature for free in the meantime.
+          Memberships are temporarily unavailable while we finish testing and stabilising CardStakk. They&apos;ll reopen once everything is running smoothly.
         </p>
       </section>
     );

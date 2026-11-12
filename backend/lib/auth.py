@@ -306,7 +306,6 @@ def public_user(user: dict) -> dict:
         "founding": bool(user.get("founding")) and effective_tier(user) > 0,
         "tier_until": user["tier_until"].isoformat() + "Z" if user.get("tier_until") else None,
         "created_at": user["created_at"].isoformat() + "Z" if user.get("created_at") else None,  # shown as "Joined …"
-        "beta_feedback_sent": bool(user.get("beta_feedback_sent")),
         # beta tester accounts (beta_accounts.py) see a welcome window once, until they close it
         "beta_welcome": bool(user.get("beta")) and not user.get("beta_welcomed"),  # the beta form then asks about bugs only
     }
@@ -361,8 +360,7 @@ def app_url(request: Request) -> str:
 _NO_MAIL = ("@example.com", "@example.org", "@example.net", ".test", ".invalid")
 
 
-def _send(to: str, subject: str, body: str, reply_to: str | None = None, html: str | None = None, image: tuple[bytes, str] | None = None) -> None:
-    """image: (bytes, "png" / "jpeg" / "webp"), attached as screenshot.<type> (feedback screenshots)."""
+def _send(to: str, subject: str, body: str, reply_to: str | None = None, html: str | None = None) -> None:
     host = os.environ.get("SMTP_HOST")
     if not host or to.lower().endswith(_NO_MAIL):
         # no mail server yet: the link goes to the server log, so local testing still works
@@ -377,8 +375,6 @@ def _send(to: str, subject: str, body: str, reply_to: str | None = None, html: s
     msg.set_content(body)
     if html:
         add_html(msg, html)  # the designed version (lib/email_design.py); the plain text stays for simple mail apps
-    if image:
-        msg.add_attachment(image[0], maintype="image", subtype=image[1], filename=f"screenshot.{'jpg' if image[1] == 'jpeg' else image[1]}")
     if os.environ.get("SMTP_SSL", "").lower() in ("1", "true", "yes") or port == 465:
         with smtplib.SMTP_SSL(host, port, timeout=30) as smtp:
             if user:
