@@ -130,6 +130,7 @@ export default function Account({ user }: { user: User }) {
   const [pwOpen, setPwOpen] = useState(false);
   const [currentPw, setCurrentPw] = useState("");
   const [newPw, setNewPw] = useState("");
+  const [showPw, setShowPw] = useState(false); // one "Show password" tick for every password box on this page
   const [pwMsg, setPwMsg] = useState<Msg>(null);
   const changePassword = async (e: FormEvent) => {
     e.preventDefault();
@@ -290,7 +291,11 @@ export default function Account({ user }: { user: User }) {
                 {emailOpen && (
                   <form onSubmit={changeEmail} className="mt-3 space-y-2">
                     <input type="email" required autoComplete="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="New email" aria-label="New email" className={INPUT} />
-                    <input type="password" required autoComplete="current-password" value={emailPw} onChange={(e) => setEmailPw(e.target.value)} placeholder="Your current password" aria-label="Your current password" className={INPUT} />
+                    <input type={showPw ? "text" : "password"} required autoComplete="current-password" value={emailPw} onChange={(e) => setEmailPw(e.target.value)} placeholder="Your current password" aria-label="Your current password" className={INPUT} />
+                    <label className="flex w-fit cursor-pointer items-center gap-2 text-xs text-[var(--rt-label)] select-none">
+                      <input type="checkbox" checked={showPw} onChange={(e) => setShowPw(e.target.checked)} className="size-4 accent-[var(--rt-amber)]" />
+                      Show password
+                    </label>
                     <p className="text-xs text-[var(--rt-label)]">You&apos;ll need to confirm the new address. Plans and perks follow your account, not the old address.</p>
                     <div className="flex gap-2">
                       <button type="submit" disabled={busy === "email"} className={PRIMARY}>
@@ -317,8 +322,12 @@ export default function Account({ user }: { user: User }) {
                 <span className="tracking-widest text-[var(--rt-label)]">••••••••••</span>
                 {pwOpen && (
                   <form onSubmit={changePassword} className="mt-3 space-y-2">
-                    <input type="password" required autoComplete="current-password" value={currentPw} onChange={(e) => setCurrentPw(e.target.value)} placeholder="Current password" aria-label="Current password" className={INPUT} />
-                    <input type="password" required autoComplete="new-password" value={newPw} onChange={(e) => setNewPw(e.target.value)} placeholder="New password (at least 8 characters)" aria-label="New password" className={INPUT} />
+                    <input type={showPw ? "text" : "password"} required autoComplete="current-password" value={currentPw} onChange={(e) => setCurrentPw(e.target.value)} placeholder="Current password" aria-label="Current password" className={INPUT} />
+                    <input type={showPw ? "text" : "password"} required autoComplete="new-password" value={newPw} onChange={(e) => setNewPw(e.target.value)} placeholder="New password (at least 8 characters)" aria-label="New password" className={INPUT} />
+                    <label className="flex w-fit cursor-pointer items-center gap-2 text-xs text-[var(--rt-label)] select-none">
+                      <input type="checkbox" checked={showPw} onChange={(e) => setShowPw(e.target.checked)} className="size-4 accent-[var(--rt-amber)]" />
+                      Show password
+                    </label>
                     <p className="text-xs text-[var(--rt-label)]">Other devices are signed out; this one stays signed in.</p>
                     <div className="flex gap-2">
                       <button type="submit" disabled={busy === "pw"} className={PRIMARY}>
@@ -479,7 +488,7 @@ export default function Account({ user }: { user: User }) {
                 <input value={confirmText} onChange={(e) => setConfirmText(e.target.value)} aria-label="Type DELETE to confirm" className={INPUT} />
                 {user.has_password && (
                   <input
-                    type="password"
+                    type={showPw ? "text" : "password"}
                     autoComplete="current-password"
                     placeholder="Your password"
                     aria-label="Your password"
@@ -488,6 +497,12 @@ export default function Account({ user }: { user: User }) {
                     className={INPUT}
                     data-testid="delete-password"
                   />
+                )}
+                {user.has_password && (
+                  <label className="flex w-fit cursor-pointer items-center gap-2 text-xs select-none">
+                    <input type="checkbox" checked={showPw} onChange={(e) => setShowPw(e.target.checked)} className="size-4 accent-[var(--acc-danger)]" />
+                    Show password
+                  </label>
                 )}
                 <div className="flex gap-2">
                   <button

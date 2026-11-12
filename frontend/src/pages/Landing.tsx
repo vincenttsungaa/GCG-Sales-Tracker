@@ -334,6 +334,7 @@ export default function Landing({
   const [mode, setMode] = useState<Mode>(resetToken ? "reset" : CLOSED_BETA ? "login" : "signup");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(firstNotice);
   const [busy, setBusy] = useState(false);
@@ -524,13 +525,17 @@ export default function Landing({
                   <input
                     id="auth-password"
                     data-testid="auth-password"
-                    type="password"
+                    type={showPw ? "text" : "password"}
                     autoComplete={mode === "login" ? "current-password" : "new-password"}
                     placeholder={mode === "login" ? "Your password" : "At least 8 characters"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className={FIELD}
                   />
+                  <label className="mt-1 flex w-fit cursor-pointer items-center gap-2 text-[13px] text-[#5a6371] select-none">
+                    <input type="checkbox" checked={showPw} onChange={(e) => setShowPw(e.target.checked)} className="size-4 accent-[#4a6a94]" data-testid="show-password" />
+                    Show password
+                  </label>
                 </div>
               )}
               <button
