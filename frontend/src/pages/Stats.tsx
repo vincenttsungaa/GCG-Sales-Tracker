@@ -282,7 +282,7 @@ function MissingCostRow({ item }: { item: CollectionItem }) {
         <label className="flex items-center gap-1.5 text-[11px] text-[var(--st-sub)]">
           Paid {item.quantity > 1 ? "each" : ""}
           <span className="flex items-center rounded-md border border-[var(--st-line)] bg-[var(--rt-panel)] pl-2 text-sm">
-            A$
+            $
             <input
               type="number"
               inputMode="decimal"

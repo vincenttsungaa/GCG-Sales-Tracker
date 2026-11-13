@@ -162,7 +162,7 @@ export default function ItemFormDialog({ state, onClose, onSubmit, pending, onAd
       return;
     }
     if (priceNum > MAX_PRICE || (purchaseNum ?? 0) > MAX_PRICE) {
-      setError(`Prices can be at most A$${MAX_PRICE.toLocaleString()}.`);
+      setError(`Prices can be at most $${MAX_PRICE.toLocaleString()}.`);
       return;
     }
     if (badQty) {
@@ -354,7 +354,7 @@ export default function ItemFormDialog({ state, onClose, onSubmit, pending, onAd
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="item-form-price" className="font-mono text-xs uppercase tracking-wider text-slate-400">
-                Asking price (AUD)
+                Asking price ($)
               </Label>
               <Input
                 id="item-form-price"
@@ -373,7 +373,7 @@ export default function ItemFormDialog({ state, onClose, onSubmit, pending, onAd
             {!bundled && (
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="item-form-purchase-price" className="font-mono text-xs uppercase tracking-wider text-slate-400">
-                Purchase price (AUD)
+                Purchase price ($)
               </Label>
               <Input
                 id="item-form-purchase-price"
@@ -410,7 +410,7 @@ export default function ItemFormDialog({ state, onClose, onSubmit, pending, onAd
               <div className="col-span-2 grid grid-cols-2 gap-4 rounded-md border border-emerald-900/60 bg-emerald-950/20 p-3" data-testid="item-form-sale">
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="item-form-sale-price" className="font-mono text-xs uppercase tracking-wider text-slate-400">
-                    Sold price (AUD, each)
+                    Sold price ($ each)
                   </Label>
                   <Input
                     id="item-form-sale-price"

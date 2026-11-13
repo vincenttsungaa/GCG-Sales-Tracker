@@ -1,12 +1,11 @@
 import type { GundamColor, ItemStatus } from "./types";
 
-// AUD formatting (en-AU → "A$120.00") — every price in the app goes through this.
+// Money formatting ("$120.00", "-$4.00") — every price in the app goes through this. Just "$", no country:
+// members come from everywhere, and each enters prices in their own dollars.
 const audFormatter = new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD" });
 
 export function formatAud(value: number): string {
-  // en-AU renders AUD as "$" — force the explicit "A$" style (A$45.00) to keep AUD unambiguous.
-  // also for losses: "-$4.00" → "-A$4.00"
-  return audFormatter.format(value).replace(/^(-?)\$/, "$1A$");
+  return audFormatter.format(value);
 }
 
 // Deal dates are YYYY-MM-DD strings; display as DD/MM/YYYY (Australian standard).

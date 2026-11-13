@@ -22,7 +22,7 @@ from lib.db import db
 
 
 def money(v: float) -> str:
-    return f"A${v:,.2f}"
+    return f"${v:,.2f}"
 
 
 async def main(email: str, wanted: list[str]) -> None:

@@ -153,7 +153,7 @@ export default function DealDialog({ state, today, onClose, onConfirm, pending }
             </div>
             <div className="flex min-w-0 flex-col gap-1.5">
               <Label htmlFor="deal-price" className="font-mono text-xs uppercase tracking-wider text-slate-400">
-                Deal price/unit (AUD)
+                Deal price/unit ($)
               </Label>
               <Input
                 id="deal-price"

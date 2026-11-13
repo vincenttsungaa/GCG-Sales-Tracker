@@ -637,7 +637,7 @@ export default function Landing({
               <span className="grid size-[30px] place-items-center rounded-lg bg-[#1f7a4d] font-extrabold text-white">$</span>
               <span>
                 Sold · Perfect Strike Gundam
-                <b className="block text-base text-[#1f7a4d]">+A$4.00 profit</b>
+                <b className="block text-base text-[#1f7a4d]">+$4.00 profit</b>
               </span>
             </div>
           </figure>

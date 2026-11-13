@@ -27,7 +27,7 @@ from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.table import Table, TableStyleInfo
 
 XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-AUD = '"A$"#,##0.00;[Red]-"A$"#,##0.00'
+AUD = '"$"#,##0.00;[Red]-"$"#,##0.00'
 STATUS_LABELS = {"for_sale": "For Sale", "pending": "Pending", "on_hold": "Storage", "sold": "Sold"}
 # status tag colours (fill, text) — conditional formatting, so they follow edits
 STATUS_COLOURS = {"For Sale": ("DBEAFE", "1E40AF"), "Pending": ("FEF3C7", "92400E"), "Storage": ("EDE9FE", "5B21B6"), "Sold": ("D1FAE5", "065F46")}

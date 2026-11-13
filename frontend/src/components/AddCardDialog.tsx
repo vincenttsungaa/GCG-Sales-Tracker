@@ -421,7 +421,7 @@ function CardDetailsForm({
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="add-card-price" className={LABEL}>
-            Asking price (AUD)
+            Asking price ($)
           </Label>
           <Input
             id="add-card-price"
@@ -448,7 +448,7 @@ function CardDetailsForm({
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="add-card-purchase" className={LABEL}>
-            Purchase price (AUD)
+            Purchase price ($)
           </Label>
           <Input
             id="add-card-purchase"

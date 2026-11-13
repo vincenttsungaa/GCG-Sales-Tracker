@@ -311,7 +311,7 @@ function CardPriceInput({
       inputMode="decimal"
       min="0"
       step="0.01"
-      placeholder="A$ each"
+      placeholder="$ each"
       aria-label={`Price per copy of ${label} (optional)`}
       data-testid={testId}
       value={value}
@@ -1129,7 +1129,7 @@ function ProductDetailsForm({
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="add-item-price" className={LABEL}>
-            {cardLot ? "Listing price (AUD)" : isBundle ? "Price per bundle (AUD)" : "Asking price (AUD)"}{" "}
+            {cardLot ? "Listing price ($)" : isBundle ? "Price per bundle ($)" : "Asking price ($)"}{" "}
             <InfoTip label="How the asking price works">{TIP_ASKING}</InfoTip>
           </Label>
           <Input
@@ -1155,7 +1155,7 @@ function ProductDetailsForm({
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="add-item-purchase" className={LABEL}>
-            Purchase price (AUD)
+            Purchase price ($)
           </Label>
           <Input
             id="add-item-purchase"
@@ -1571,7 +1571,7 @@ function CustomItemForm({
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="custom-price" className={LABEL}>
-            Asking price (AUD)
+            Asking price ($)
           </Label>
           <Input
             id="custom-price"
@@ -1588,7 +1588,7 @@ function CustomItemForm({
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="custom-purchase" className={LABEL}>
-            Purchase price (AUD)
+            Purchase price ($)
           </Label>
           <Input
             id="custom-purchase"
@@ -1835,7 +1835,7 @@ export function BundleBar({
         <div className="flex items-end gap-2">
           <div className="flex flex-1 flex-col gap-1">
             <Label htmlFor="add-item-bundle-price" className={LABEL}>
-              Bundle price (AUD){" "}
+              Bundle price ($){" "}
               <span className="normal-case text-slate-500">
                 {allPriced ? "— optional, e.g. for a discount" : "— needed: some items have no price"}
               </span>{" "}
