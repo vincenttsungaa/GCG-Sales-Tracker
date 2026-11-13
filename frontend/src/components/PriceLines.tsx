@@ -1,4 +1,4 @@
-import { formatAud } from "@/lib/format";
+import { formatMoney } from "@/lib/format";
 import type { PriceLine } from "@/lib/types";
 
 // A price breakdown (see priceBreakdown in lib/types): each priced card / part / product,
@@ -14,7 +14,7 @@ export function PriceLines({ lines, className = "" }: { lines: PriceLine[]; clas
             {l.kind === "priced" && l.qty > 1 && l.each != null && (
               <span className="text-slate-500">
                 {" "}
-                · {l.qty} × {formatAud(l.each)}
+                · {l.qty} × {formatMoney(l.each)}
               </span>
             )}
             {l.kind === "rest" && <span className="text-slate-500"> (rest of price)</span>}
@@ -24,7 +24,7 @@ export function PriceLines({ lines, className = "" }: { lines: PriceLine[]; clas
               l.kind === "adjust" ? (l.amount != null && l.amount < 0 ? "text-emerald-400" : "text-amber-300") : l.amount == null ? "text-slate-500" : "text-slate-200"
             }`}
           >
-            {l.amount == null ? "no price" : l.kind === "adjust" && l.amount < 0 ? `−${formatAud(-l.amount)}` : formatAud(l.amount)}
+            {l.amount == null ? "no price" : l.kind === "adjust" && l.amount < 0 ? `−${formatMoney(-l.amount)}` : formatMoney(l.amount)}
           </span>
         </div>
       ))}

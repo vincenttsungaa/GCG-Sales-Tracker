@@ -12,6 +12,7 @@ from lib import auth
 from lib.auth import current_user, public_user
 from lib.db import db
 from lib.email_design import p, quote, render, rows
+from lib.export import CURRENCIES
 from lib.membership import apply_bmc
 from models.item import no_emoji
 
@@ -216,6 +217,17 @@ async def update_me(body: NameIn, user: dict = Depends(current_user)):
 class AvatarIn(BaseModel):
     # a picture's file name without its extension (frontend/src/assets/avatars); null = your initials
     avatar: str | None = Field(default=None, pattern=r"^[a-z0-9][a-z0-9_-]{0,39}$")
+
+
+class CurrencyIn(BaseModel):
+    currency: Literal[tuple(CURRENCIES)]  # type: ignore[valid-type]
+
+
+@router.put("/currency")
+async def set_currency(body: CurrencyIn, user: dict = Depends(current_user)):
+    """The money prices are shown in (and the Excel export uses). Display only: no amounts are converted."""
+    await db.users.update_one({"id": user["id"]}, {"$set": {"currency": body.currency}})
+    return public_user({**user, "currency": body.currency})
 
 
 @router.put("/avatar")

@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { CatalogSyncPanel, useCatalogSync } from "@/components/CatalogSync";
 import { apiGet } from "@/lib/api";
-import { formatAud } from "@/lib/format";
+import { currencySymbol, formatMoney } from "@/lib/format";
 import {
   bundleLineTotal,
   cardCopies,
@@ -311,7 +311,7 @@ function CardPriceInput({
       inputMode="decimal"
       min="0"
       step="0.01"
-      placeholder="$ each"
+      placeholder={`${currencySymbol()} each`}
       aria-label={`Price per copy of ${label} (optional)`}
       data-testid={testId}
       value={value}
@@ -1120,7 +1120,7 @@ function ProductDetailsForm({
           <div className="mt-1 flex justify-between border-t border-slate-800 pt-1 font-mono text-xs">
             <span className="text-slate-300">{isBundle ? "Per bundle" : "Total"}</span>
             <span className="font-semibold tabular-nums text-sky-300">
-              {priceTotal == null ? "set an asking price" : formatAud(priceTotal)}
+              {priceTotal == null ? "set an asking price" : formatMoney(priceTotal)}
             </span>
           </div>
         </div>
@@ -1129,7 +1129,7 @@ function ProductDetailsForm({
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="add-item-price" className={LABEL}>
-            {cardLot ? "Listing price ($)" : isBundle ? "Price per bundle ($)" : "Asking price ($)"}{" "}
+            {cardLot ? "Listing price" : isBundle ? "Price per bundle" : "Asking price"} ({currencySymbol()}){" "}
             <InfoTip label="How the asking price works">{TIP_ASKING}</InfoTip>
           </Label>
           <Input
@@ -1155,7 +1155,7 @@ function ProductDetailsForm({
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="add-item-purchase" className={LABEL}>
-            Purchase price ($)
+            Purchase price ({currencySymbol()})
           </Label>
           <Input
             id="add-item-purchase"
@@ -1571,7 +1571,7 @@ function CustomItemForm({
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="custom-price" className={LABEL}>
-            Asking price ($)
+            Asking price ({currencySymbol()})
           </Label>
           <Input
             id="custom-price"
@@ -1588,7 +1588,7 @@ function CustomItemForm({
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="custom-purchase" className={LABEL}>
-            Purchase price ($)
+            Purchase price ({currencySymbol()})
           </Label>
           <Input
             id="custom-purchase"
@@ -1801,10 +1801,10 @@ export function BundleBar({
                   <>
                     {e.quantity > 1 && e.price != null && (
                       <span className="text-slate-500">
-                        {e.quantity} × {formatAud(e.price)} ={" "}
+                        {e.quantity} × {formatMoney(e.price)} ={" "}
                       </span>
                     )}
-                    {formatAud(line)}
+                    {formatMoney(line)}
                   </>
                 )}
               </span>
@@ -1829,13 +1829,13 @@ export function BundleBar({
             {typed == null && !allPriced && <span className="text-slate-500"> — some items have no price</span>}
           </span>
           <span className="font-semibold tabular-nums text-sky-300" data-testid="add-item-bundle-total">
-            {total == null ? "set a bundle price" : formatAud(total)}
+            {total == null ? "set a bundle price" : formatMoney(total)}
           </span>
         </div>
         <div className="flex items-end gap-2">
           <div className="flex flex-1 flex-col gap-1">
             <Label htmlFor="add-item-bundle-price" className={LABEL}>
-              Bundle price ($){" "}
+              Bundle price ({currencySymbol()}){" "}
               <span className="normal-case text-slate-500">
                 {allPriced ? "— optional, e.g. for a discount" : "— needed: some items have no price"}
               </span>{" "}

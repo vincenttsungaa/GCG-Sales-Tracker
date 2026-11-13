@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { useMediaQuery } from "@/lib/useMediaQuery";
 import { Button } from "@/components/ui/button";
 import { StatusBadge, bundleKind, categoryClass, rarityClass } from "@/components/badges";
-import { COLOR_DOT_CLASS, formatAud, formatDate } from "@/lib/format";
+import { COLOR_DOT_CLASS, formatMoney, formatDate } from "@/lib/format";
 import {
   bundleLineTotal,
   bundlePartNames,
@@ -699,7 +699,7 @@ export default function ItemCard({ item, ...actions }: ItemCardProps) {
             testId={`item-price-panel-${item.id}`}
             footer={
               <Detail label={priceLabel}>
-                <span className="font-mono font-semibold tabular-nums text-sky-300">{formatAud(isSold ? saleTotal(item) : item.price)}</span>
+                <span className="font-mono font-semibold tabular-nums text-sky-300">{formatMoney(isSold ? saleTotal(item) : item.price)}</span>
               </Detail>
             }
           >
@@ -717,12 +717,12 @@ export default function ItemCard({ item, ...actions }: ItemCardProps) {
                       {e.quantity > 1 && e.price != null && (
                         <span className="text-slate-500">
                           {" "}
-                          · {e.quantity} × {formatAud(e.price)}
+                          · {e.quantity} × {formatMoney(e.price)}
                         </span>
                       )}
                     </span>
                     <span className={`shrink-0 tabular-nums ${line == null ? "text-slate-500" : "text-slate-200"}`}>
-                      {line == null ? "—" : formatAud(line)}
+                      {line == null ? "—" : formatMoney(line)}
                     </span>
                   </div>
                   {cards && (
@@ -753,17 +753,17 @@ export default function ItemCard({ item, ...actions }: ItemCardProps) {
         )}
         <Detail label={priceLabel}>
           <span data-testid={`item-price-${item.id}`} className="font-mono font-semibold tabular-nums text-sky-300">
-            {formatAud(isSold ? saleTotal(item) : item.price)}
+            {formatMoney(isSold ? saleTotal(item) : item.price)}
           </span>
         </Detail>
         {isSold && (
           <Detail label="List">
-            <span className="font-mono tabular-nums text-slate-400">{formatAud(item.price)}/unit</span>
+            <span className="font-mono tabular-nums text-slate-400">{formatMoney(item.price)}/unit</span>
           </Detail>
         )}
         {item.purchase_price != null && (
           <Detail label="Paid">
-            <span className="font-mono tabular-nums text-slate-400">{formatAud(item.purchase_price)}/unit</span>
+            <span className="font-mono tabular-nums text-slate-400">{formatMoney(item.purchase_price)}/unit</span>
           </Detail>
         )}
         {profit != null && (
@@ -773,7 +773,7 @@ export default function ItemCard({ item, ...actions }: ItemCardProps) {
               className={`font-mono font-semibold tabular-nums ${profit >= 0 ? "text-emerald-400" : "text-red-400"}`}
             >
               {profit >= 0 ? "+" : "-"}
-              {formatAud(Math.abs(profit))}
+              {formatMoney(Math.abs(profit))}
             </span>
           </Detail>
         )}

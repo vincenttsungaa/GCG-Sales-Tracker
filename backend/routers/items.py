@@ -398,13 +398,13 @@ class EmailExportRequest(ExportRequest):
     note: str | None = Field(default=None, max_length=2000)  # a note to yourself, shown in the email
 
 
-async def _export_workbook(body: ExportRequest, full: bool) -> tuple[bytes, int]:
+async def _export_workbook(body: ExportRequest, full: bool, currency: str | None = None) -> tuple[bytes, int]:
     items = [normalise_doc(dict(d)) for d in await _export_items(body.ids)]
     stacks = await db.stacks.find({}, {"_id": 0}).to_list(None)
     order = sorted(stacks, key=lambda s: (s.get("order", -1), str(s.get("created_at", ""))))  # sidebar order
     names = {s["id"]: s["name"] for s in order}
     # Free: one Listings sheet. Collector and up: Summary, Listings, Sales and (if asked) a sheet per Stakk
-    data = await asyncio.to_thread(build_workbook, items, names, body.label, full and body.per_stack, full)
+    data = await asyncio.to_thread(build_workbook, items, names, body.label, full and body.per_stack, full, currency)
     return data, len(items)
 
 
@@ -421,7 +421,7 @@ async def export_items(body: ExportRequest, user: dict = Depends(current_user)):
     """The listings as an .xlsx download. Collector: one Listings sheet; Dealer: the full workbook."""
     if effective_tier(user) < 1:
         raise HTTPException(status_code=403, detail="Excel export comes with the Collector plan — see the Support page.")
-    data, _ = await _export_workbook(body, full=effective_tier(user) >= 2)
+    data, _ = await _export_workbook(body, full=effective_tier(user) >= 2, currency=user.get("currency"))
     name = export_filename(body.label)
     return Response(
         content=data,
@@ -437,7 +437,7 @@ async def email_export(body: EmailExportRequest, user: dict = Depends(current_us
         raise HTTPException(status_code=403, detail="Sending the export by email comes with the Dealer plan — see the Support page.")
     if not user.get("email_verified"):
         raise HTTPException(status_code=400, detail="Confirm your email first: the file is sent to your account's email.")
-    data, count = await _export_workbook(body, full=True)
+    data, count = await _export_workbook(body, full=True, currency=user.get("currency"))
     try:
         await asyncio.to_thread(
             send_workbook, user["email"], data, export_filename(body.label), count, body.note

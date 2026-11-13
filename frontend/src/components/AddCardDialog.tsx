@@ -16,7 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { rarityClass } from "@/components/badges";
 import { apiGet } from "@/lib/api";
 import { CatalogSyncPanel, useCatalogSync } from "@/components/CatalogSync";
-import { COLOR_DOT_CLASS } from "@/lib/format";
+import { COLOR_DOT_CLASS, currencySymbol } from "@/lib/format";
 import { labelize, type BundleEntry, type CatalogCard, type ItemPayload } from "@/lib/types";
 import { ArrowLeft, ListPlus, Loader2, Minus, Plus, Search } from "lucide-react";
 import { BundleBar, bundlePayload } from "@/components/AddItemDialog";
@@ -421,7 +421,7 @@ function CardDetailsForm({
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="add-card-price" className={LABEL}>
-            Asking price ($)
+            Asking price ({currencySymbol()})
           </Label>
           <Input
             id="add-card-price"
@@ -448,7 +448,7 @@ function CardDetailsForm({
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="add-card-purchase" className={LABEL}>
-            Purchase price ($)
+            Purchase price ({currencySymbol()})
           </Label>
           <Input
             id="add-card-purchase"

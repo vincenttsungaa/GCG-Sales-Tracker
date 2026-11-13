@@ -10,7 +10,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ColorBadge, KindBadge, RarityBadge, StatusBadge, bundleKind } from "@/components/badges";
-import { COLOR_TRIM_CLASS, formatAud, formatDate } from "@/lib/format";
+import { COLOR_TRIM_CLASS, formatMoney, formatDate } from "@/lib/format";
 import { bundleLineTotal, cardCopies, saleProfit, saleTotal, type CollectionItem } from "@/lib/types";
 
 // sleeves in different designs share a name: the design goes in the button labels
@@ -44,7 +44,7 @@ function ProfitText({ item, className = "" }: { item: CollectionItem; className?
       className={`font-mono font-semibold tabular-nums ${profit >= 0 ? "text-emerald-400" : "text-red-400"} ${className}`}
     >
       {profit >= 0 ? "+" : "-"}
-      {formatAud(Math.abs(profit))}
+      {formatMoney(Math.abs(profit))}
     </span>
   );
 }
@@ -254,7 +254,7 @@ function DesktopTable({ items, actions }: { items: CollectionItem[]; actions: Ac
                       )}
                       {(item.bundle_items ?? []).length > 1 && (
                         <p className="font-mono text-xs break-words text-slate-400" data-testid={`item-bundle-${item.id}`}>
-                          {item.bundle_items.map((e) => { const line = bundleLineTotal(e); return `${e.code ?? e.name}${e.quantity > 1 ? ` ×${e.quantity}` : ""} ${line == null ? "—" : formatAud(line)}`; }).join(" + ")}
+                          {item.bundle_items.map((e) => { const line = bundleLineTotal(e); return `${e.code ?? e.name}${e.quantity > 1 ? ` ×${e.quantity}` : ""} ${line == null ? "—" : formatMoney(line)}`; }).join(" + ")}
                         </p>
                       )}
                       {(item.sleeve_designs ?? []).length > 0 && (
@@ -281,10 +281,10 @@ function DesktopTable({ items, actions }: { items: CollectionItem[]; actions: Ac
                 </TableCell>
                 <TableCell>
                   <p data-testid={`item-price-${item.id}`} className="font-mono font-semibold tabular-nums text-sky-300">
-                    {formatAud(isSold ? saleTotal(item) : item.price)}
+                    {formatMoney(isSold ? saleTotal(item) : item.price)}
                   </p>
                   {isSold && (
-                    <p className="font-mono text-xs text-slate-500">list {formatAud(item.price)}/unit</p>
+                    <p className="font-mono text-xs text-slate-500">list {formatMoney(item.price)}/unit</p>
                   )}
                   {isSold && (
                     <p className="text-xs">
@@ -496,7 +496,7 @@ function MobileRow({ item, actions }: { item: CollectionItem; actions: Actions }
             data-testid={`item-price-${item.id}`}
             className="font-mono text-sm font-semibold tabular-nums text-sky-300"
           >
-            {formatAud(isSold ? saleTotal(item) : item.price)}
+            {formatMoney(isSold ? saleTotal(item) : item.price)}
           </span>
         </Stat>
         <Stat label="Qty">
@@ -504,12 +504,12 @@ function MobileRow({ item, actions }: { item: CollectionItem; actions: Actions }
         </Stat>
         {isSold ? (
           <Stat label="List / unit">
-            <span className="font-mono text-sm tabular-nums text-slate-400">{formatAud(item.price)}</span>
+            <span className="font-mono text-sm tabular-nums text-slate-400">{formatMoney(item.price)}</span>
           </Stat>
         ) : (
           <Stat label="Total">
             <span className="font-mono text-sm tabular-nums text-slate-400">
-              {formatAud(item.price * item.quantity)}
+              {formatMoney(item.price * item.quantity)}
             </span>
           </Stat>
         )}
@@ -551,7 +551,7 @@ function MobileRow({ item, actions }: { item: CollectionItem; actions: Actions }
 
       {(item.bundle_items ?? []).length > 1 && (
         <p className="font-mono text-xs break-words text-slate-400" data-testid={`item-bundle-${item.id}`}>
-          {item.bundle_items.map((e) => { const line = bundleLineTotal(e); return `${e.code ?? e.name}${e.quantity > 1 ? ` ×${e.quantity}` : ""} ${line == null ? "—" : formatAud(line)}`; }).join(" + ")}
+          {item.bundle_items.map((e) => { const line = bundleLineTotal(e); return `${e.code ?? e.name}${e.quantity > 1 ? ` ×${e.quantity}` : ""} ${line == null ? "—" : formatMoney(line)}`; }).join(" + ")}
         </p>
       )}
       {(item.sleeve_designs ?? []).length > 0 && (

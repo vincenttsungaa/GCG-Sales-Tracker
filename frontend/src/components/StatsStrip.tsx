@@ -1,5 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { formatAud } from "@/lib/format";
+import { formatMoney } from "@/lib/format";
 import { saleProfit, saleTotal, type CollectionItem } from "@/lib/types";
 
 // Phones: the three tiles sit side by side, compact — a short label, the number, no sub line.
@@ -54,7 +54,7 @@ export default function StatsStrip({ items }: { items: CollectionItem[] }) {
   const profitText =
     costed === 0
       ? "add what you paid to see profit"
-      : `${formatAud(Math.abs(profit))} ${profit >= 0 ? "profit" : "loss"} after costs`;
+      : `${formatMoney(Math.abs(profit))} ${profit >= 0 ? "profit" : "loss"} after costs`;
   // sales with no bought price count as A$0 cost, so profit may read high: say how many
   const noCost = sold.length - costed;
   const noCostText = costed > 0 && noCost > 0 ? ` · ${noCost} without a bought price` : "";
@@ -65,7 +65,7 @@ export default function StatsStrip({ items }: { items: CollectionItem[] }) {
         testId="stat-collection-value"
         label="Listed Value"
         short="Listed"
-        value={formatAud(collectionValue)}
+        value={formatMoney(collectionValue)}
         sub="Everything not sold, Storage included, at asking price"
         accent="text-slate-100"
       />
@@ -73,7 +73,7 @@ export default function StatsStrip({ items }: { items: CollectionItem[] }) {
         testId="stat-realized-sales"
         label="Realized Sales"
         short="Sales"
-        value={formatAud(realized)}
+        value={formatMoney(realized)}
         sub={`${sold.length} sold · ${profitText}${noCostText}`}
         accent="text-emerald-300"
       />

@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { formatAud, formatDate } from "@/lib/format";
+import { formatMoney, formatDate } from "@/lib/format";
 import { saleProfit, saleTotal, type CollectionItem, type Stack } from "@/lib/types";
 import { Menu } from "@base-ui/react/menu";
 import { FolderThumb } from "@/components/ItemCard";
@@ -289,14 +289,14 @@ function CombinedSales({ names, items, onShow, onClear }: { names: string[]; ite
         <p className={ROW}>
           <span className="text-slate-400">Sold for</span>
           <span className="font-mono font-semibold tabular-nums text-[var(--rt-text)]">
-            {formatAud(soldFor)} <span className="font-normal text-slate-500">({units} sold)</span>
+            {formatMoney(soldFor)} <span className="font-normal text-slate-500">({units} sold)</span>
           </span>
         </p>
         <p className={ROW}>
           <span className="text-slate-400">Profit after costs</span>
           <span className={`font-mono font-semibold tabular-nums ${profit < 0 ? "text-red-400" : "text-emerald-300"}`}>
             {profit < 0 ? "−" : "+"}
-            {formatAud(Math.abs(profit))}
+            {formatMoney(Math.abs(profit))}
           </span>
         </p>
         {noCost > 0 && (
@@ -306,7 +306,7 @@ function CombinedSales({ names, items, onShow, onClear }: { names: string[]; ite
         )}
         <p className={ROW}>
           <span className="text-slate-400">Unsold value</span>
-          <span className="font-mono font-semibold tabular-nums text-[var(--rt-text)]">{formatAud(unsold)}</span>
+          <span className="font-mono font-semibold tabular-nums text-[var(--rt-text)]">{formatMoney(unsold)}</span>
         </p>
       </div>
       <div className="flex gap-1.5">
@@ -452,7 +452,7 @@ export function StackFolder({ name, items, total, value, onOpen }: { name: strin
       </span>
       <span className="flex items-center justify-between gap-2 rounded-md border border-slate-800/60 bg-slate-950/40 px-2 py-1.5 text-xs">
         <span className="text-slate-500">{value === null ? "Listings" : "Value"}</span>
-        <span className="font-mono font-semibold tabular-nums text-sky-300">{value === null ? total : formatAud(value)}</span>
+        <span className="font-mono font-semibold tabular-nums text-sky-300">{value === null ? total : formatMoney(value)}</span>
       </span>
       <Button
         size="sm"
@@ -499,7 +499,7 @@ export function StackSales({ sold }: { sold: CollectionItem[] }) {
               {i.buyer_name}
               {i.deal_date && ` · ${formatDate(i.deal_date)}`}
             </span>
-            <span className="font-mono tabular-nums text-emerald-300">{formatAud(saleTotal(i))}</span>
+            <span className="font-mono tabular-nums text-emerald-300">{formatMoney(saleTotal(i))}</span>
           </li>
         ))}
       </ul>

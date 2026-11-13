@@ -13,6 +13,7 @@ export interface User {
   name: string | null;
   picture: string | null;
   avatar?: string | null; // profile picture from src/assets/avatars (lib/avatars.ts); none = initials
+  currency?: string | null; // the money prices are shown in (lib/format.ts CURRENCIES); none = guessed from the browser
   email_verified: boolean;
   has_password: boolean;
   is_admin: boolean;

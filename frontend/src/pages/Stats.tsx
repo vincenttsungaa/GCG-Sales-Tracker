@@ -2,7 +2,7 @@ import { useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Lock } from "lucide-react";
 import { apiGet, apiPut, errorText } from "@/lib/api";
-import { formatAud, formatDate } from "@/lib/format";
+import { currencySymbol, formatMoney, formatDate } from "@/lib/format";
 import { computeStats, monthName, RANGES, saleDay, type Month, type RangeId, type Stats as StatsData } from "@/lib/stats";
 import type { CollectionItem, GundamColor, Stack } from "@/lib/types";
 import type { User } from "@/pages/Landing";
@@ -35,7 +35,7 @@ const STATUS: Record<string, [string, string, string]> = {
   on_hold: ["Storage", "var(--st-purple-bg)", "var(--st-purple-ink)"],
 };
 
-const aud0 = (n: number) => formatAud(Math.round(n)).replace(/\.00$/, "");
+const aud0 = (n: number) => formatMoney(Math.round(n)).replace(/\.00$/, "");
 const pct = (n: number) => `${Math.round(n * 100)}%`;
 
 function Card({ title, hint, right, children, className = "" }: { title: string; hint?: string; right?: ReactNode; children: ReactNode; className?: string }) {
@@ -270,7 +270,7 @@ function MissingCostRow({ item }: { item: CollectionItem }) {
           {(item.card_no || item.rarity) && " · "}
           sold {formatDate(saleDay(item))}
           {item.buyer_name && ` to ${item.buyer_name}`} · {item.quantity > 1 ? `${item.quantity} copies for ` : ""}
-          {formatAud((item.sale_price ?? item.price) * item.quantity)}
+          {formatMoney((item.sale_price ?? item.price) * item.quantity)}
         </span>
         {error && (
           <span role="alert" className="block text-[11px] text-[var(--st-bad)]">
@@ -282,7 +282,7 @@ function MissingCostRow({ item }: { item: CollectionItem }) {
         <label className="flex items-center gap-1.5 text-[11px] text-[var(--st-sub)]">
           Paid {item.quantity > 1 ? "each" : ""}
           <span className="flex items-center rounded-md border border-[var(--st-line)] bg-[var(--rt-panel)] pl-2 text-sm">
-            $
+            {currencySymbol()}
             <input
               type="number"
               inputMode="decimal"
@@ -596,7 +596,7 @@ function Page({ s, stacks, range, setRange, stackId, setStackId }: {
                           </span>
                           <b>{days}d</b>
                         </td>
-                        <td className={`${TD} text-right font-semibold`}>{formatAud(item.price * item.quantity)}</td>
+                        <td className={`${TD} text-right font-semibold`}>{formatMoney(item.price * item.quantity)}</td>
                       </tr>
                     );
                   })}

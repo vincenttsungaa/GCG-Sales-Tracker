@@ -1,11 +1,55 @@
 import type { GundamColor, ItemStatus } from "./types";
 
-// Money formatting ("$120.00", "-$4.00") — every price in the app goes through this. Just "$", no country:
-// members come from everywhere, and each enters prices in their own dollars.
-const audFormatter = new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD" });
+// Money: every price in the app goes through formatMoney. Display only — the numbers are never converted;
+// the currency (picked in the profile menu, saved on the account) just says which money they are in.
+// Keep the codes in step with CURRENCIES in backend/lib/export.py.
+export const CURRENCIES = {
+  USD: { symbol: "US$", name: "US dollar" },
+  AUD: { symbol: "A$", name: "Australian dollar" },
+  PHP: { symbol: "₱", name: "Philippine peso" },
+  EUR: { symbol: "€", name: "Euro" },
+  JPY: { symbol: "¥", name: "Japanese yen" },
+  GBP: { symbol: "£", name: "British pound" },
+  CAD: { symbol: "C$", name: "Canadian dollar" },
+  NZD: { symbol: "NZ$", name: "New Zealand dollar" },
+} as const;
+export type Currency = keyof typeof CURRENCIES;
 
-export function formatAud(value: number): string {
-  return audFormatter.format(value);
+const EURO_REGIONS = ["AT", "BE", "CY", "DE", "EE", "ES", "FI", "FR", "GR", "HR", "IE", "IT", "LT", "LU", "LV", "MT", "NL", "PT", "SI", "SK"];
+
+// Not picked yet: a guess from the browser's region (en-US → US$, ja → ¥, de-DE → €), else A$
+function guessCurrency(): Currency {
+  for (const tag of typeof navigator === "undefined" ? [] : navigator.languages ?? [navigator.language]) {
+    const [lang, region = ""] = tag.split("-");
+    const r = region.toUpperCase();
+    if (r === "US") return "USD";
+    if (r === "AU") return "AUD";
+    if (r === "PH" || lang === "fil" || lang === "tl") return "PHP";
+    if (r === "GB" || r === "UK") return "GBP";
+    if (r === "CA") return "CAD";
+    if (r === "NZ") return "NZD";
+    if (r === "JP" || lang === "ja") return "JPY";
+    if (EURO_REGIONS.includes(r)) return "EUR";
+  }
+  return "AUD";
+}
+
+let current: Currency = guessCurrency();
+
+export const isCurrency = (c: unknown): c is Currency => typeof c === "string" && c in CURRENCIES;
+
+// App.tsx calls this with the account's choice before the pages render
+export function setCurrency(c: string | null | undefined): void {
+  current = isCurrency(c) ? c : guessCurrency();
+}
+
+export const currentCurrency = (): Currency => current;
+export const currencySymbol = (): string => CURRENCIES[current].symbol;
+
+export function formatMoney(value: number): string {
+  const digits = current === "JPY" ? 0 : 2; // yen has no cents
+  const n = Math.abs(value).toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+  return `${value < 0 ? "-" : ""}${currencySymbol()}${n}`;
 }
 
 // Deal dates are YYYY-MM-DD strings; display as DD/MM/YYYY (Australian standard).

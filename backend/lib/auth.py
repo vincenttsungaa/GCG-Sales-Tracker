@@ -294,6 +294,7 @@ def public_user(user: dict) -> dict:
         "name": user.get("name"),
         "picture": user.get("picture"),
         "avatar": user.get("avatar"),  # the profile picture picked on the Account page, e.g. "avatar-01"
+        "currency": user.get("currency"),  # the money prices are shown in (profile menu); None = not picked yet
         "email_verified": bool(user.get("email_verified")),
         "has_password": bool(user.get("password_hash")),
         "is_admin": is_admin(user),

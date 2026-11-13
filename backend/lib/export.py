@@ -27,7 +27,23 @@ from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.table import Table, TableStyleInfo
 
 XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-AUD = '"$"#,##0.00;[Red]-"$"#,##0.00'
+AUD = '"$"#,##0.00;[Red]-"$"#,##0.00'  # money cells while building; _set_currency swaps in the account's currency
+# The currencies an account can pick (profile menu): code -> symbol. Keep in step with frontend/src/lib/format.ts.
+CURRENCIES = {"USD": "US$", "AUD": "A$", "PHP": "₱", "EUR": "€", "JPY": "¥", "GBP": "£", "CAD": "C$", "NZD": "NZ$"}
+
+
+def _set_currency(wb: Workbook, currency: str | None) -> None:
+    """Every money cell in the account's currency (yen without cents). No currency picked: plain "$"."""
+    if currency not in CURRENCIES:
+        return
+    cents = "" if currency == "JPY" else ".00"
+    sym = CURRENCIES[currency]
+    fmt = f'"{sym}"#,##0{cents};[Red]-"{sym}"#,##0{cents}'
+    for ws in wb.worksheets:
+        for row in ws.iter_rows():
+            for cell in row:
+                if cell.number_format == AUD:
+                    cell.number_format = fmt
 STATUS_LABELS = {"for_sale": "For Sale", "pending": "Pending", "on_hold": "Storage", "sold": "Sold"}
 # status tag colours (fill, text) — conditional formatting, so they follow edits
 STATUS_COLOURS = {"For Sale": ("DBEAFE", "1E40AF"), "Pending": ("FEF3C7", "92400E"), "Storage": ("EDE9FE", "5B21B6"), "Sold": ("D1FAE5", "065F46")}
@@ -198,6 +214,7 @@ def build_workbook(
     label: str | None = None,
     per_stack: bool = False,
     full: bool = True,
+    currency: str | None = None,
 ) -> bytes:
     """Summary sheet (formulas), Listings (all), Sales (sold only), and optionally a sheet per stack.
     full=False (Free plan): just the Listings sheet — every listing, sold ones included."""
@@ -206,6 +223,7 @@ def build_workbook(
     if not full:
         wb.active.title = "Listings"
         _write_listings(wb.active, items, stacks, "Listings")
+        _set_currency(wb, currency)
         out = BytesIO()
         wb.save(out)
         return out.getvalue()
@@ -313,6 +331,7 @@ def build_workbook(
             if in_stack:
                 _write_listings(wb.create_sheet(_sheet_name(name, taken)), in_stack, stacks, f"Stack{n}")
 
+    _set_currency(wb, currency)
     out = BytesIO()
     wb.save(out)
     return out.getvalue()

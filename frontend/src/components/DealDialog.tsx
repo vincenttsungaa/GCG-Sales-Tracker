@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { formatAud } from "@/lib/format";
+import { currencySymbol, formatMoney } from "@/lib/format";
 import { isBundle, type CollectionItem, type StatusPayload } from "@/lib/types";
 
 export interface DealState {
@@ -114,10 +114,10 @@ export default function DealDialog({ state, today, onClose, onConfirm, pending }
           <p className="rounded-md border border-slate-800 bg-slate-900/70 px-3 py-2 text-sm">
             <span className="font-medium text-slate-100">{item.name}</span>
             <span className="text-slate-400">
-              {" · "}list {formatAud(item.price)}/unit · qty {item.quantity}
+              {" · "}list {formatMoney(item.price)}/unit · qty {item.quantity}
             </span>
             {item.purchase_price != null && (
-              <span className="text-slate-400">{" · "}bought {formatAud(item.purchase_price)}/unit</span>
+              <span className="text-slate-400">{" · "}bought {formatMoney(item.purchase_price)}/unit</span>
             )}
           </p>
           {!storing && (
@@ -153,7 +153,7 @@ export default function DealDialog({ state, today, onClose, onConfirm, pending }
             </div>
             <div className="flex min-w-0 flex-col gap-1.5">
               <Label htmlFor="deal-price" className="font-mono text-xs uppercase tracking-wider text-slate-400">
-                Deal price/unit ($)
+                Deal price/unit ({currencySymbol()})
               </Label>
               <Input
                 id="deal-price"
@@ -197,11 +197,11 @@ export default function DealDialog({ state, today, onClose, onConfirm, pending }
           {dealTotal != null && (
             <p data-testid="deal-total" className="text-sm text-slate-300">
               Total{" "}
-              <span className="font-mono font-semibold tabular-nums text-slate-100">{formatAud(dealTotal)}</span>
+              <span className="font-mono font-semibold tabular-nums text-slate-100">{formatMoney(dealTotal)}</span>
               {(splittable ? qtyNum : item.quantity) > 1 && (
                 <span className="text-slate-400">
                   {" "}
-                  ({splittable ? qtyNum : item.quantity} × {formatAud(priceNum)})
+                  ({splittable ? qtyNum : item.quantity} × {formatMoney(priceNum)})
                 </span>
               )}
             </p>
@@ -211,7 +211,7 @@ export default function DealDialog({ state, today, onClose, onConfirm, pending }
               data-testid="deal-profit-preview"
               className={`text-sm font-medium ${expectedProfit >= 0 ? "text-emerald-400" : "text-red-400"}`}
             >
-              Expected {expectedProfit >= 0 ? "profit" : "loss"}: {formatAud(Math.abs(expectedProfit))}
+              Expected {expectedProfit >= 0 ? "profit" : "loss"}: {formatMoney(Math.abs(expectedProfit))}
             </p>
           )}
         </div>

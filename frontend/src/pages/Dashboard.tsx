@@ -57,10 +57,12 @@ import {
   CopyPlus,
   LogOut,
   ChartColumn,
+  Check,
+  Coins,
   Library,
   Settings,
 } from "lucide-react";
-import { formatAud } from "@/lib/format";
+import { CURRENCIES, currentCurrency, formatMoney, isCurrency, type Currency } from "@/lib/format";
 import { useMediaQuery } from "@/lib/useMediaQuery";
 import { avatarUrl, initialsOf } from "@/lib/avatars";
 import { isBundle, saleProfit, saleTotal, type BundleEntry, type CollectionItem, type Stack, type ItemPayload, type StatusPayload, type TabId } from "@/lib/types";
@@ -136,6 +138,11 @@ export default function Dashboard({
       onSignedOut();
     }
   };
+  // the profile menu's Currency: saved on the account; App.tsx then redraws the page in it
+  const changeCurrency = (currency: Currency) =>
+    apiPut<User>("/auth/currency", { currency })
+      .then((u) => queryClient.setQueryData(["me"], u))
+      .catch((e) => toast.error(errorText(e, "Couldn't change the currency — try again.")));
   // the account menu's button: your profile picture, else the initials of your name (or email)
   const initials = initialsOf(user);
   const avatar = avatarUrl(user.avatar);
@@ -998,6 +1005,30 @@ export default function Dashboard({
                     <Menu.Item className={MENU_ITEM} onClick={() => setExportOpen(true)} data-testid="menu-export">
                       <FileSpreadsheet className="size-4" /> Export to Excel
                     </Menu.Item>
+                    {/* the money prices are shown in: display only, nothing is converted */}
+                    <Menu.SubmenuRoot>
+                      <Menu.SubmenuTrigger className={MENU_ITEM} data-testid="menu-currency">
+                        <Coins className="size-4" /> Currency
+                        <span className="ml-auto text-xs text-slate-400">{CURRENCIES[currentCurrency()].symbol}</span>
+                        <ChevronRight className="size-3.5 text-slate-400" />
+                      </Menu.SubmenuTrigger>
+                      <Menu.Portal>
+                        <Menu.Positioner className="z-50 outline-none" side="left" align="start" sideOffset={6}>
+                          <Menu.Popup className="w-60 rounded-lg border border-slate-700 bg-[#1a2130] p-1 text-slate-200 shadow-lg outline-none" data-testid="currency-menu">
+                            <Menu.RadioGroup value={currentCurrency()} onValueChange={(c) => isCurrency(c) && changeCurrency(c)}>
+                              {Object.entries(CURRENCIES).map(([code, c]) => (
+                                <Menu.RadioItem key={code} value={code} className={MENU_ITEM} data-testid={`currency-${code}`}>
+                                  <span className="w-9 font-semibold">{c.symbol}</span> {c.name}
+                                  <Menu.RadioItemIndicator className="ml-auto">
+                                    <Check className="size-4 text-sky-300" />
+                                  </Menu.RadioItemIndicator>
+                                </Menu.RadioItem>
+                              ))}
+                            </Menu.RadioGroup>
+                          </Menu.Popup>
+                        </Menu.Positioner>
+                      </Menu.Portal>
+                    </Menu.SubmenuRoot>
                   </div>
                   <div className="border-t border-slate-700 py-1">
                     <Menu.Item className={MENU_ITEM} onClick={() => window.location.assign("/account")} data-testid="menu-account">
@@ -1499,7 +1530,7 @@ export default function Dashboard({
                 ).map(([t, v, c, hint]) => (
                   <div key={t} title={hint} className="rounded-md border border-slate-800 bg-slate-950/40 px-2.5 py-2">
                     <p className="font-mono text-[10px] uppercase tracking-wider text-slate-500">{t}</p>
-                    <p className={`truncate font-mono text-sm font-semibold tabular-nums ${c}`}>{formatAud(v)}</p>
+                    <p className={`truncate font-mono text-sm font-semibold tabular-nums ${c}`}>{formatMoney(v)}</p>
                   </div>
                 ))}
               </div>
@@ -2046,8 +2077,8 @@ function ExportDialog({
               {(
                 [
                   ["Listings", String(count), "text-slate-100"],
-                  ["Asking value", formatAud(asking), "text-amber-300"],
-                  ["Realized", formatAud(realized), "text-emerald-300"],
+                  ["Asking value", formatMoney(asking), "text-amber-300"],
+                  ["Realized", formatMoney(realized), "text-emerald-300"],
                 ] as const
               ).map(([t, v, c]) => (
                 <div key={t} className="rounded-md border border-slate-800 bg-slate-950/40 px-2.5 py-2">

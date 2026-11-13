@@ -8,6 +8,7 @@ import Stats from "@/pages/Stats";
 import Support from "@/pages/Support";
 import InstallPrompt from "@/components/InstallPrompt";
 import { ApiError, apiGet, apiPost, errorText } from "@/lib/api";
+import { setCurrency } from "@/lib/format";
 
 // Signed out: the landing page (sign up / log in). Signed in: the tracker, with only your listings.
 export default function App() {
@@ -92,11 +93,14 @@ export default function App() {
   if (!me.data || resetToken) {
     return <Landing onSignedIn={signedIn} resetToken={resetToken} notice={verifyNote} />;
   }
-  if (path === "/stats") return <Stats user={me.data} />;
-  if (path === "/account") return <Account user={me.data} />;
+  // prices follow the account's currency; key: a new currency redraws the page, so no price keeps the old one
+  setCurrency(me.data.currency);
+  const cur = me.data.currency ?? "auto";
+  if (path === "/stats") return <Stats key={cur} user={me.data} />;
+  if (path === "/account") return <Account key={cur} user={me.data} />;
   return (
     <>
-      <Dashboard user={me.data} onSignedOut={signedOut} notice={verifyNote} />
+      <Dashboard key={cur} user={me.data} onSignedOut={signedOut} notice={verifyNote} />
       {/* phones: offer to add the app to the home screen (once) */}
       <InstallPrompt />
     </>
