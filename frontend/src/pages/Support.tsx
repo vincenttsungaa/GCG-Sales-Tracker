@@ -8,12 +8,8 @@ import { Backdrop, CLOSED_BETA, type User } from "@/pages/Landing";
 const MEMBERSHIPS_PAUSED = true;
 
 // /support — the plans (Free / Collector / Dealer), your current plan, joining on Buy Me a Coffee, and for the
-// site owner a tool to set someone's plan by hand (a member who paid with another email, or testing). Prices in A$ per month.
-const TIERS = [
-  { name: "Free", price: "A$0" },
-  { name: "Collector", price: "A$10 / month", recommended: true },
-  { name: "Dealer", price: "A$15 / month" },
-];
+// site owner a tool to set someone's plan by hand (a member who paid with another email, or testing). No prices here: Buy Me a Coffee shows them.
+const TIERS = [{ name: "Free" }, { name: "Collector", recommended: true }, { name: "Dealer" }];
 // the "Recommended" tag over a plan: dark red angled plate, like the plan badges
 const RECOMMENDED =
   "inline-block bg-[#8a1c1a] px-2.5 py-[3px] font-mono text-[10px] font-normal tracking-[0.14em] text-white uppercase italic [clip-path:polygon(5px_0,100%_0,calc(100%-5px)_100%,0_100%)]";
@@ -31,8 +27,8 @@ const ROWS: [string, Cell, Cell, Cell][] = [
 ];
 // not built yet: listed under the table, not in it, so no one pays for a promise
 const COMING: [string, string][] = [
-  ["Trading tracker", "cards traded and received, plus cash, profit after cost · Dealer"],
-  ["Personal collection", "track your chase cards and what you paid for each, keep a wishlist, see what's missing from a set, and move any card to For Sale in one tap · Collector and Dealer"],
+  ["Trading tracker", "cards traded and received, plus cash, profit after cost"],
+  ["Personal collection", "track your chase cards and what you paid for each, keep a wishlist, see what's missing from a set, and move any card to For Sale in one tap"],
 ];
 
 function Mark({ v }: { v: Cell }) {
@@ -423,7 +419,6 @@ export default function Support({ user }: { user: User | null }) {
                     {t.name}
                     {t.recommended && <span className={RECOMMENDED}>Recommended</span>}
                   </h2>
-                  <span className="text-sm text-[#5b6470]">{t.price}</span>
                 </div>
                 {mine && <p className="mt-0.5 text-xs font-semibold text-[#4a6a94] uppercase">Your Membership</p>}
                 <ul className="mt-3 space-y-2 text-sm">
@@ -461,11 +456,10 @@ export default function Support({ user }: { user: User | null }) {
                   <span className="sr-only">Feature</span>
                 </th>
                 {TIERS.map((t) => (
-                  // align-bottom: the plan names and prices stay level with the tag over Collector
+                  // align-bottom: the plan names stay level with the tag over Collector
                   <th key={t.name} scope="col" className={`p-4 text-center align-bottom ${user?.plan === t.name ? "bg-[#eef3f9]" : ""}`}>
                     {t.recommended && <div className={`${RECOMMENDED} mb-1.5`}>Recommended</div>}
                     <div className="text-base font-bold">{t.name}</div>
-                    <div className="mt-0.5 font-normal text-[#5b6470]">{t.price}</div>
                     {user?.plan === t.name && <div className="mt-1 text-xs font-semibold text-[#4a6a94] uppercase">Your Membership</div>}
                   </th>
                 ))}
