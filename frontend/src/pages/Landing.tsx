@@ -147,8 +147,8 @@ const FEATURES = [
     text: "The whole tracker works on your phone, so you can add a card, mark a deal or check a price right at the table.",
     points: ["Add CardStakk to your home screen like an app", "Everything stays in step with your computer"],
     img: phoneShot,
-    w: 430,
-    h: 873,
+    w: 462,
+    h: 964,
     alt: "CardStakk on a phone: the totals, search, the status tabs and two Stakks",
     caption: "The listings page on a phone.",
     phone: true,
@@ -230,8 +230,8 @@ function Shot({ img, w, h, alt, caption, wide, phone }: { img: string; w: number
         width={w}
         height={h}
         loading="lazy"
-        // phone: a narrow, round-cornered screen, so the tall picture stays a sensible size
-        className={`mx-auto block h-auto w-full shadow-[0_20px_50px_-28px_rgba(28,34,43,.5)] ${phone ? "max-w-[240px] rounded-[28px] border-4 border-[#1f2630]" : `rounded-[10px] border border-[#dbe1e8] ${wide ? "" : "max-w-[480px]"}`}`}
+        // phone: the screenshot in its phone frame (transparent around it), kept narrow so it stays a sensible size
+        className={`mx-auto block h-auto w-full ${phone ? "max-w-[250px] drop-shadow-[0_24px_30px_rgba(28,34,43,.35)]" : `rounded-[10px] border border-[#dbe1e8] shadow-[0_20px_50px_-28px_rgba(28,34,43,.5)] ${wide ? "" : "max-w-[480px]"}`}`}
       />
       <figcaption className="mt-2 text-center text-[12.5px] text-[#5a6371]">{caption}</figcaption>
     </figure>
@@ -639,10 +639,10 @@ export default function Landing({
             />
             <img
               src={phoneShot}
-              width={430}
-              height={873}
+              width={462}
+              height={964}
               alt="The same listings on a phone"
-              className="absolute -right-2 -bottom-10 z-10 block h-auto w-[26%] max-w-[170px] rounded-[18px] border-[3px] border-[#1f2630] shadow-[0_30px_60px_-24px_rgba(28,34,43,.6)] md:-right-5"
+              className="absolute -right-2 -bottom-10 z-10 block h-auto w-[27%] max-w-[180px] drop-shadow-[0_24px_30px_rgba(28,34,43,.4)] md:-right-5"
             />
             <div aria-hidden className={`${HERO_NOTE} -top-5 right-[22%] max-md:hidden`}>
               <span className="grid size-[30px] place-items-center rounded-lg bg-[#8a1c1a] text-white">
