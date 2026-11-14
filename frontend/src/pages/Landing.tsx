@@ -5,6 +5,7 @@ import appShot from "@/assets/landing/app.webp";
 import addCardShot from "@/assets/landing/add-card.webp";
 import addItemShot from "@/assets/landing/add-item.webp";
 import stakksShot from "@/assets/landing/stakks.webp";
+import phoneShot from "@/assets/landing/phone.webp";
 
 // The signed-in user, as GET /api/auth/me returns it (backend: lib/auth.py public_user).
 export interface User {
@@ -141,6 +142,17 @@ const FEATURES = [
     caption: "Stakks sit in your listings as folder cards. Tap Open to see everything inside.",
     wide: true,
   },
+  {
+    title: "On your phone, too",
+    text: "The whole tracker works on your phone, so you can add a card, mark a deal or check a price right at the table.",
+    points: ["Add CardStakk to your home screen like an app", "Everything stays in step with your computer"],
+    img: phoneShot,
+    w: 430,
+    h: 873,
+    alt: "CardStakk on a phone: the totals, search, the status tabs and two Stakks",
+    caption: "The listings page on a phone.",
+    phone: true,
+  },
 ];
 
 const MORE = [
@@ -156,7 +168,6 @@ const MORE = [
   ["Search and filters", "Find any listing by name, type, rarity, colour or buyer."],
   ["Your currency", "Show prices in US$, A$, ₱, €, ¥, £, C$ or NZ$. More currencies are on the way."],
   ["Themes", "Eleven colour themes, light and dark."],
-  ["Works on your phone", "Add, list and sell from your phone at the table."],
 ] as const;
 
 const STEPS = [
@@ -210,7 +221,7 @@ export function Backdrop() {
   );
 }
 
-function Shot({ img, w, h, alt, caption, wide }: { img: string; w: number; h: number; alt: string; caption: string; wide?: boolean }) {
+function Shot({ img, w, h, alt, caption, wide, phone }: { img: string; w: number; h: number; alt: string; caption: string; wide?: boolean; phone?: boolean }) {
   return (
     <figure className="m-0">
       <img
@@ -219,7 +230,8 @@ function Shot({ img, w, h, alt, caption, wide }: { img: string; w: number; h: nu
         width={w}
         height={h}
         loading="lazy"
-        className={`mx-auto block h-auto w-full rounded-[10px] border border-[#dbe1e8] shadow-[0_20px_50px_-28px_rgba(28,34,43,.5)] ${wide ? "" : "max-w-[480px]"}`}
+        // phone: a narrow, round-cornered screen, so the tall picture stays a sensible size
+        className={`mx-auto block h-auto w-full shadow-[0_20px_50px_-28px_rgba(28,34,43,.5)] ${phone ? "max-w-[240px] rounded-[28px] border-4 border-[#1f2630]" : `rounded-[10px] border border-[#dbe1e8] ${wide ? "" : "max-w-[480px]"}`}`}
       />
       <figcaption className="mt-2 text-center text-[12.5px] text-[#5a6371]">{caption}</figcaption>
     </figure>
@@ -615,7 +627,8 @@ export default function Landing({
           </ul>
           </div>
 
-          {/* the product itself: the listings page of a sample account, turned slightly on wider screens */}
+          {/* the product itself: the listings page of a sample account, turned slightly on wider screens,
+              with the same account on a phone in front of it */}
           <figure className="relative m-0 min-w-0">
             <img
               src={appShot}
@@ -624,7 +637,14 @@ export default function Landing({
               alt="The CardStakk listings page with sample listings: two Stakks, a card bundle, a Premium Card Collection set, a pending card and single cards"
               className="block h-auto w-full rounded-xl border border-[#dbe1e8] shadow-[0_40px_80px_-40px_rgba(28,34,43,.55)] md:origin-left md:[transform:perspective(1600px)_rotateY(-8deg)_rotateX(3deg)]"
             />
-            <div aria-hidden className={`${HERO_NOTE} -right-3 -bottom-5 max-md:hidden`}>
+            <img
+              src={phoneShot}
+              width={430}
+              height={873}
+              alt="The same listings on a phone"
+              className="absolute -right-2 -bottom-10 z-10 block h-auto w-[26%] max-w-[170px] rounded-[18px] border-[3px] border-[#1f2630] shadow-[0_30px_60px_-24px_rgba(28,34,43,.6)] md:-right-5"
+            />
+            <div aria-hidden className={`${HERO_NOTE} -top-5 right-[22%] max-md:hidden`}>
               <span className="grid size-[30px] place-items-center rounded-lg bg-[#8a1c1a] text-white">
                 <svg viewBox="0 0 16 16" className="size-4">
                   <rect x="2" y="4" width="12" height="9" rx="1.5" fill="none" stroke="currentColor" strokeWidth="1.5" />
@@ -632,15 +652,15 @@ export default function Landing({
                 </svg>
               </span>
               <span>
-                Stakk · Sunday market
-                <b className="block text-base">6 listings</b>
+                Stakk · Spares for sale
+                <b className="block text-base">7 listings</b>
               </span>
             </div>
             <div aria-hidden className={`${HERO_NOTE} -bottom-4 left-2 md:bottom-[18%] md:-left-6`}>
               <span className="grid size-[30px] place-items-center rounded-lg bg-[#1f7a4d] font-extrabold text-white">$</span>
               <span>
-                Sold · Perfect Strike Gundam
-                <b className="block text-base text-[#1f7a4d]">+$4.00 profit</b>
+                Sold · Gundam GP01Fb
+                <b className="block text-base text-[#1f7a4d]">+$2.50 profit</b>
               </span>
             </div>
           </figure>
