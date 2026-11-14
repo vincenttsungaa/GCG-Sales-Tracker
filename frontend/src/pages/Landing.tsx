@@ -115,18 +115,18 @@ const FEATURES = [
     text: "Search the full official card list by name, number or keyword, and pick the exact printing.",
     points: ["Parallels and promos included", "Unit, Pilot and token filters"],
     img: addCardShot,
-    w: 576,
-    h: 670,
-    alt: "The Add Card window: a search for zaku with the keyword buttons and Zaku cards below",
-    caption: "The Add Card window: search “zaku”, or tap a keyword like Unit or Pilot.",
+    w: 577,
+    h: 790,
+    alt: "The Add Card window: a search for justice with the keyword buttons and Justice Gundam cards below",
+    caption: "The Add Card window: search “justice”, or tap a keyword like Unit or Pilot.",
   },
   {
     title: "Products too, not just cards",
     text: "Starter decks, Premium Bandai sets, sleeves and accessories come from their own product list, with each part priced if you sell them separately.",
     points: ["Filter by Starter Deck, Accessories, Premium Bandai or Other", "Something missing? Add a custom item with your own photo"],
     img: addItemShot,
-    w: 576,
-    h: 722,
+    w: 577,
+    h: 842,
     alt: "The Add Item window: starter decks ST11 to ST14, damage counter dice and card sleeves",
     caption: "The Add Item window, with the category filters on top.",
   },
@@ -135,8 +135,8 @@ const FEATURES = [
     text: "Keep a binder for a market day, a set or a buyer. Move a whole Stakk to Storage and back in one go, and see what each one is worth.",
     points: [],
     img: stakksShot,
-    w: 694,
-    h: 481,
+    w: 782,
+    h: 525,
     alt: "Two Stakks shown as folder cards next to a single listing",
     caption: "Stakks sit in your listings as folder cards. Tap Open to see everything inside.",
     wide: true,
@@ -621,7 +621,7 @@ export default function Landing({
               src={appShot}
               width={1270}
               height={1030}
-              alt="The CardStakk listings page with sample listings: a Stakk, a bundle, a Premium Bandai set, a pending card and single cards"
+              alt="The CardStakk listings page with sample listings: two Stakks, a card bundle, a Premium Card Collection set, a pending card and single cards"
               className="block h-auto w-full rounded-xl border border-[#dbe1e8] shadow-[0_40px_80px_-40px_rgba(28,34,43,.55)] md:origin-left md:[transform:perspective(1600px)_rotateY(-8deg)_rotateX(3deg)]"
             />
             <div aria-hidden className={`${HERO_NOTE} -right-3 -bottom-5 max-md:hidden`}>
