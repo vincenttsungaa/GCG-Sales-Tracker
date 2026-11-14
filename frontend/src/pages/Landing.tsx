@@ -154,6 +154,7 @@ const MORE = [
   ["Statistics", "Best sellers, top buyers, slow movers and monthly profit charts."],
   ["Your own order", "Drag listings and Stakks into the order you want."],
   ["Search and filters", "Find any listing by name, type, rarity, colour or buyer."],
+  ["Your currency", "Show prices in US$, A$, ₱, €, ¥, £, C$ or NZ$. More currencies are on the way."],
   ["Themes", "Eleven colour themes, light and dark."],
   ["Works on your phone", "Add, list and sell from your phone at the table."],
 ] as const;
@@ -168,6 +169,7 @@ const FAQ = [
   ["Is it really free?", "Yes. The Free plan keeps up to 100 listings that aren't sold, with no time limit and no payment details."],
   ["Can anyone else see my listings?", "No. Listings live in your own account and only you can see them."],
   ["Where do the card pictures come from?", "From the official card list, shown only to identify the cards you own."],
+  ["Which currencies can I use?", "US, Australian, Canadian and New Zealand dollars, Philippine pesos, euros, Japanese yen and British pounds. Pick yours from the menu at your profile picture. It changes how prices are shown and doesn't convert them. More currencies are coming."],
   ["Can I get my data out?", "Yes. Collector and Dealer members can export their listings and sales to Excel at any time, and anyone can ask us for a copy of their data."],
 ] as const;
 
